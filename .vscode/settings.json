@@ -1,17 +1,17 @@
 {
-    "workbench.colorCustomizations": {
-        "commandCenter.border": "#e7e7e799",
-        "panel.border": "#bf25c4",
-        "sash.hoverBorder": "#bf25c4",
-        "titleBar.activeBackground": "#951d99",
-        "titleBar.activeForeground": "#e7e7e7",
-        "titleBar.inactiveBackground": "#951d9999",
-        "titleBar.inactiveForeground": "#e7e7e799"
-    },
-    "peacock.color": "#951d99",
+    "peacock.color": "#e01e1ea8",
     "python.linting.mypyEnabled": true,
     "python.linting.enabled": true,
     "python.linting.pylintEnabled": false,
     "python.analysis.inlayHints.functionReturnTypes": true,
-    "python.analysis.typeCheckingMode": "off"
+    "python.analysis.typeCheckingMode": "off",
+    "workbench.colorCustomizations": {
+        "commandCenter.border": "#e7e7e799",
+        "panel.border": "#e74a4aa8",
+        "sash.hoverBorder": "#e74a4aa8",
+        "titleBar.activeBackground": "#e01e1ea8",
+        "titleBar.activeForeground": "#e7e7e7",
+        "titleBar.inactiveBackground": "#e01e1e99",
+        "titleBar.inactiveForeground": "#e7e7e799"
+    }
 }

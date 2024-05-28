@@ -24,12 +24,9 @@ import pynwb
 import zarr
 
 if typing.TYPE_CHECKING:
-    import npc_sessions
+    pass
 
-from npc_sessions.utils.misc import (
-    get_package_version,
-    get_taskcontrol_intervals_table_name,
-)
+import npc_sessions
 
 logger = logging.getLogger(__name__)
 
@@ -77,15 +74,15 @@ def _get_nwb_component(
         return _component_metadata_to_single_row_df(session.subject)
     elif component_name in ("vis_rf_mapping", "VisRFMapping"):
         return session.intervals.get(
-            get_taskcontrol_intervals_table_name("VisRFMapping"), None
+            npc_sessions.get_taskcontrol_intervals_table_name("VisRFMapping"), None
         )
     elif component_name in ("aud_rf_mapping", "AudRFMapping"):
         return session.intervals.get(
-            get_taskcontrol_intervals_table_name("AudRFMapping"), None
+            npc_sessions.get_taskcontrol_intervals_table_name("AudRFMapping"), None
         )
     elif component_name in ("optotagging", "OptoTagging"):
         return session.intervals.get(
-            get_taskcontrol_intervals_table_name("OptoTagging"), None
+            npc_sessions.get_taskcontrol_intervals_table_name("OptoTagging"), None
         )
     elif (
         component_name
@@ -127,7 +124,7 @@ def component_exists(
     path = npc_lims.get_cache_path(
         nwb_component=component_name,
         session_id=session_id if not consolidated_zarr else None,
-        version=version or get_package_version(),
+        version=version or npc_sessions.get_package_version(),
         consolidated=consolidated_zarr,
     )
     if consolidated_zarr:
@@ -197,7 +194,7 @@ def write_and_upload_session_nwb(
     """
     logger.info(f"Writing {session.session_id} NWB")
     path = npc_lims.get_nwb_path(
-        session.session_id, version=version or get_package_version()
+        session.session_id, version=version or npc_sessions.get_package_version()
     )
     if skip_existing and path.exists():
         logger.info(
@@ -209,7 +206,7 @@ def write_and_upload_session_nwb(
     else:
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpfile = npc_io.from_pathlike(tmpdir) / "temp.nwb"
-            tmpfile = session.write_nwb_hdf5(path=tmpfile, metadata_only=metadata_only)
+            tmpfile = session.write_nwb(path=tmpfile, metadata_only=metadata_only, zarr=zarr)
             bucket = path.fs._parent(path).split("/")[0]
             path = path.with_name(
                 f"{path.name.replace('.zarr', '').replace('.nwb', '')}.nwb"
@@ -236,7 +233,7 @@ def write_all_components_to_cache(
     >>> write_all_components_to_cache(session, version="test", skip_existing=False)
     """
     logger.info(f"Writing all components to cache for {session.session_id}")
-    version = version or get_package_version()
+    version = version or npc_sessions.get_package_version()
     for component_name in typing.get_args(npc_lims.NWBComponentStr):
         # skip before we potentially do a lot of processing to get component
         if skip_existing and component_exists(
@@ -274,7 +271,7 @@ def consolidate_cache(
     component_name: npc_lims.NWBComponentStr, version: str | None = None
 ) -> None:
     logger.info(f"Consolidating {component_name} caches")
-    version = version or get_package_version()
+    version = version or npc_sessions.get_package_version()
     cache_dir = npc_lims.get_cache_path(
         component_name, consolidated=False, version=version
     )
@@ -329,7 +326,7 @@ def _write_timeseries_to_cache(
     session_id = npc_session.SessionRecord(session_id)
     cache_path = npc_lims.get_cache_path(
         nwb_component=component_name,
-        version=version or get_package_version(),
+        version=version or npc_sessions.get_package_version(),
         consolidated=True,
     )
     z = zarr.open(cache_path, mode="a")
@@ -357,7 +354,7 @@ def _write_df_to_cache(
     cache_path = npc_lims.get_cache_path(
         nwb_component=component_name,
         session_id=session_id,
-        version=version or get_package_version(),
+        version=version or npc_sessions.get_package_version(),
         consolidated=False,
     )
 
@@ -406,7 +403,7 @@ def _write_spike_times_to_zarr_cache(
     version: str | None = None,
 ) -> None:
     zarr_path = npc_lims.get_cache_path(
-        "spike_times", consolidated=True, version=version or get_package_version()
+        "spike_times", consolidated=True, version=version or npc_sessions.get_package_version()
     )
     z = zarr.open(zarr_path, mode="a")
     z.create_group(session_id, overwrite=True)
@@ -425,7 +422,7 @@ def get_dataset(
         npc_lims.get_cache_path(
             nwb_component=nwb_component,
             session_id=session_id,
-            version=version or get_package_version(),
+            version=version or npc_sessions.get_package_version(),
             consolidated=consolidated,
         ),
         format=npc_lims.get_cache_file_suffix(nwb_component).lstrip("."),

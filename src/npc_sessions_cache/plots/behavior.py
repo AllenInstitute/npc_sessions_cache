@@ -7,9 +7,7 @@ import numpy as np
 if TYPE_CHECKING:
     import pandas as pd
 
-    import npc_sessions
-
-import npc_sessions.plots.plot_utils as plot_utils
+import npc_sessions_cache.plots.plot_utils as plot_utils
 
 
 def plot_performance_by_block(

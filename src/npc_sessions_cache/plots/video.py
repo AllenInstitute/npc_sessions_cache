@@ -16,9 +16,9 @@ import rich
 import upath
 
 if TYPE_CHECKING:
-    import npc_sessions
+    pass
 
-import npc_sessions.plots.plot_utils as plot_utils
+import npc_sessions_cache.plots.plot_utils as plot_utils
 
 
 def plot_video_info(

@@ -1,50 +1,20 @@
 [project]
-name = "npc_sessions"
-version = "0.0.224"
-description = "Tools and interfaces for working with behavior and epyhys sessions from the Mindscope Neuropixels team, in the cloud."
+name = "npc_sessions_cache"
+version = "0.0.1"
+description = "Scripts, notebooks and plots that operate on NWB or NWB-like objects from `npc_sessions` in the cloud."
 authors = [
     { name = "Ben Hardcastle", email = "ben.hardcastle@alleninstitute.org" },
     { name = "Arjun Sridhar", email = "arjun.sridhar@alleninstitute.org" },
     { name = "Ethan McBride", email = "ethan.mcbride@alleninstitute.org" },
     { name = "Corbett Bennett", email = "corbettb@alleninstitute.org" },
-    { name = "Sam Gale", email = "samg@alleninstitute.org" },
 ]
 dependencies = [
-    "h5py>=3.9.0",
-    "pandas>=2.0",
-    "pynwb>=2.7.0",
-    "rich>=13.5.2",
-    "zarr<2.18.1",
-    "matplotlib>=3.7.2",
-    "scipy>=1.9.3",
-    "DynamicRoutingTask>=0.1.94",
-    "numba>=0.57.1",
-    "ipywidgets>=8.1.0",
-    "ipympl>=0.9.3",
-    "opencv-python-headless>=4.8.0.76",
-    "python-dotenv>=1.0.0",
-    "ndx-events>=0.2.0",
-    "SimpleITK>=2.2.1",
-    "pyarrow>=14.0",
-    "spikeinterface>=0.98.2",
     "ipykernel>=6.25.2",
     "nbconvert>=7.9.2",
-    "hdmf-zarr>=0.7.0",
     "traitlets<=5.9.0",
-    "hdmf>=3.14.0",
-    "ndx-pose>=0.1.1",
-    "tables>=3.9.2",
-    "aind-data-schema==0.33.3",
-    "pydantic>=2.6.4",
-    "npc-lims>=0.1.150",
-    "npc-sync>=0.1.12",
-    "npc-ephys>=0.1.15",
-    "npc-stim>=0.1.8",
-    "npc-samstim>=0.1.4",
-    "npc-session>=0.1.34",
-    "npc-mvr>=0.1.6",
-    "npc-io>=0.1.26",
-    "polars<=0.20.26",
+    "ipympl>=0.9.3",
+    "ipywidgets>=8.1.0",
+    "npc_sessions>=0.0.224",
 ]
 requires-python = ">=3.9"
 readme = "README.md"
@@ -62,13 +32,13 @@ classifiers = [
 text = "MIT"
 
 [project.urls]
-Repository = "https://github.com/AllenInstitute/npc_sessions"
-Issues = "https://github.com/AllenInstitute/npc_sessions/issues"
+Repository = "https://github.com/AllenInstitute/npc_sessions_cache"
+Issues = "https://github.com/AllenInstitute/npc_sessions_cache/issues"
 
 [project.scripts]
-write_dataframes = "npc_sessions.scripts.write_dataframes:main"
-write_notebooks = "npc_sessions.scripts.write_notebooks:main"
-write_cache = "npc_sessions.scripts.write_sessions_to_cache:main"
+write_dataframes = "npc_sessions_cache.scripts.write_dataframes:main"
+write_notebooks = "npc_sessions_cache.scripts.write_notebooks:main"
+write_cache = "npc_sessions_cache.scripts.write_sessions_to_cache:main"
 
 [tool.pdm]
 plugins = [
@@ -130,7 +100,7 @@ where = [
 ]
 
 [tool.setuptools.package-data]
-npc_sessions = [
+npc_sessions_cache = [
     "py.typed",
     "notebooks/*.ipynb",
 ]
@@ -226,8 +196,8 @@ show_error_codes = true
 ignore_missing_imports = true
 implicit_reexport = false
 exclude = [
-    "src/npc_sessions/plots",
-    "src/npc_sessions/scripts",
+    "src/npc_sessions_cache/plots",
+    "src/npc_sessions_cache/scripts",
 ]
 
 [build-system]

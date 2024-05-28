@@ -10,23 +10,24 @@ from typing import Literal
 
 import npc_lims
 import npc_session
+import npc_sessions
 import tqdm
 
-import npc_sessions
-import npc_sessions.scripts.utils as utils
+import npc_sessions_cache
+import npc_sessions_cache.scripts.utils as utils
 
 logger = logging.getLogger()
 
 
 def helper(
     session_id: str | npc_session.SessionRecord | npc_lims.SessionInfo,
-    **write_all_components_kwargs,
+    **write_and_upload_session_nwb_kwargs,
 ) -> None:
     session = npc_sessions.DynamicRoutingSession(session_id)
     logger.info(f"Processing {session.id}")
-    npc_sessions.write_all_components_to_cache(
+    npc_sessions_cache.write_and_upload_session_nwb(
         session,
-        **write_all_components_kwargs,
+        **write_and_upload_session_nwb_kwargs,
     )
     del session
 
@@ -36,6 +37,7 @@ def write_sessions_to_cache(
     skip_existing: bool = True,
     parallel: bool = True,
     max_workers: int | None = None,
+    zarr_nwb: bool = True,
     reversed: bool = False,
 ) -> None:
     t0 = time.time()
@@ -45,6 +47,7 @@ def write_sessions_to_cache(
 
     helper_opts = {
         "skip_existing": skip_existing,
+        "zarr": zarr_nwb,
     }
     if len(session_infos) == 1:
         parallel = False
@@ -76,12 +79,12 @@ def write_sessions_to_cache(
                 **helper_opts,  # type: ignore[arg-type]
             )
             logger.info(f"{info.id} done")
-    npc_sessions.consolidate_all_caches()
+    npc_sessions_cache.consolidate_all_caches()
     logger.info(f"Time elapsed: {datetime.timedelta(seconds=time.time() - t0)}")
 
 
 def main() -> None:
-    kwargs = utils.setup()
+    kwargs = utils.setup(nwb=True)
     write_sessions_to_cache(**kwargs)  # type: ignore[misc, arg-type]
 
 

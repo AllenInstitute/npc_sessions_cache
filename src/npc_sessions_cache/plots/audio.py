@@ -7,7 +7,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 if TYPE_CHECKING:
-    import npc_sessions
+    pass
 
 
 def get_audio_latencies(

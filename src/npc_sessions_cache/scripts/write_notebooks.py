@@ -11,8 +11,8 @@ import npc_session
 import tqdm
 import upath
 
-import npc_sessions
-import npc_sessions.scripts.utils as utils
+import npc_sessions_cache
+import npc_sessions_cache.scripts.utils as utils
 
 logger = logging.getLogger()
 
@@ -29,10 +29,10 @@ def get_qc_path(
     return QC_REPO / version / f"{npc_session.SessionRecord(session_id)}_qc.ipynb"
 
 
-def move(src: npc_sessions.PathLike, dest: npc_sessions.PathLike) -> None:
+def move(src: npc_sessions_cache.PathLike, dest: npc_sessions_cache.PathLike) -> None:
     """copy to dest, remove local copy"""
-    src = npc_sessions.from_pathlike(src)
-    dest = npc_sessions.from_pathlike(dest)
+    src = npc_sessions_cache.from_pathlike(src)
+    dest = npc_sessions_cache.from_pathlike(dest)
     dest.write_bytes(src.read_bytes())
     src.unlink()
     logger.info(f"moved {src.name} to {dest}")
@@ -47,7 +47,7 @@ def helper(
     if skip_existing and dest_path.exists():
         logger.info(f"skipping {session} - {dest_path} already exists")
         return
-    local_path = npc_sessions.write_qc_notebook(
+    local_path = npc_sessions_cache.write_qc_notebook(
         session,
         save_path=upath.UPath.cwd() / dest_path.name,
     )
@@ -105,7 +105,7 @@ def write_notebooks(
 
 
 def main() -> None:
-    npc_sessions.assert_s3_write_credentials()
+    npc_sessions_cache.assert_s3_write_credentials()
     kwargs = utils.setup()
     write_notebooks(**kwargs)  # type: ignore[misc, arg-type]
 

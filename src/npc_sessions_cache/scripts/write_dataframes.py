@@ -6,7 +6,7 @@ import npc_lims
 import npc_session
 import pandas as pd
 
-import npc_sessions
+import npc_sessions_cache
 
 S3_DATAFRAME_REPO = npc_lims.NWB_REPO.parent / "dataframes"
 
@@ -72,7 +72,7 @@ def write_all_ephys_session_dfs(**session_kwargs) -> None:
     attr_to_df: dict[str, pd.DataFrame] = dict.fromkeys(attrs, pd.DataFrame())
     for file in S3_DATAFRAME_REPO.rglob("*.pkl"):
         file.unlink()
-    for idx, session in enumerate(npc_sessions.get_sessions()):
+    for idx, session in enumerate(npc_sessions_cache.get_sessions()):
         if not (session.is_sorted and session.is_annotated):
             continue
         print(f"{idx}: {session.id}")
@@ -108,9 +108,9 @@ def write_all_ephys_session_dfs(**session_kwargs) -> None:
 
 
 def write_df(
-    path: npc_sessions.PathLike, df: pd.DataFrame, append: bool = False
+    path: npc_sessions_cache.PathLike, df: pd.DataFrame, append: bool = False
 ) -> None:
-    path = npc_sessions.from_pathlike(path)
+    path = npc_sessions_cache.from_pathlike(path)
     for parent in path.parents:
         if parent.exists():
             break
@@ -121,7 +121,7 @@ def write_df(
 
 
 def main() -> None:
-    npc_sessions.assert_s3_write_credentials()  # before we do a load of work, make sure we can write to s3
+    npc_sessions_cache.assert_s3_write_credentials()  # before we do a load of work, make sure we can write to s3
     write_all_ephys_session_dfs()
 
 

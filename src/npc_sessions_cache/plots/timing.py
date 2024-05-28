@@ -8,7 +8,7 @@ import numpy as np
 import rich
 
 if TYPE_CHECKING:
-    import npc_sessions
+    pass
 
 
 def plot_bad_lick_times(

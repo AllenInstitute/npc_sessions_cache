@@ -6,6 +6,7 @@ import logging
 import time
 from typing import Literal
 
+import npc_io
 import npc_lims
 import npc_session
 import tqdm
@@ -29,10 +30,10 @@ def get_qc_path(
     return QC_REPO / version / f"{npc_session.SessionRecord(session_id)}_qc.ipynb"
 
 
-def move(src: npc_sessions_cache.PathLike, dest: npc_sessions_cache.PathLike) -> None:
+def move(src: npc_io.PathLike, dest: npc_io.PathLike) -> None:
     """copy to dest, remove local copy"""
-    src = npc_sessions_cache.from_pathlike(src)
-    dest = npc_sessions_cache.from_pathlike(dest)
+    src = npc_io.from_pathlike(src)
+    dest = npc_io.from_pathlike(dest)
     dest.write_bytes(src.read_bytes())
     src.unlink()
     logger.info(f"moved {src.name} to {dest}")

@@ -10,6 +10,7 @@ from typing import Literal
 
 import npc_lims
 import npc_session
+import npc_sessions
 import tqdm
 
 import npc_sessions_cache

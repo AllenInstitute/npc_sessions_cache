@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 
 import matplotlib.figure
 import matplotlib.pyplot as plt
+import npc_sessions
 import npc_stim
 import numpy as np
 import rich
@@ -12,7 +13,7 @@ if TYPE_CHECKING:
 
 
 def plot_bad_lick_times(
-    session: "npc_sessions.DynamicRoutingSession",
+    session: npc_sessions.DynamicRoutingSession,
 ) -> tuple[plt.Figure, ...]:
     """A loop making eventplots vsyncs for trials with:
     - licks in script but no lick within response window
@@ -46,7 +47,7 @@ def plot_bad_lick_times(
 
 
 def plot_assorted_lick_times(
-    session: "npc_sessions.DynamicRoutingSession",
+    session: npc_sessions.DynamicRoutingSession,
 ) -> tuple[plt.Figure, ...]:
     sync_time = session._trials.response_time
     script_time = npc_stim.safe_index(
@@ -73,7 +74,7 @@ def plot_assorted_lick_times(
 
 
 def plot_trial_lick_timing(
-    session: "npc_sessions.DynamicRoutingSession", trial_idx: int
+    session: npc_sessions.DynamicRoutingSession, trial_idx: int
 ) -> matplotlib.figure.Figure:
     if not session.is_sync or session._trials._sync is None:
         raise ValueError("session must have sync data")
@@ -175,7 +176,7 @@ def plot_trial_lick_timing(
 
 
 def plot_lick_times_on_sync_and_script(
-    session: "npc_sessions.DynamicRoutingSession",
+    session: npc_sessions.DynamicRoutingSession,
 ) -> tuple[plt.Figure, plt.Figure]:
     """
     - stem plot of lick times on sync relative to lick times in TaskControl
@@ -212,7 +213,7 @@ def plot_lick_times_on_sync_and_script(
 
 
 def plot_diode_flip_intervals(
-    session: "npc_sessions.DynamicRoutingSession",
+    session: npc_sessions.DynamicRoutingSession,
 ) -> matplotlib.figure.Figure:
     fig = session.sync_data.plot_diode_measured_sync_square_flips()
     names = tuple(
@@ -226,7 +227,7 @@ def plot_diode_flip_intervals(
 
 
 def plot_vsyncs_and_diode_flips_at_ends_of_each_stim(
-    session: "npc_sessions.DynamicRoutingSession",
+    session: npc_sessions.DynamicRoutingSession,
 ) -> matplotlib.figure.Figure:
     rich.print("[bold] Fraction long frames [/bold]")
     for stim_name, stim_times in session.stim_frame_times.items():
@@ -304,7 +305,7 @@ def plot_reward_times(session):
 
 
 def plot_long_vsyncs_distribution_across_trial(
-    session: "npc_sessions.DynamicRoutingSession",
+    session: npc_sessions.DynamicRoutingSession,
 ) -> matplotlib.figure.Figure:
     all_vsyncs = np.hstack(session.sync_data.vsync_times_in_blocks)
 

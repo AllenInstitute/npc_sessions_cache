@@ -6,12 +6,11 @@ import npc_sync
 import numpy as np
 from matplotlib import pyplot as plt
 
-if TYPE_CHECKING:
-    pass
+import npc_sessions
 
 
 def get_audio_latencies(
-    session: "npc_sessions.DynamicRoutingSession", stim_type: Literal["task", "mapping"]
+    session: npc_sessions.DynamicRoutingSession, stim_type: Literal["task", "mapping"]
 ):
     if "task" in stim_type.lower() or "behavior" in stim_type.lower():
         sel_stim = next(s for s in session.stim_paths if "DynamicRouting" in s.stem)
@@ -81,7 +80,7 @@ def get_audio_latencies(
     return latency_info
 
 
-def plot_audio_latencies(session: "npc_sessions.DynamicRoutingSession", latency_info):
+def plot_audio_latencies(session: npc_sessions.DynamicRoutingSession, latency_info):
     latency_flags = []
     if np.sum(np.array(latency_info["nidaq_signal"]) < 0) > 0:
         latency_flags.append("signal xcorr")
@@ -134,7 +133,7 @@ def plot_audio_latencies(session: "npc_sessions.DynamicRoutingSession", latency_
     return fig
 
 
-def plot_tone_vs_AMnoise(session: "npc_sessions.DynamicRoutingSession", latency_info):
+def plot_tone_vs_AMnoise(session: npc_sessions.DynamicRoutingSession, latency_info):
     # compare tones vs. AM noise
     tone_idx = np.asarray(latency_info["sound_type"]) == "tone"
     AMnoise_idx = np.asarray(latency_info["sound_type"]) == "AM_noise"

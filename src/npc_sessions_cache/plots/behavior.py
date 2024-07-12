@@ -7,11 +7,13 @@ import numpy as np
 if TYPE_CHECKING:
     import pandas as pd
 
+import npc_sessions
+
 import npc_sessions_cache.plots.plot_utils as plot_utils
 
 
 def plot_performance_by_block(
-    session: "npc_sessions.DynamicRoutingSession",
+    session: npc_sessions.DynamicRoutingSession,
 ) -> matplotlib.figure.Figure:
     task_performance_by_block_df: pd.DataFrame = session.analysis["performance"][:]
 
@@ -61,7 +63,7 @@ def plot_performance_by_block(
 
 
 def plot_first_lick_latency_hist(
-    session: "npc_sessions.DynamicRoutingSession",
+    session: npc_sessions.DynamicRoutingSession,
 ) -> matplotlib.figure.Figure:
     # first lick latency histogram
 
@@ -92,7 +94,7 @@ def plot_first_lick_latency_hist(
 
 
 def plot_lick_raster(
-    session: "npc_sessions.DynamicRoutingSession",
+    session: npc_sessions.DynamicRoutingSession,
 ) -> matplotlib.figure.Figure:
     timeseries = session.processing["behavior"]["licks"]
     trials: pd.DataFrame = session.trials[:]
@@ -120,7 +122,7 @@ def plot_lick_raster(
 
 
 def plot_running(
-    session: "npc_sessions.DynamicRoutingSession",
+    session: npc_sessions.DynamicRoutingSession,
 ) -> matplotlib.figure.Figure:
     timeseries = session.processing["behavior"]["running_speed"]
     epochs: pd.DataFrame = session.epochs[:]

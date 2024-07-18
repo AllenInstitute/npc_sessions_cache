@@ -11,7 +11,7 @@ import upath
 logger = logging.getLogger(__name__)
 
 MODULE_ROOT = upath.UPath(__file__).parent
-PACKAGE_ROOT = npc_io.from_pathlike(importlib.resources.files("npc_sessions"))  # type: ignore[arg-type]
+PACKAGE_ROOT = npc_io.from_pathlike(importlib.resources.files("npc_sessions_cache"))  # type: ignore[arg-type]
 
 
 def write_qc_notebook(

@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform"]
 lock_version = "4.4.1"
-content_hash = "sha256:6f84b8a3ccb39907d0ea42579e98a496269fe5491f12903c14015fa41cda82e7"
+content_hash = "sha256:990dddaa870d3657a9a830122af5c78ae1b3a20bed49234a78d0ca52c32c49a4"
 
 [[package]]
 name = "aind-codeocean-api"
@@ -1979,13 +1979,13 @@ files = [
 
 [[package]]
 name = "npc-lims"
-version = "0.1.154"
+version = "0.1.168"
 requires_python = ">=3.9"
 summary = "Tools to fetch and update paths, metadata and state for Mindscope Neuropixels sessions, in the cloud."
 dependencies = [
     "aind-codeocean-api>=0.4.0",
     "npc-io>=0.1.24",
-    "npc-session>=0.1.30",
+    "npc-session>=0.1.36",
     "openpyxl>=3.1.2",
     "packaging>=23.2",
     "pydbhub-bjh>=0.0.8",
@@ -1996,8 +1996,8 @@ dependencies = [
     "types-requests>=2.31.0.6",
 ]
 files = [
-    {file = "npc_lims-0.1.154-py3-none-any.whl", hash = "sha256:c683f064374900f9926de07db2758d1540816164aea8551eb1539ed0738bc039"},
-    {file = "npc_lims-0.1.154.tar.gz", hash = "sha256:bbd8f6a149fcd0adc7829ab54ac4eade9e74b126e010f6f36670a420b2333df8"},
+    {file = "npc_lims-0.1.168-py3-none-any.whl", hash = "sha256:deb7e0771097b2d67e22254d10647281c840ef42b7e07c73e2ad6813a87419f1"},
+    {file = "npc_lims-0.1.168.tar.gz", hash = "sha256:879cee4ab5ee916dd4744350ec03fe7fe4fa0207f18cb9389f79538380ddc3de"},
 ]
 
 [[package]]
@@ -2035,44 +2035,39 @@ files = [
 
 [[package]]
 name = "npc-session"
-version = "0.1.34"
+version = "0.1.36"
 requires_python = ">=3.9"
 summary = "Basic tools for parsing subject, session, date and time associated with data from the Mindscope Neuropixels team, in the cloud."
 dependencies = [
     "typing-extensions>=4.7.1",
 ]
 files = [
-    {file = "npc_session-0.1.34-py3-none-any.whl", hash = "sha256:50e1d8fe449473798e894a384452aa7d3dae5bc48f40579f5dce12c7b6f31a58"},
-    {file = "npc_session-0.1.34.tar.gz", hash = "sha256:4a8a8429410d0c5e4f5bff9e161a115937153503fe4aebefe154a3487173ad5e"},
+    {file = "npc_session-0.1.36-py3-none-any.whl", hash = "sha256:9897c155b19550171804eafb7158eee6cb2466249c33ec3577ea5ede33dacb2f"},
+    {file = "npc_session-0.1.36.tar.gz", hash = "sha256:039da368643abb99a94d2acf1c991948fe72e0151025ac368520dc6db9221771"},
 ]
 
 [[package]]
 name = "npc-sessions"
-version = "0.0.224"
+version = "0.0.230"
 requires_python = ">=3.9"
-summary = "Tools and interfaces for working with behavior and epyhys sessions from the Mindscope Neuropixels team, in the cloud."
+summary = "NWB-conversion for behavior and epyhys sessions from the Mindscope Neuropixels team, in the cloud."
 dependencies = [
     "DynamicRoutingTask>=0.1.94",
-    "SimpleITK>=2.2.1",
     "aind-data-schema==0.33.3",
     "h5py>=3.9.0",
     "hdmf-zarr>=0.7.0",
     "hdmf>=3.14.0",
-    "ipykernel>=6.25.2",
-    "ipympl>=0.9.3",
-    "ipywidgets>=8.1.0",
     "matplotlib>=3.7.2",
-    "nbconvert>=7.9.2",
     "ndx-events>=0.2.0",
     "ndx-pose>=0.1.1",
     "npc-ephys>=0.1.15",
     "npc-io>=0.1.26",
-    "npc-lims>=0.1.150",
+    "npc-lims>=0.1.161",
     "npc-mvr>=0.1.6",
     "npc-samstim>=0.1.4",
     "npc-session>=0.1.34",
     "npc-stim>=0.1.8",
-    "npc-sync>=0.1.12",
+    "npc-sync>=0.1.14",
     "numba>=0.57.1",
     "opencv-python-headless>=4.8.0.76",
     "pandas>=2.0",
@@ -2085,12 +2080,11 @@ dependencies = [
     "scipy>=1.9.3",
     "spikeinterface>=0.98.2",
     "tables>=3.9.2",
-    "traitlets<=5.9.0",
     "zarr<2.18.1",
 ]
 files = [
-    {file = "npc_sessions-0.0.224-py3-none-any.whl", hash = "sha256:ea0d7015d92294e3f9039f29ca8d7ef3a9745729af5c7cab18b661aaf1719e8d"},
-    {file = "npc_sessions-0.0.224.tar.gz", hash = "sha256:6a2bc03cb35639328336e084809553538372f772aea3d82ae19631101051d0d4"},
+    {file = "npc_sessions-0.0.230-py3-none-any.whl", hash = "sha256:09557aa57a4b1fcdb26cbca1d1f500187b039324cb7bfb1a6372e7bf36070bfb"},
+    {file = "npc_sessions-0.0.230.tar.gz", hash = "sha256:9e38c332e78b3e2df4859d0cc9e5c2c17af9e721c6aa569ce7baea760428dbd9"},
 ]
 
 [[package]]
@@ -2111,7 +2105,7 @@ files = [
 
 [[package]]
 name = "npc-sync"
-version = "0.1.13"
+version = "0.1.16"
 requires_python = ">=3.9"
 summary = "Repackaging of AllenSDK.SyncDataset with extra functionality, compatible with data in the cloud."
 dependencies = [
@@ -2123,8 +2117,8 @@ dependencies = [
     "typing-extensions>=4.9.0",
 ]
 files = [
-    {file = "npc_sync-0.1.13-py3-none-any.whl", hash = "sha256:5fa6c49dabf7708f435a685915fc3b1294f28a02c86560e1882c7755f31c0df2"},
-    {file = "npc_sync-0.1.13.tar.gz", hash = "sha256:183a63f2c4d033e41ddc0d7bc7268199a837ea607333cfe6f1517f765edf6288"},
+    {file = "npc_sync-0.1.16-py3-none-any.whl", hash = "sha256:52673c2d57e3b13c9dbdb4a2276598d453ca22ce3c580036913823da536f7e93"},
+    {file = "npc_sync-0.1.16.tar.gz", hash = "sha256:734c8fbe9f6368e24b0eabefcbaee658647faa3199807ab0326d22eb73e488b3"},
 ]
 
 [[package]]
@@ -3329,33 +3323,6 @@ summary = "Python helper for Semantic Versioning (https://semver.org)"
 files = [
     {file = "semver-3.0.2-py3-none-any.whl", hash = "sha256:b1ea4686fe70b981f85359eda33199d60c53964284e0cfb4977d243e37cf4bf4"},
     {file = "semver-3.0.2.tar.gz", hash = "sha256:6253adb39c70f6e51afed2fa7152bcd414c411286088fb4b9effb133885ab4cc"},
-]
-
-[[package]]
-name = "simpleitk"
-version = "2.3.1"
-summary = "SimpleITK is a simplified interface to the Insight Toolkit (ITK) for image registration and segmentation"
-files = [
-    {file = "SimpleITK-2.3.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:e9075c266d2be99a67708c9b4c34143a85f65c5367b09c37549aeaf47e66210f"},
-    {file = "SimpleITK-2.3.1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:977c47b4a7a7737b4413bcce12125794a342455d4a0647cea40f8473bc395330"},
-    {file = "SimpleITK-2.3.1-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:d30c730f8ec3035d3675bd754d13d034c101b7823e10e0ab8bf68ee9bbbc1581"},
-    {file = "SimpleITK-2.3.1-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:1d1c81beb667fc82cd25ecaca35337e97bb85b805a3b763488132e395b698824"},
-    {file = "SimpleITK-2.3.1-cp310-cp310-win_amd64.whl", hash = "sha256:752dde0a518cad3bc1a0f06efa9a071734a5bfafdb0cc784369968128f7ec198"},
-    {file = "SimpleITK-2.3.1-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:df43581c6984af5353730834a95116cdd8dcaef1dc13e4e9a326f608f8fba74a"},
-    {file = "SimpleITK-2.3.1-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:bd1c3d7f65bf5855013121bd9f2a683f4c429b746f5cc41f84af08dd28c92573"},
-    {file = "SimpleITK-2.3.1-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:5d088fbfbbd639aebe99aed0d9cf69364e2e8e7f4771fa2acc1017f1126a497c"},
-    {file = "SimpleITK-2.3.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:39cd45cf257e1a4469576e90fd0c476685b3b66d1f471d34677dd7f3876601b6"},
-    {file = "SimpleITK-2.3.1-cp311-cp311-win_amd64.whl", hash = "sha256:2aec554a4656dc84195711a8ebfe89477aa66dce2d8c2fd81890ea96ecb725fb"},
-    {file = "SimpleITK-2.3.1-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:2275568360bb4d99fba5cddfe815d9b1d1f673e1333922a78093cea0531eb6f8"},
-    {file = "SimpleITK-2.3.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:dbbab1f3fe63147b482682cbfdaf5ae39032a9b2bf7428c0e96c46d1d4f2d6cf"},
-    {file = "SimpleITK-2.3.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:92aacf919164e4b3a8e3554e64868c3ef0e6a39d50acdf9f4ef04ccee2fbc036"},
-    {file = "SimpleITK-2.3.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:7b4b9e7d64e53539216666a6b5b477e033e8738b1725f938e3c331b07539bd82"},
-    {file = "SimpleITK-2.3.1-cp312-cp312-win_amd64.whl", hash = "sha256:72dd0bd010ee5d0482c1db37bc82d3a6e79807641760abd94ebe16592db62da1"},
-    {file = "SimpleITK-2.3.1-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:8a1470a1c83f4765ff869240d1a57fc2f16e73007858d4055e171eefb5e753c0"},
-    {file = "SimpleITK-2.3.1-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:decf5296fd112334e8450a7ac9c360781ac7b250368cf26b9d90a4b04fdd36a2"},
-    {file = "SimpleITK-2.3.1-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:61847b4c2edbeb88a5943f7a6ea51ffbba32df33df2c05d36640832dae4b075f"},
-    {file = "SimpleITK-2.3.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0a81f950b76f34db65feb6c38629ecac5dcfd31a3d89a53789eefbeb6bfa4e19"},
-    {file = "SimpleITK-2.3.1-cp39-cp39-win_amd64.whl", hash = "sha256:aec45af0ec031ed2a18f4dc8e2a12188817c789ea1db0a2c863506dce9ae2b87"},
 ]
 
 [[package]]

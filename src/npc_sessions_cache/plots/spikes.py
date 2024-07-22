@@ -13,6 +13,7 @@ import pandas as pd
 if TYPE_CHECKING:
     import pynwb
 
+import npc_sessions
 import npc_sessions_cache.plots.plot_utils as plot_utils
 import npc_sessions_cache.utils as utils
 

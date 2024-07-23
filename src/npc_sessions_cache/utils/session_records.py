@@ -122,7 +122,11 @@ class Record:
 
 class RecordStore(collections.abc.MutableMapping):
 
-    def __init__(self, path: str | pathlib.Path | upath.UPath, create: bool = True) -> None:
+    def __init__(
+        self, 
+        path: str | pathlib.Path | upath.UPath = DEFAULT_SESSION_METADATA_PATH / 'records',
+        create: bool = True,
+    ) -> None:
         self.path = upath.UPath(str(path))
         logger.debug(f"{self.__class__.__name__} path set: {self.path}")
         if create:

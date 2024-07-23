@@ -55,10 +55,9 @@ class Record:
     implant: str | None = None
     # dye: str | None = None
     rig: str
-    experimenters: list[str] | None
+    experimenters: list[str]
     notes: str | None
     issues: list[str]
-    epochs: list[str]
 
     allen_path: str
     cloud_path: str | None
@@ -66,6 +65,8 @@ class Record:
     task_version: str | None
     ephys_day: int | None
     behavior_day: int | None
+
+    epochs: list[str]
 
     is_ephys: bool
     is_sync: bool
@@ -251,7 +252,7 @@ def get_session_record(session_id: str | npc_session.SessionRecord, session: npc
         subject_age=session.subject.age,
         subject_sex=session.subject.sex,
         subject_genotype=session.subject.genotype,
-        implant=session.probe_insertion_info['shield']['name'],
+        implant=session.probe_insertion_info.get('shield', {}).get('name', None),
         rig=session.rig,
         experimenters=session.experimenter,
         notes=session.notes,
@@ -351,8 +352,6 @@ def get_session_table(
 ) -> pd.DataFrame:
     table_path = upath.UPath(table_path)
     return getattr(pd, f"read_{table_path.suffix.strip('.')}")(table_path)
-
-def check_session_table()
 
 if __name__ == "__main__":
     import doctest

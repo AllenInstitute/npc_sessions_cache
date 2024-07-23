@@ -56,7 +56,7 @@ class Record:
     experimenters: list[str] | None
     notes: str | None
     issues: list[str]
-    intervals: list[str]
+    epochs: list[str]
 
     allen_path: str
     cloud_path: str | None
@@ -249,7 +249,7 @@ def get_session_record(session_id: str | npc_session.SessionRecord, session: npc
         experimenters=session.experimenter,
         notes=session.notes,
         issues=session.info.issues,
-        intervals=intervals,
+        epochs=intervals,
         allen_path=session.info.allen_path.as_posix(),
         cloud_path=session.info.cloud_path.as_posix(),
         task_version=session.task_version if session.is_task else None,

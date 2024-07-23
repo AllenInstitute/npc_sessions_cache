@@ -314,6 +314,9 @@ def write_session_record(
         store[key] = get_session_record(session_id)
     except Exception:
         error.write_text(traceback.format_exc())
+    else:
+        error.unlink(missing_ok=True)
+        logger.info(f"Removed {error.as_posix()} after successful record write")
 
 def write_session_table_from_records(
     store_path: str | pathlib.Path | upath.UPath = DEFAULT_SESSION_METADATA_PATH / 'records',

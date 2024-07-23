@@ -313,6 +313,9 @@ def write_session_record(
     if skip_previously_failed and error.exists():
         logger.info(f"Skipping {key} - previously failed to get record")
         return
+    if key in store:
+        logger.info(f"Clearing exsiting record for {key} before fetching new record (in case it errors)")
+        del store[key]
     try:
         store[key] = get_session_record(session_id)
     except Exception:

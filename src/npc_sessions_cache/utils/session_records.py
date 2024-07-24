@@ -52,8 +52,8 @@ class Record:
     subject_age: int
     subject_sex: str
     subject_genotype: str
-    implant: str | None = None
-    # dye: str | None = None
+    implant: str | None
+    # dye: str | None
     rig: str
     experimenters: list[str]
     notes: str | None
@@ -252,7 +252,7 @@ def get_session_record(session_id: str | npc_session.SessionRecord, session: npc
         subject_age=session.subject.age,
         subject_sex=session.subject.sex,
         subject_genotype=session.subject.genotype,
-        implant=session.probe_insertion_info.get('shield', {}).get('name', None),
+        implant=session.probe_insertion_info.get('shield', {}).get('name', None) if session.probe_insertion_info else None,
         rig=session.rig,
         experimenters=session.experimenter,
         notes=session.notes,

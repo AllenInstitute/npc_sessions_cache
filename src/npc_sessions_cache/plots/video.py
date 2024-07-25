@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import contextlib
 import datetime
+import io
 import random
 from collections.abc import Iterable
 from typing import TYPE_CHECKING
@@ -24,42 +26,49 @@ import npc_sessions_cache.plots.plot_utils as plot_utils
 
 def plot_video_info(
     session: npc_sessions.DynamicRoutingSession,
-) -> None:
+    capture_stdout: bool = True,
+) -> str | None:
     "Not a plot: prints info to stdout"
 
     augmented_camera_info = npc_mvr.MVRDataset(
         session_dir=session.sync_path.parent, sync_path=session.sync_path
     ).augmented_camera_info
 
-    for camera, info in augmented_camera_info.items():
-        rich.print(f"[bold]{camera} camera stats[bold]")
+    captured_output = io.StringIO()
+    with contextlib.redirect_stdout(captured_output) if capture_stdout else contextlib.nullcontext():
+        for camera, info in augmented_camera_info.items():
+            rich.print(f"[bold]{camera} camera stats[bold]")
 
-        frame_rate = info["FPS"]
-        frame_rate_string = plot_utils.add_valence_to_string(
-            f"Frame Rate: {frame_rate} \t",
-            frame_rate,
-            abs(frame_rate - 60) < 0.01,
-            abs(frame_rate - 60) > 0.05,
-        )
+            frame_rate = info["FPS"]
+            frame_rate_string = plot_utils.add_valence_to_string(
+                f"Frame Rate: {frame_rate} \t",
+                frame_rate,
+                abs(frame_rate - 60) < 0.01,
+                abs(frame_rate - 60) > 0.05,
+            )
 
-        lost_frame_percentage = 100 * info["FramesLostCount"] / info["FramesRecorded"]
-        lost_frame_string = plot_utils.add_valence_to_string(
-            f"Lost frame percentage: {np.round(lost_frame_percentage, 3)} \t",
-            lost_frame_percentage,
-            lost_frame_percentage < 0.01,
-            lost_frame_percentage > 0.05,
-        )
+            lost_frame_percentage = 100 * info["FramesLostCount"] / info["FramesRecorded"]
+            lost_frame_string = plot_utils.add_valence_to_string(
+                f"Lost frame percentage: {np.round(lost_frame_percentage, 3)} \t",
+                lost_frame_percentage,
+                lost_frame_percentage < 0.01,
+                lost_frame_percentage > 0.05,
+            )
 
-        frame_diff_from_expected = info["expected_minus_actual"]
-        frame_diff_string = plot_utils.add_valence_to_string(
-            f"Frames expected minus actual: {frame_diff_from_expected}",
-            frame_diff_from_expected,
-            abs(frame_diff_from_expected) < 1,
-            abs(frame_diff_from_expected) > 10,
-        )
+            frame_diff_from_expected = info["expected_minus_actual"]
+            frame_diff_string = plot_utils.add_valence_to_string(
+                f"Frames expected minus actual: {frame_diff_from_expected}",
+                frame_diff_from_expected,
+                abs(frame_diff_from_expected) < 1,
+                abs(frame_diff_from_expected) > 10,
+            )
 
-        rich.print(frame_rate_string + lost_frame_string + frame_diff_string)
-
+            rich.print(frame_rate_string + lost_frame_string + frame_diff_string)
+    if capture_stdout:
+        output = captured_output.getvalue()
+        captured_output.close()
+        return output
+        
 
 def plot_camera_frame_grabs_simple(
     session: npc_sessions.DynamicRoutingSession,

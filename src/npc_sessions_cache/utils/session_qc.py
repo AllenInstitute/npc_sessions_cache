@@ -258,7 +258,6 @@ def write_session_qc(
 
 
 if __name__ == "__main__":
-    write_session_qc('715710_2024-07-19')
     import doctest
 
     import dotenv

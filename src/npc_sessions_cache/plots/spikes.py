@@ -106,7 +106,7 @@ def plot_unit_spikes_channels(
     return fig
 
 
-def plot_unit_waveform(
+def _plot_unit_waveform(
     session: npc_sessions.DynamicRoutingSession | pynwb.NWBFile, index_or_id: int | str
 ) -> matplotlib.figure.Figure:
     """Waveform on peak channel"""

@@ -99,19 +99,25 @@ class QCStore(collections.abc.Mapping):
         module_name: str,
         function_name: str,
         root_path: str | pathlib.Path | upath.UPath = DEFAULT_SESSION_QC_PATH,
+        duplicate_path: str | pathlib.Path | upath.UPath | None = None,
         create: bool = True,
     ) -> None:
-        self.path = upath.UPath(str(root_path)) / module_name / function_name
-        logger.debug(f"{self.__class__.__name__} path set: {self.path}")
-        if create:
-            self.path.mkdir(parents=True, exist_ok=True)
-        elif not self.path.exists():
-            raise FileNotFoundError(f"Path does not exist or is not accessible: {self.path}")
-
-        if not self.path.protocol and not self.path.is_dir():
-            raise ValueError(f"Expected record store path to be a directory: {self.path}")
         self.module_name = module_name
         self.function_name = function_name
+        self.path = upath.UPath(str(root_path)) / self.module_name / self.function_name
+        logger.debug(f"{self.__class__.__name__} path set: {self.path}")
+        if duplicate_path is not None:
+            self.duplicate_path = upath.UPath(str(duplicate_path)) / self.module_name / self.function_name
+        else:
+            self.duplicate_path = None
+        for path in self.all_paths:
+            if create:
+                path.mkdir(parents=True, exist_ok=True)
+            elif not path.exists():
+                raise FileNotFoundError(f"Path does not exist or is not accessible: {path}")
+
+            if not path.protocol and not path.is_dir():
+                raise ValueError(f"Expected record store path to be a directory: {path}")
         # setup internal cache
         self._cache: dict[npc_session.SessionRecord, tuple[upath.UPath, ...]] = {}
         # a list of missing elements avoids repeated slow checks on disk for records that are not present in the store
@@ -122,14 +128,19 @@ class QCStore(collections.abc.Mapping):
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(module_name={self.module_name!r}, function_name={self.function_name!r}, root={self.path!r})"
 
+    @property
+    def all_paths(self) -> tuple[upath.UPath, ...]:
+        return (self.path, self.duplicate_path) if self.duplicate_path else (self.path, )
+    
     def get_record_glob(self, key: str | npc_session.SessionRecord) -> str:
         return f"{self._normalize_key(key)}*"
 
     def delete_data(self, key: str | npc_session.SessionRecord) -> None:
         key = self._normalize_key(key)
-        for path in self.path.glob(self.get_record_glob(key)):
-            path.unlink(missing_ok=True)
-            logger.debug(f"Deleted {path.as_posix()}")
+        for root_path in self.all_paths:
+            for path in root_path.glob(self.get_record_glob(key)):
+                path.unlink(missing_ok=True)
+                logger.debug(f"Deleted {path.as_posix()}")
         self._cache.pop(key, None)
         self._missing.add(key)
         
@@ -144,16 +155,17 @@ class QCStore(collections.abc.Mapping):
             data = [data]
         data = tuple(data)
         self.delete_data(key)
-        paths = []
+        new_paths = []
         for idx, element in enumerate(data):
             if not isinstance(element, QCElement):
                 element = QCElement(data=element, session_id=key, module_name=self.module_name, function_name=self.function_name, is_error=is_error)
             else:
                 assert element.module_name == self.module_name
                 assert element.function_name == self.function_name
-            path = element.write(self.path, stem_suffix=f"_{idx}" if len(data) > 1 else "")
-            paths.append(path)
-        self._cache[key] = tuple(paths)
+            for root_path in self.all_paths:
+                new_path = element.write(root_path, stem_suffix=f"_{idx}" if len(data) > 1 else "")
+            new_paths.append(new_path)
+        self._cache[key] = tuple(new_paths)
         self._missing.discard(key)
     
     def is_errored(self, key: str | npc_session.SessionRecord) -> bool:
@@ -232,6 +244,7 @@ def get_qc_functions(module_name: str | None = None) -> dict[tuple[str, str], Ca
 def write_session_qc(
     session_id: str | npc_session.SessionRecord,
     store_path: str | pathlib.Path | upath.UPath = DEFAULT_SESSION_QC_PATH,
+    duplicate_path: str | pathlib.Path | upath.UPath | None = None,
     skip_existing: bool = True,
     skip_previously_failed: bool = True,
     session: npc_sessions.DynamicRoutingSession | None = None,
@@ -239,7 +252,7 @@ def write_session_qc(
     if session is None:
         session = npc_sessions.DynamicRoutingSession(session_id)
     for (module_name, function_name), function  in get_qc_functions().items():
-        store = QCStore(module_name, function_name, root_path=store_path)
+        store = QCStore(module_name, function_name, root_path=store_path, duplicate_path=duplicate_path)
         key = store._normalize_key(session_id)
         if skip_existing and key in store:
             logger.info(f"Skipping {key} - qc data already exists")
@@ -257,7 +270,7 @@ def write_session_qc(
         if data is None:
             logger.warning(f"{module_name}.plot_{function_name} returned None - update it to return one or more plt.Fig, dict or str")
             continue
-        store.write_data(key, data, is_error=is_error)
+        store.write_data(key=key, data=data, is_error=is_error)
 
 
 if __name__ == "__main__":

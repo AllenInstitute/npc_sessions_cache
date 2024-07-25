@@ -202,7 +202,7 @@ def write_and_upload_session_nwb(
         )
         return
     if zarr:
-        path = session.write_nwb_zarr(path=path, metadata_only=metadata_only)
+        path = session.write_nwb(path=path, metadata_only=metadata_only, zarr=zarr)
     else:
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpfile = npc_io.from_pathlike(tmpdir) / "temp.nwb"

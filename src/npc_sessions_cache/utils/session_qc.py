@@ -272,7 +272,7 @@ def copy_current_qc_data(
         if key in store:
             for path in store[key]:
                 new_path = output_path / path.relative_to(store_path)
-                new_path.mkdir(parents=True, exist_ok=True)
+                new_path.parent.mkdir(parents=True, exist_ok=True)
                 new_path.write_bytes(path.read_bytes())
         else:
             logger.info(f"{key} not found in {store.path}")

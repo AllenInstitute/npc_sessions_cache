@@ -11,7 +11,7 @@ import pathlib
 from collections.abc import Iterator, Mapping
 import tempfile
 import traceback
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Union
 
 import npc_lims
 import npc_session
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_SESSION_QC_PATH = upath.UPath('s3://aind-scratch-data/dynamic-routing/qc')
 
-Data: TypeAlias = Mapping | matplotlib.figure.Figure | str
+Data: TypeAlias = Union[Mapping, matplotlib.figure.Figure, str]
 
 @dataclasses.dataclass(frozen=True)
 class QCElement:

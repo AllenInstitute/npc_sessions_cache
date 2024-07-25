@@ -80,7 +80,8 @@ def get_audio_latencies(
     return latency_info
 
 
-def plot_audio_latencies(session: npc_sessions.DynamicRoutingSession, latency_info):
+def _plot_audio_latencies(session: npc_sessions.DynamicRoutingSession):
+    latency_info = get_audio_latencies(session, "task")
     latency_flags = []
     if np.sum(np.array(latency_info["nidaq_signal"]) < 0) > 0:
         latency_flags.append("signal xcorr")
@@ -133,7 +134,7 @@ def plot_audio_latencies(session: npc_sessions.DynamicRoutingSession, latency_in
     return fig
 
 
-def plot_tone_vs_AMnoise(session: npc_sessions.DynamicRoutingSession, latency_info):
+def _plot_tone_vs_AMnoise(session: npc_sessions.DynamicRoutingSession, latency_info):
     # compare tones vs. AM noise
     tone_idx = np.asarray(latency_info["sound_type"]) == "tone"
     AMnoise_idx = np.asarray(latency_info["sound_type"]) == "AM_noise"

@@ -291,6 +291,7 @@ def plot_histogram_of_vsync_intervals(session):
         ax.set_xlabel("time (s)")
         ax.set_ylabel("frame interval count")
     plt.tight_layout()
+    return fig_hist
 
 
 def plot_reward_times(session):

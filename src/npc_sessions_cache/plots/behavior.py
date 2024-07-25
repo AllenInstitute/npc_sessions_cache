@@ -15,7 +15,7 @@ import npc_sessions_cache.plots.plot_utils as plot_utils
 def plot_performance_by_block(
     session: npc_sessions.DynamicRoutingSession,
 ) -> matplotlib.figure.Figure:
-    task_performance_by_block_df: pd.DataFrame = session.analysis["performance"][:]
+    task_performance_by_block_df: pd.DataFrame = session.performance[:]
 
     n_passing_blocks = np.sum(task_performance_by_block_df["cross_modal_dprime"] >= 1.5)
     failed_block_ind = task_performance_by_block_df["cross_modal_dprime"] < 1.5

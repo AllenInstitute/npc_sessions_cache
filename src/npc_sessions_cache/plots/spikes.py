@@ -21,7 +21,7 @@ matplotlib.rcParams.update({"font.size": 8})
 
 
 def plot_unit_quality_metrics_per_probe(session: npc_sessions.DynamicRoutingSession):
-    units: pd.DataFrame = utils.good_units(session.units)
+    units: pd.DataFrame = session.units[:].query("default_qc")
 
     metrics = [
         "drift_ptp",
@@ -84,7 +84,7 @@ def plot_unit_spikes_channels(
     lower_channel: int = 0,
     upper_channel: int = 384,
 ):
-    units: pd.DataFrame = utils.good_units(session.units)
+    units: pd.DataFrame = session.units[:].query("default_qc")
 
     probes = units["electrode_group_name"].unique()
     for probe in probes:

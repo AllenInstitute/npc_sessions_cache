@@ -20,7 +20,7 @@ import npc_sessions_cache.utils as utils
 matplotlib.rcParams.update({"font.size": 8})
 
 
-def plot_unit_quality_metrics_per_probe(session: npc_sessions.DynamicRoutingSession):
+def plot_unit_quality_metrics_per_probe(session: npc_sessions.DynamicRoutingSession) -> matplotlib.figure.Figure:
     units: pd.DataFrame = session.units[:].query("default_qc")
 
     metrics = [
@@ -53,6 +53,7 @@ def plot_unit_quality_metrics_per_probe(session: npc_sessions.DynamicRoutingSess
 
         fig.set_size_inches([10, 6])
     plt.tight_layout()
+    return fig
 
 
 def plot_all_unit_spike_histograms(
@@ -83,7 +84,7 @@ def plot_unit_spikes_channels(
     session: npc_sessions.DynamicRoutingSession,
     lower_channel: int = 0,
     upper_channel: int = 384,
-):
+) -> matplotlib.figure.Figure:
     units: pd.DataFrame = session.units[:].query("default_qc")
 
     probes = units["electrode_group_name"].unique()
@@ -102,11 +103,11 @@ def plot_unit_spikes_channels(
         )
         ax.set_xlabel("Time (s)")
         ax.set_ylabel("Spike Count per 1 second bin")
-
+    return fig
 
 def plot_drift_maps(
     session: npc_sessions.DynamicRoutingSession | pynwb.NWBFile,
-) -> tuple[plt.Figure, ...]:
+) -> tuple[matplotlib.figure.Figure, ...]:
     figs = []
     for k, v in session.analysis["drift_maps"].images.items():
         fig, ax = plt.subplots()
@@ -155,7 +156,7 @@ def plot_unit_waveform(
     return fig
 
 
-def plot_unit_spatiotemporal_waveform(
+def _plot_unit_spatiotemporal_waveform(
     session: npc_sessions.DynamicRoutingSession | pynwb.NWBFile,
     index_or_id: int | str,
     **pcolormesh_kwargs,
@@ -244,7 +245,7 @@ def plot_unit_spatiotemporal_waveform(
     return fig
 
 
-def plot_ephys_noise(
+def _plot_ephys_noise(
     timeseries: pynwb.TimeSeries,
     interval: utils.Interval | None = None,
     median_subtraction: bool = True,
@@ -254,7 +255,7 @@ def plot_ephys_noise(
     timestamps = timeseries.get_timestamps()
     if interval is None:
         interval = ((t := np.ceil(timestamps)[0]), t + 1)
-    t0, t1 = utils.parse_intervals(interval)[0]
+    t0, t1 = npc_sessions.parse_intervals(interval)[0]
     s0, s1 = np.searchsorted(timestamps, (t0, t1))
     if s0 == s1:
         raise ValueError(
@@ -296,7 +297,7 @@ def plot_ephys_noise(
     return fig
 
 
-def plot_ephys_image(
+def _plot_ephys_image(
     timeseries: pynwb.TimeSeries,
     interval: utils.Interval | None = None,
     median_subtraction: bool = True,
@@ -306,7 +307,7 @@ def plot_ephys_image(
     timestamps = timeseries.get_timestamps()
     if interval is None:
         interval = ((t := np.ceil(timestamps)[0]), t + 1)
-    t0, t1 = utils.parse_intervals(interval)[0]
+    t0, t1 = npc_sessions.parse_intervals(interval)[0]
     s0, s1 = np.searchsorted(timestamps, (t0, t1))
     if s0 == s1:
         raise ValueError(
@@ -354,7 +355,7 @@ def plot_session_ephys_noise(
     fig, _ = plt.subplots(1, len(container.electrical_series), sharex=True, sharey=True)
     for idx, (label, timeseries) in enumerate(container.electrical_series.items()):
         ax = fig.axes[idx]
-        plot_ephys_noise(
+        _plot_ephys_noise(
             timeseries,
             ax=ax,
             interval=interval,
@@ -390,7 +391,7 @@ def plot_session_ephys_images(
     fig, _ = plt.subplots(1, len(container.electrical_series), sharex=True, sharey=True)
     for idx, (label, timeseries) in enumerate(container.electrical_series.items()):
         ax = fig.axes[idx]
-        plot_ephys_image(
+        _plot_ephys_image(
             timeseries,
             ax=ax,
             interval=interval,
@@ -412,7 +413,7 @@ def plot_session_ephys_images(
 
 def plot_raw_ap_vs_surface(
     session: npc_sessions.DynamicRoutingSession | pynwb.NWBFile,
-) -> tuple[plt.Figure, ...]:
+) -> tuple[matplotlib.figure.Figure, ...]:
     time_window = 0.5
 
     figs = []

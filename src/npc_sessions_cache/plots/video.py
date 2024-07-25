@@ -10,6 +10,7 @@ import matplotlib.figure
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import npc_mvr
+import npc_sessions
 import numpy as np
 import numpy.typing as npt
 import rich
@@ -94,7 +95,7 @@ def plot_camera_frame_grabs_simple(
             ret, frame = v.read()
             ax = fig.add_subplot(gs[idx, i])
             im = ax.imshow(frame)
-            im.set_clim([0, 255])
+            im.set_clim(0, 255)
             # ax.axis('off')
             ax.tick_params(
                 top=False,
@@ -114,7 +115,7 @@ def plot_video_frames_with_licks(
     session: npc_sessions.DynamicRoutingSession,
     trial_idx: int | None = None,
     lick_time: float | None = None,
-):
+) -> matplotlib.figure.Figure:
     NUM_LICKS = 3 if (trial_idx is None and lick_time is None) else 1
     NUM_CAMERAS = 2  # 1 x face, 1 x body
 
@@ -139,7 +140,7 @@ def plot_video_frames_with_licks(
     else:
         lick_times = [lick_time]
 
-    fig = plt.figure(figsize=[12, 5 * NUM_LICKS], facecolor="0.5")
+    fig = plt.figure(figsize=(12, 5 * NUM_LICKS), facecolor="0.5")
     # fig, axes = plt.subplots(NUM_LICKS * ROWS_PER_LICK, FRAMES_PER_ROW,)
     # constrained_layout=True,
     gs = gridspec.GridSpec(
@@ -183,7 +184,7 @@ def plot_video_frames_with_licks(
                     x = slice(xmid - xspan, xmid + xspan)
                     y = slice(ymid - yspan, ymid + yspan)
                 im = ax.imshow(frame[y, x])
-                im.set_clim([0, 255])
+                im.set_clim(0, 255)
                 ax.axis("off")
                 if frame_index == closest_frame_index:
                     trial = (
@@ -209,3 +210,4 @@ def plot_video_frames_with_licks(
                 ax.legend(fontsize=8, fancybox=True, ncol=2, loc="upper right")
 
     plt.tight_layout()
+    return fig

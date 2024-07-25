@@ -254,6 +254,9 @@ def write_session_qc(
         except Exception:
             data = traceback.format_exc()
             is_error = True
+        if data is None:
+            logger.warning(f"{module_name}.plot_{function_name} returned None - update it to return one or more plt.Fig, dict or str")
+            continue
         store.write_data(key, data, is_error=is_error)
 
 

@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 def plot_bad_lick_times(
     session: npc_sessions.DynamicRoutingSession,
-) -> tuple[plt.Figure, ...]:
+) -> tuple[matplotlib.figure.Figure, ...]:
     """A loop making eventplots vsyncs for trials with:
     - licks in script but no lick within response window
     - licks not in script, but lick within response window
@@ -48,7 +48,7 @@ def plot_bad_lick_times(
 
 def plot_assorted_lick_times(
     session: npc_sessions.DynamicRoutingSession,
-) -> tuple[plt.Figure, ...]:
+) -> tuple[matplotlib.figure.Figure, ...]:
     sync_time = session._trials.response_time
     script_time = npc_stim.safe_index(
         session._trials._flip_times, session._trials._sam.trialResponseFrame
@@ -177,7 +177,7 @@ def plot_trial_lick_timing(
 
 def plot_lick_times_on_sync_and_script(
     session: npc_sessions.DynamicRoutingSession,
-) -> tuple[plt.Figure, plt.Figure]:
+) -> tuple[matplotlib.figure.Figure, matplotlib.figure.Figure]:
     """
     - stem plot of lick times on sync relative to lick times in TaskControl
     - histogram showing distribution of same intervals
@@ -273,7 +273,7 @@ def plot_vsyncs_and_diode_flips_at_ends_of_each_stim(
     return fig
 
 
-def plot_histogram_of_vsync_intervals(session):
+def plot_histogram_of_vsync_intervals(session) -> matplotlib.figure.Figure:
     stim_frame_times = {
         k: v
         for k, v in session.stim_frame_times.items()
@@ -294,7 +294,7 @@ def plot_histogram_of_vsync_intervals(session):
     return fig_hist
 
 
-def plot_reward_times(session):
+def plot_reward_times(session) -> matplotlib.figure.Figure:
     fig, ax = plt.subplots()
     ax.hist(session.trials[:].reward_time - session.trials[:].response_time)
     ax.xaxis.label.set_text("contingent_reward_time - response_time (s)")
@@ -351,7 +351,7 @@ def plot_long_vsyncs_distribution_across_trial(
                 *(unique_intervals := np.unique(np.round(all_long_intervals, 2))),
             ]
         )
-        plt.clim([interval_threshold, max(unique_intervals)])
+        plt.clim(interval_threshold, max(unique_intervals))
         plt.xlabel("time from trial start (s)")
         if cidx == 0:
             plt.ylabel("trial index")

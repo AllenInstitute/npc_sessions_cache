@@ -259,7 +259,24 @@ def write_session_qc(
             continue
         store.write_data(key, data, is_error=is_error)
 
-
+def copy_current_qc_data(
+    session_id: str | npc_session.SessionRecord, 
+    output_path: str | pathlib.Path | upath.UPath,
+    store_path: str | pathlib.Path | upath.UPath = DEFAULT_SESSION_QC_PATH, 
+) -> None:
+    output_path = upath.UPath(output_path)
+    store_path = upath.UPath(store_path)
+    for (module_name, function_name), _ in get_qc_functions().items():
+        store = QCStore(module_name, function_name, root_path=store_path)
+        key = store._normalize_key(session_id)
+        if key in store:
+            for path in store[key]:
+                new_path = output_path / path.relative_to(store_path)
+                new_path.mkdir(parents=True, exist_ok=True)
+                new_path.write_bytes(path.read_bytes())
+        else:
+            logger.info(f"{key} not found in {store.path}")
+            
 if __name__ == "__main__":
     import doctest
 

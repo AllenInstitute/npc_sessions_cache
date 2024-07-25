@@ -300,6 +300,7 @@ def write_session_record(
     store_path: str | pathlib.Path | upath.UPath = DEFAULT_SESSION_METADATA_PATH / 'records',
     skip_existing: bool = True,
     skip_previously_failed: bool = True,
+    session: npc_sessions.Session | None = None,
 ) -> None:
     store = RecordStore(store_path)
     error_path = store.path / 'errors'
@@ -318,7 +319,7 @@ def write_session_record(
         logger.info(f"Clearing exsiting record for {key} before fetching new record (in case it errors)")
         del store[key]
     try:
-        store[key] = get_session_record(session_id)
+        store[key] = get_session_record(session_id, session=session)
     except Exception:
         error.write_text(traceback.format_exc())
     else:

@@ -196,12 +196,16 @@ def write_and_upload_session_nwb(
     path = npc_lims.get_nwb_path(
         session.session_id, version=version or npc_sessions.get_package_version()
     )
-    if skip_existing and path.exists():
+    if skip_existing and path.exists() and (npc_io.get_size(path) // 1024) > 1:
         logger.info(
             f"Skipping {session.session_id} NWB write - already exists and skip_existing=True"
         )
         return
     if zarr:
+        if path.exists():
+            # clear up existing zarr file before we accidentally add to it
+            for p in path.rglob('*'):
+                p.unlink(missing_ok=True)
         path = session.write_nwb(path=path, metadata_only=metadata_only, zarr=zarr)
     else:
         with tempfile.TemporaryDirectory() as tmpdir:

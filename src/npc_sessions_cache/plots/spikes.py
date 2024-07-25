@@ -105,22 +105,6 @@ def plot_unit_spikes_channels(
         ax.set_ylabel("Spike Count per 1 second bin")
     return fig
 
-def plot_drift_maps(
-    session: npc_sessions.DynamicRoutingSession | pynwb.NWBFile,
-) -> tuple[matplotlib.figure.Figure, ...]:
-    figs = []
-    for k, v in session.analysis["drift_maps"].images.items():
-        fig, ax = plt.subplots()
-        ax.imshow(v)
-        fig.suptitle(f"{session.session_id}")
-        ax.set_title(k, fontsize=8)
-        ax.margins(0)
-        ax.axis("off")
-        fig.set_size_inches([5, 5])
-        fig.tight_layout()
-        figs.append(fig)
-    return tuple(figs)
-
 
 def plot_unit_waveform(
     session: npc_sessions.DynamicRoutingSession | pynwb.NWBFile, index_or_id: int | str

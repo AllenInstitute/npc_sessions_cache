@@ -204,7 +204,7 @@ def get_qc_module_names() -> tuple[str, ...]:
     return tuple(
         path.stem
         for path in plots_path.glob('*.py')
-        if path.stem not in ('__init__', 'utils')
+        if path.stem not in ('__init__', 'utils', 'plot_utils')
     )
 
 def get_qc_functions(module_name: str | None = None) -> dict[tuple[str, str], Callable]:

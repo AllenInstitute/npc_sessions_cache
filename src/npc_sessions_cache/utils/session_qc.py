@@ -112,17 +112,17 @@ class QCStore(collections.abc.Mapping):
         # a list of missing elements avoids repeated slow checks on disk for records that are not present in the store
         self._missing: set[npc_session.SessionRecord] = set()
         self._errored: set[npc_session.SessionRecord] = set(
-            self._normalize_key(p) for p in self.path.glob("*.error")
+            self.normalize_key(p) for p in self.path.glob("*.error")
             )
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(module_name={self.module_name!r}, function_name={self.function_name!r}, root={self.path!r})"
 
     def get_record_glob(self, key: str | npc_session.SessionRecord) -> str:
-        return f"{self._normalize_key(key)}*"
+        return f"{self.normalize_key(key)}*"
 
     def delete_data(self, key: str | npc_session.SessionRecord) -> None:
-        key = self._normalize_key(key)
+        key = self.normalize_key(key)
         for path in self.path.glob(self.get_record_glob(key)):
             path.unlink(missing_ok=True)
             logger.debug(f"Deleted {path.as_posix()}")
@@ -135,7 +135,7 @@ class QCStore(collections.abc.Mapping):
         data: Data | QCElement | Iterable[Data | QCElement],
         is_error: bool = False,
         ) -> None:
-        key = self._normalize_key(key)
+        key = self.normalize_key(key)
         if isinstance(data, str) or not isinstance(data, Iterable):
             data = [data]
         data = tuple(data)
@@ -158,17 +158,17 @@ class QCStore(collections.abc.Mapping):
             return any(element.suffix == ".error" for element in self[key])
         if key in self._errored:
             return True
-        if (self.path / f"{self._normalize_key(key)}.error").exists():
+        if (self.path / f"{self.normalize_key(key)}.error").exists():
             self._errored.add(key)
             return True
         return False
 
     @staticmethod
-    def _normalize_key(key: str) -> npc_session.SessionRecord:
-        return npc_session.SessionRecord(key)
+    def normalize_key(key: str) -> npc_session.SessionRecord:
+        return str(npc_session.SessionRecord(key))
 
     def __getitem__(self, key: str | npc_session.SessionRecord) -> tuple[upath.UPath, ...]:
-        key = self._normalize_key(key)
+        key = self.normalize_key(key)
         if key in self._cache:
             logger.debug(f"Paths for {key} fetched from cache")
             return self._cache[key]
@@ -191,9 +191,9 @@ class QCStore(collections.abc.Mapping):
     def __iter__(self) -> Iterator[str]:
         yield from iter(self._cache)
         yield from (
-            self._normalize_key(path.stem)
+            self.normalize_key(path.stem)
             for path in self.path.glob("*")
-            if self._normalize_key(path.stem) not in self._cache 
+            if self.normalize_key(path.stem) not in self._cache 
             and path.suffix != ".error"
         )
 
@@ -246,7 +246,7 @@ def write_session_qc(
         session = npc_sessions.DynamicRoutingSession(session_id)
     for (module_name, function_name), function  in get_qc_functions().items():
         store = QCStore(module_name, function_name, root_path=store_path)
-        key = store._normalize_key(session_id)
+        key = store.normalize_key(session_id)
         if skip_existing and key in store:
             logger.info(f"Skipping {module_name}.plot_{function_name} for {key} - qc data already exists")
             continue
@@ -272,16 +272,11 @@ def copy_current_qc_data(
 ) -> None:
     output_path = upath.UPath(output_path)
     store_path = upath.UPath(store_path)
-    for (module_name, function_name), _ in get_qc_functions().items():
-        store = QCStore(module_name, function_name, root_path=store_path)
-        key = store._normalize_key(session_id)
-        if key in store:
-            for path in store[key]:
-                new_path = output_path / path.relative_to(store_path)
-                new_path.parent.mkdir(parents=True, exist_ok=True)
-                new_path.write_bytes(path.read_bytes())
-        else:
-            logger.info(f"{key} not found in {store.path}")
+    key: npc_session.SessionRecord = QCStore.normalize_key(session_id)
+    for path in store_path.rglob(key + "*"):
+        new_path = output_path / path.relative_to(store_path)
+        new_path.parent.mkdir(parents=True, exist_ok=True)
+        new_path.write_bytes(path.read_bytes())
 
 if __name__ == "__main__":
     import doctest

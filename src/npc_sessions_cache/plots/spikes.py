@@ -525,7 +525,7 @@ def plot_optotagging(
         & (units['firing_rate'] > 0.1)
     )
     units = units.loc[good_unit_filter]
-
+    units.drop(columns='group_name', errors='ignore', inplace=True)
     units_electrodes = (
         units
         .merge(
@@ -635,3 +635,5 @@ def plot_optotagging(
         if combine_locations:
             break
     return tuple(figs)
+
+plot_optotagging(npc_sessions.Session('703882_2024-04-23'))

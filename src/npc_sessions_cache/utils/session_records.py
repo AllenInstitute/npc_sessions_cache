@@ -231,9 +231,8 @@ def get_session_record(session_id: str | npc_session.SessionRecord, session: npc
         trials = session.trials[:]
         performance = session.performance[:]
     epochs = session.epochs[:]
-    epochs = epochs.stim_name.to_list()
     def is_in_epochs(name):
-        return any(name.strip('_').lower() == epoch.lower() for epoch in epochs)
+        return any(name.strip('_').lower() == epoch.lower() for epoch in epochs.stim_name.to_list())
     if session.is_annotated:
         units = session.units[:]
 
@@ -257,7 +256,7 @@ def get_session_record(session_id: str | npc_session.SessionRecord, session: npc
         experimenters=session.experimenter,
         notes=session.notes,
         issues=session.info.issues,
-        epochs=epochs,
+        epochs=epochs.stim_name.to_list(),
         allen_path=session.info.allen_path.as_posix(),
         cloud_path=session.info.cloud_path.as_posix(),
         task_version=session.task_version if session.is_task else None,

@@ -175,7 +175,7 @@ class QCStore(collections.abc.Mapping):
         if key in self._missing:
             logger.debug(f"{key} in 'missing' list: previously established that data does not exist on disk")
             raise KeyError(f"{key} qc data not found")
-        if self.is_errored(key):
+        if key in self._errored:
             logger.debug(f"{key} is in 'errored' list: previously established that data is an error")
             raise KeyError(f"{key} qc data not available - previously errored")
         paths = tuple(self.path.glob(self.get_record_glob(key)))

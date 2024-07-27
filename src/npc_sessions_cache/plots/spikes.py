@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Iterable
 
 import matplotlib.axes
 import matplotlib.colors
@@ -605,7 +605,14 @@ def plot_optotagging(
                         vcenter=(min_clim_val + max_clim_val)/2,
                         vmax=max_clim_val,
                     )
-                    ax = axes[il][idur]
+                    if len(powers) == 1 and len(durations) == 1:
+                        ax = axes
+                    elif len(powers) == 1:
+                        ax = axes[idur]
+                    elif len(durations) == 1:
+                        ax = axes[il]
+                    else:
+                        ax = axes[il][idur]
                     fig.sca(ax)
                     _ = plt.pcolormesh(
                         t, np.arange(all_resp.shape[0]), all_resp,

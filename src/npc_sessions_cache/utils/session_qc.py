@@ -37,13 +37,11 @@ class QCElement:
     """name of python module that generated the QC"""
     function_name: str
     """name of function that generated the QC"""
-    is_error: bool = False
-    """whether the QC data is an error message"""
-
+    
     def get_filename(self, stem_suffix: str = "", type_suffix: str | None = None) -> str:
         if not type_suffix:
             if isinstance(self.data, str):
-                type_suffix = ".txt" if not self.is_error else ".error"
+                type_suffix = ".txt" if not self.data.startswith("Traceback") else ".error"
             elif isinstance(self.data, matplotlib.figure.Figure):
                 type_suffix = ".png"
             elif isinstance(self.data, Mapping):
@@ -110,12 +108,12 @@ class QCStore(collections.abc.Mapping):
         self.module_name = module_name
         self.function_name = function_name
         # setup internal cache
-        self._cache: dict[npc_session.SessionRecord, tuple[upath.UPath, ...]] = {}
+        self._cache: dict[str, tuple[upath.UPath, ...]] = {}
         # a list of missing elements avoids repeated slow checks on disk for records that are not present in the store
-        self._missing: set[npc_session.SessionRecord] = set()
-        self._errored: set[npc_session.SessionRecord] = set(
-            self.normalize_key(p) for p in self.path.glob("*.error")
-            )
+        self._missing: set[str] = set()
+        self._errored: set[str] = {
+            self.normalize_key(p.stem) for p in self.path.glob("*.error")
+        }
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(module_name={self.module_name!r}, function_name={self.function_name!r}, root={self.path!r})"
@@ -135,7 +133,6 @@ class QCStore(collections.abc.Mapping):
         self,
         key: str | npc_session.SessionRecord,
         data: Data | QCElement | Iterable[Data | QCElement],
-        is_error: bool = False,
         ) -> None:
         key = self.normalize_key(key)
         if isinstance(data, (str, Mapping)) or not isinstance(data, Iterable):
@@ -145,7 +142,7 @@ class QCStore(collections.abc.Mapping):
         paths = []
         for idx, element in enumerate(data):
             if not isinstance(element, QCElement):
-                element = QCElement(data=element, session_id=key, module_name=self.module_name, function_name=self.function_name, is_error=is_error)
+                element = QCElement(data=element, session_id=key, module_name=self.module_name, function_name=self.function_name)
             else:
                 assert element.module_name == self.module_name
                 assert element.function_name == self.function_name
@@ -166,7 +163,7 @@ class QCStore(collections.abc.Mapping):
         return False
 
     @staticmethod
-    def normalize_key(key: str) -> npc_session.SessionRecord:
+    def normalize_key(key: str) -> str:
         return str(npc_session.SessionRecord(key))
 
     def __getitem__(self, key: str | npc_session.SessionRecord) -> tuple[upath.UPath, ...]:
@@ -261,14 +258,12 @@ def write_session_qc(
         logger.info(f"Running {module_name}.plot_{function_name} for {session_id}")
         try:
             data = function(session)
-            is_error = False
         except Exception:
             data = traceback.format_exc()
-            is_error = True
         if data is None:
             logger.warning(f"{module_name}.plot_{function_name} returned None - update it to return one or more plt.Fig, dict or str")
             continue
-        store.write_data(key, data, is_error=is_error)
+        store.write_data(key, data)
 
 def copy_current_qc_data(
     session_id: str | npc_session.SessionRecord,
@@ -277,7 +272,7 @@ def copy_current_qc_data(
 ) -> None:
     output_path = upath.UPath(output_path)
     store_path = upath.UPath(store_path)
-    key: npc_session.SessionRecord = QCStore.normalize_key(session_id)
+    key = QCStore.normalize_key(session_id)
     for path in store_path.rglob(key + "*"):
         new_path = output_path / path.relative_to(store_path)
         new_path.parent.mkdir(parents=True, exist_ok=True)

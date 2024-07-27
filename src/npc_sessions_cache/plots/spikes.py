@@ -111,32 +111,6 @@ def plot_all_unit_spike_histograms(
     return tuple(figs)
 
 
-def plot_unit_spikes_channels(
-    session: npc_sessions.DynamicRoutingSession,
-    lower_channel: int = 0,
-    upper_channel: int = 384,
-) -> matplotlib.figure.Figure:
-    units: pd.DataFrame = session.units[:].query("default_qc")
-
-    probes = units["electrode_group_name"].unique()
-    for probe in probes:
-        fig, ax = plt.subplots()
-        unit_spike_times = units[units["electrode_group_name"] == probe]
-        unit_spike_times_channel = unit_spike_times[
-            (unit_spike_times["peak_channel"] >= lower_channel)
-            & (unit_spike_times["peak_channel"] <= upper_channel)
-        ]["spike_times"].to_numpy()
-        hist, bins = npc_ephys.bin_spike_times(unit_spike_times_channel, bin_interval=1)
-
-        ax.plot(hist)
-        ax.set_title(
-            f"{probe} spike hist for channel range {lower_channel} to {upper_channel}"
-        )
-        ax.set_xlabel("Time (s)")
-        ax.set_ylabel("Spike Count per 1 second bin")
-    return fig
-
-
 def _plot_unit_waveform(
     session: npc_sessions.DynamicRoutingSession | pynwb.NWBFile, index_or_id: int | str
 ) -> matplotlib.figure.Figure:

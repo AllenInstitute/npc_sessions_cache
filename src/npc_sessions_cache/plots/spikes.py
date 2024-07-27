@@ -635,5 +635,3 @@ def plot_optotagging(
         if combine_locations:
             break
     return tuple(figs)
-
-plot_optotagging(npc_sessions.Session('703882_2024-04-23'))

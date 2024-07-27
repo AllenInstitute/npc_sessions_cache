@@ -110,7 +110,8 @@ class QCStore(collections.abc.Mapping):
         # setup internal cache
         self._cache: dict[npc_session.SessionRecord, tuple[upath.UPath, ...]] = {}
         # a list of missing elements avoids repeated slow checks on disk for records that are not present in the store
-        self._missing: set[npc_session.SessionRecord] = set(
+        self._missing: set[npc_session.SessionRecord] = set()
+        self._errored: set[npc_session.SessionRecord] = set(
             self._normalize_key(p) for p in self.path.glob("*.error")
             )
 
@@ -150,10 +151,16 @@ class QCStore(collections.abc.Mapping):
             paths.append(path)
         self._cache[key] = tuple(paths)
         self._missing.discard(key)
-
+        self._errored.discard(key)
+        
     def is_errored(self, key: str | npc_session.SessionRecord) -> bool:
         if key in self:
             return any(element.suffix == ".error" for element in self[key])
+        if key in self._errored:
+            return True
+        if (self.path / f"{self._normalize_key(key)}.error").exists():
+            self._errored.add(key)
+            return True
         return False
 
     @staticmethod
@@ -167,7 +174,10 @@ class QCStore(collections.abc.Mapping):
             return self._cache[key]
         if key in self._missing:
             logger.debug(f"{key} in 'missing' list: previously established that data does not exist on disk")
-            raise KeyError(f"{key} not in store")
+            raise KeyError(f"{key} qc data not found")
+        if self.is_errored(key):
+            logger.debug(f"{key} is in 'errored' list: previously established that data is an error")
+            raise KeyError(f"{key} qc data not available - previously errored")
         paths = tuple(self.path.glob(self.get_record_glob(key)))
         if not paths:
             self._missing.add(key)
@@ -183,7 +193,8 @@ class QCStore(collections.abc.Mapping):
         yield from (
             self._normalize_key(path.stem)
             for path in self.path.glob("*")
-            if self._normalize_key(path.stem) not in self._cache
+            if self._normalize_key(path.stem) not in self._cache 
+            and path.suffix != ".error"
         )
 
     def __len__(self):
@@ -237,10 +248,10 @@ def write_session_qc(
         store = QCStore(module_name, function_name, root_path=store_path)
         key = store._normalize_key(session_id)
         if skip_existing and key in store:
-            logger.info(f"Skipping {module}.plot_{function} for {key} - qc data already exists")
+            logger.info(f"Skipping {module_name}.plot_{function_name} for {key} - qc data already exists")
             continue
         if skip_previously_failed and store.is_errored(key):
-            logger.info(f"Skipping {module}.plot_{function} for {key} - previously failed to write qc data")
+            logger.info(f"Skipping {module_name}.plot_{function_name} for {key} - previously failed to write qc data")
             continue
         logger.info(f"Running {module_name}.plot_{function_name} for {session_id}")
         try:

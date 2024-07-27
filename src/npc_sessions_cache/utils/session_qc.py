@@ -5,13 +5,15 @@ import collections.abc
 import dataclasses
 import importlib
 import importlib.metadata
+import inspect
 import json
 import logging
 import pathlib
 import tempfile
 import traceback
 from collections.abc import Iterable, Iterator, Mapping
-from typing import Callable, Union
+from types import FunctionType
+from typing import Union
 
 import matplotlib.figure
 import npc_session
@@ -152,7 +154,7 @@ class QCStore(collections.abc.Mapping):
         self._cache[key] = tuple(paths)
         self._missing.discard(key)
         self._errored.discard(key)
-        
+
     def is_errored(self, key: str | npc_session.SessionRecord) -> bool:
         if key in self:
             return any(element.suffix == ".error" for element in self[key])
@@ -193,7 +195,7 @@ class QCStore(collections.abc.Mapping):
         yield from (
             self.normalize_key(path.stem)
             for path in self.path.glob("*")
-            if self.normalize_key(path.stem) not in self._cache 
+            if self.normalize_key(path.stem) not in self._cache
             and path.suffix != ".error"
         )
 
@@ -218,7 +220,7 @@ def get_qc_module_names() -> tuple[str, ...]:
         if path.stem not in ('__init__', 'utils', 'plot_utils')
     )
 
-def get_qc_functions(module_name: str | None = None) -> dict[tuple[str, str], Callable]:
+def get_qc_functions(module_name: str | None = None) -> dict[tuple[str, str], FunctionType]:
     """returns {(module_name, function_name): function}
     >>> get_qc_functions()
     """
@@ -232,7 +234,10 @@ def get_qc_functions(module_name: str | None = None) -> dict[tuple[str, str], Ca
         for name in dir(module):
             if not name.startswith("plot_"):
                 continue
-            functions[(m, normalize_function_name(name))] = getattr(module, name)
+            callable_obj = getattr(module, name)
+            if not inspect.isfunction(callable_obj):
+                continue
+            functions[(m, normalize_function_name(name))] = callable_obj
     return functions
 
 def write_session_qc(

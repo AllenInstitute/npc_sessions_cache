@@ -237,10 +237,10 @@ def write_session_qc(
         store = QCStore(module_name, function_name, root_path=store_path)
         key = store._normalize_key(session_id)
         if skip_existing and key in store:
-            logger.info(f"Skipping {key} - qc data already exists")
+            logger.info(f"Skipping {module}.plot_{function} for {key} - qc data already exists")
             continue
         if skip_previously_failed and store.is_errored(key):
-            logger.info(f"Skipping {key} - previously failed to write qc data")
+            logger.info(f"Skipping {module}.plot_{function} for {key} - previously failed to write qc data")
             continue
         logger.info(f"Running {module_name}.plot_{function_name} for {session_id}")
         try:

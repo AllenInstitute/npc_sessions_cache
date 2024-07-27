@@ -136,7 +136,7 @@ class QCStore(collections.abc.Mapping):
         is_error: bool = False,
         ) -> None:
         key = self.normalize_key(key)
-        if isinstance(data, str) or not isinstance(data, Iterable):
+        if isinstance(data, (str, Mapping)) or not isinstance(data, Iterable):
             data = [data]
         data = tuple(data)
         self.delete_data(key)

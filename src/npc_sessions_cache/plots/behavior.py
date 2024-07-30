@@ -17,8 +17,9 @@ def plot_performance_by_block(
 ) -> matplotlib.figure.Figure:
     task_performance_by_block_df: pd.DataFrame = session.performance[:]
 
-    n_passing_blocks = np.sum(task_performance_by_block_df["cross_modal_dprime"] >= 1.5)
-    failed_block_ind = task_performance_by_block_df["cross_modal_dprime"] < 1.5
+    dprime_threshold = 1.5 if session.is_training else 1.0
+    n_passing_blocks = np.sum(task_performance_by_block_df["cross_modal_dprime"] >= dprime_threshold)
+    failed_block_ind = task_performance_by_block_df["cross_modal_dprime"] < dprime_threshold
 
     # blockwise behavioral performance
     xvect = task_performance_by_block_df.index.values

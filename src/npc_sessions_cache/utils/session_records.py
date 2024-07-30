@@ -286,7 +286,7 @@ def get_session_record(session_id: str | npc_session.SessionRecord, session: npc
         probe_letters_available="".join(session.probe_letters_to_use),
         perturbation_areas=sorted(trials.opto_label.unique()) if is_opto_task else None,
         areas_hit=sorted(units.structure.unique()) if session.is_annotated else None, # add injection areas
-        n_passing_blocks=len(performance.query("cross_modal_dprime >= 1.5")) if session.is_task else None,
+        n_passing_blocks=len(performance.query(f"cross_modal_dprime >= {1.5 if session.is_training else 1.0}")) if session.is_task else None,
         task_duration=trials.stop_time.max() - trials.start_time.min() if session.is_task else None,
         intramodal_dprime_vis=performance.vis_intra_dprime.mean() if session.is_task else None,
         intramodal_dprime_aud=performance.aud_intra_dprime.mean() if session.is_task else None,

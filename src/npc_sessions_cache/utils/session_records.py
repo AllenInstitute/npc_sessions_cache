@@ -49,7 +49,7 @@ class Record:
     date: npc_session.DateRecord
     time: npc_session.TimeRecord
     subject: npc_session.SubjectRecord
-    subject_age: int
+    subject_age_days: int
     subject_sex: str
     subject_genotype: str
     implant: str | None
@@ -248,7 +248,7 @@ def get_session_record(session_id: str | npc_session.SessionRecord, session: npc
         date=session.id.date,
         time=npc_session.TimeRecord(session.session_start_time.time()),
         subject=session.id.subject,
-        subject_age=session.subject.age,
+        subject_age_days=int(session.subject.age.strip('PD')),
         subject_sex=session.subject.sex,
         subject_genotype=session.subject.genotype,
         implant=session.probe_insertion_info.get('shield', {}).get('name', None) if session.probe_insertion_info else None,

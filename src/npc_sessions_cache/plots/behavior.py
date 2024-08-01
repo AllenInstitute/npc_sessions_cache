@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING
 
 import matplotlib.figure
 import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 import numpy as np
 
 if TYPE_CHECKING:
@@ -179,3 +180,48 @@ def plot_running(
     fig.set_size_inches(10, 4)
     fig.set_layout_engine("tight")
     return fig
+
+
+def plot_response_rate_by_stimulus_type(
+    session: npc_sessions.DynamicRoutingSession,
+) -> matplotlib.figure.Figure:
+
+    trials = session.trials[:]
+    start_time = trials.iloc[0]['start_time']
+    end_time = trials.iloc[-1]['stop_time']
+    
+    switch_times = trials[trials['is_context_switch']]['start_time']
+    switch_starts = np.insert(switch_times, 0, start_time)
+    switch_ends = np.append(switch_times, end_time)
+    switch_durations = switch_ends - switch_starts
+    
+    window_size = 120 #seconds
+    
+    time = np.arange(start_time,end_time,window_size)
+    
+    stim_types = ['vis_target', 'aud_target', 'vis_nontarget', 'aud_nontarget']
+    rate_dict = {stim_type:[] for stim_type in stim_types}
+    for stim_type in stim_types:
+        
+        response_times = trials[trials[f'is_{stim_type}'] & trials['is_response']]['stim_start_time'].values
+        trial_type_times = trials[trials[f'is_{stim_type}']]['stim_start_time'].values
+    
+        rt_hist, _ = np.histogram(response_times, bins = time)
+        tt_hist, _ = np.histogram(trial_type_times, bins = time)
+        
+        rate_dict[stim_type] = rt_hist/tt_hist
+
+    aud_block_inds = np.arange(0, len(switch_starts), 2) + trials.iloc[0]['is_vis_context']
+
+    fig, ax = plt.subplots()
+    for stim_type in stim_types:
+        ax.plot(time[:-1], rate_dict[stim_type])
+        
+    ax.set_ylabel('Response Rate')
+    ax.set_xlabel('Session Time (s)')
+    
+    for aud_block in aud_block_inds:
+        rectangle = Rectangle((switch_starts[aud_block], 0), switch_durations[aud_block], 1, color='k', alpha=0.2)
+        ax.add_artist(rectangle)
+        
+    ax.legend(stim_types + ['aud_block'])

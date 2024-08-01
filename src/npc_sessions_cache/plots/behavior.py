@@ -225,3 +225,4 @@ def plot_response_rate_by_stimulus_type(
         ax.add_artist(rectangle)
         
     ax.legend(stim_types + ['aud_block'])
+    return fig

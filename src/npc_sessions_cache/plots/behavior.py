@@ -566,15 +566,28 @@ def plot_lick_raster_by_block(session: npc_sessions.DynamicRoutingSession) -> ma
         .group_by(pl.all().exclude("lick_times", "stim_centered_lick_times"), maintain_order=True)
         .all()
     )
+    is_pass = len(
+        pl.DataFrame(session.intervals["performance"][:])
+        .filter(
+            pl.col('same_modal_dprime') > 1.0,
+            pl.col('cross_modal_dprime') > 1.0,
+        )
+    ) > 3
 
-    plot_params = dict(
+    scatter_params = dict(
         marker='.',
         s=15,
+        color=[0.85] * 3,
         alpha=1,
         edgecolor='none',
     )
-    response_window_start_time = np.diff(trials.select('stim_start_time', 'response_window_start_time')).mean()
-    response_window_stop_time = np.diff(trials.select('stim_start_time', 'response_window_stop_time')).mean()
+    line_params = dict(
+        color='grey',
+        lw=.5,
+    )
+    response_window_start_time = np.median(np.diff(trials.select('stim_start_time', 'response_window_start_time')))
+    response_window_stop_time = np.median(np.diff(trials.select('stim_start_time', 'response_window_stop_time')))
+
     fig, axes = plt.subplots(1,2, figsize=(3, 6))
     for ax, stim_name in zip(axes, ("vis1", "sound1")):
         ax: plt.Axes
@@ -584,22 +597,30 @@ def plot_lick_raster_by_block(session: npc_sessions.DynamicRoutingSession) -> ma
         stim_trials = trials.filter(pl.col('stim_name') == stim_name)
         for idx, trial in enumerate(stim_trials.iter_rows(named=True)):
         
+            is_vis_block: bool = "vis" in trial["context_name"]
+            is_vis_stim: bool = "vis" in trial["stim_name"]
+            
             # block label
             if idx_in_block == (len(stim_trials.filter(pl.col('block_index') == trial['block_index'])) // 2):
-                ax.text(-0.3, idx, "V" if "vis" in trial["context_name"] else "A", fontsize=10, ha='center', va='center')
-        
+                text_color = 'black' if is_vis_block == is_vis_stim else 'grey'
+                rotation = 0
+                label = "V" if "vis" in trial["context_name"] else "A"
+                ax.text(-0.4, idx, label, fontsize=8, ha='center', va='center', color=text_color, rotation=rotation)
+            
             # block switch horizontal lines
             if trial['trial_index_in_block'] < previous_trial_idx:
-                ax.axhline(idx - .5, color='grey', lw=.5)
+                ax.axhline(idx - .5, **line_params)
+                idx_in_block = 0
             previous_trial_idx = trial['trial_index_in_block']
-                
+            idx_in_block += 1
+
             # response window vertical lines
-            ax.axvline(response_window_start_time, color='grey', lw=.5)
-            ax.axvline(response_window_stop_time, color='grey', lw=.5)
+            ax.axvline(response_window_start_time, **line_params)
+            ax.axvline(response_window_stop_time, **line_params)
             times = trial['stim_centered_lick_times']
             
             # licks
-            ax.scatter(times, np.full_like(times, idx), color='grey', **plot_params)
+            ax.scatter(times, np.full_like(times, idx), **scatter_params)
             
             # first licks of interest
             if trial['is_hit']:
@@ -611,19 +632,25 @@ def plot_lick_raster_by_block(session: npc_sessions.DynamicRoutingSession) -> ma
             else:
                 continue
             colored_time = times[0]
-            ax.scatter(colored_time, idx, color=first_lick_color, **plot_params)
+            ax.scatter(colored_time, idx, **scatter_params | dict(color=first_lick_color, alpha=1))
             
         ax.set_xlim(-0.2, 2.2)
         ax.set_ylim(-0.5, idx + 0.5)
+        ax.set_xticks([0, 1, 2])
+        ax.set_xticklabels("" if v%2 else str(v) for v in ax.get_xticks())
         ax.set_yticks([])
         if ax is axes[0]:
             ax.set_ylabel("← trials (non-consecutive)")
+            ax.yaxis.set_label_coords(-0.3, 0.91) 
+            ax.text(-0.4, -0.5, "← context", fontsize=8, ha='center', va='center', color='k', rotation=90)
+
         ax.set_xlabel("time rel. to\nstim onset (s)")
         ax.invert_yaxis()
         ax.set_aspect(0.1)
-        ax.title.set_text("VIS+" if "vis" in stim_name else "AUD+")
+        ax.set_title("VIS+" if is_vis_stim else "AUD+", fontsize=8)
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
         ax.spines['left'].set_visible(False)
         
+    fig.suptitle(f"{'pass' if is_pass else 'fail'}\n{session.id}")
     return fig

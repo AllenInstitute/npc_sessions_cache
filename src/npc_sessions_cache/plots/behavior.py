@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import npc_sessions
 import numpy as np
 from matplotlib.patches import Rectangle
+import polars as pl
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -546,4 +547,77 @@ def plot_licks_by_block(session: npc_sessions.DynamicRoutingSession) -> plt.Figu
     fig.suptitle(subjectName+' '+startTime+' '+taskVersion)
 
     fig.tight_layout()
+    return fig
+
+def plot_lick_raster_by_block(session: npc_sessions.DynamicRoutingSession) -> plt.Figure:
+    lick_times = session.processing['behavior'].licks['timestamps'][:]
+    trials = pl.DataFrame(session.trials[:])
+    lick_times_by_trial = tuple(lick_times[slice(*start_stop)] for start_stop in np.searchsorted(lick_times, trials.select('start_time', 'stop_time')))
+    trials = (
+        trials
+        .with_columns(
+            pl.Series(name="lick_times", values=lick_times_by_trial),
+        )
+        .with_row_index()
+        .explode('lick_times')
+        .with_columns(
+            stim_centered_lick_times=(pl.col('lick_times') - pl.col('stim_start_time').alias('stim_centered_lick_times'))
+        )
+        .group_by(pl.all().exclude("lick_times", "stim_centered_lick_times"), maintain_order=True)
+        .all()
+    )
+
+    plot_params = dict(
+        marker='.',
+        s=15,
+        alpha=1,
+        edgecolor='none',
+    )
+    response_window_start_time = np.diff(trials.select('stim_start_time', 'response_window_start_time')).mean()
+    response_window_stop_time = np.diff(trials.select('stim_start_time', 'response_window_stop_time')).mean()
+    fig, axes = plt.subplots(1,2, figsize=(3, 6))
+    for ax, stim_name in zip(axes, ("vis1", "sound1")):
+        ax: plt.Axes
+        
+        trial_idx_in_block = 0
+        for idx, trial in enumerate(trials.filter(pl.col('stim_name') == stim_name).iter_rows(named=True)):
+            
+            # block switch lines
+            if trial['trial_index_in_block'] < trial_idx_in_block:
+                ax.axhline(idx - .5, color='grey', lw=.5)
+            trial_idx_in_block = trial['trial_index_in_block']
+                
+            # response window lines
+            ax.axvline(response_window_start_time, color='grey', lw=.5)
+            ax.axvline(response_window_stop_time, color='grey', lw=.5)
+            times = trial['stim_centered_lick_times']
+            
+            # licks
+            ax.scatter(times, np.full_like(times, idx), color='grey', **plot_params)
+            
+            # first licks of interest
+            if trial['is_hit']:
+                first_lick_color = 'g'
+            elif trial['is_false_alarm']:
+                first_lick_color = 'm'
+            elif not trial['is_contingent_reward'] and trial['is_rewarded']:
+                first_lick_color = 'c'
+            else:
+                continue
+            colored_time = times[0]
+            ax.scatter(colored_time, idx, color=first_lick_color, **plot_params)
+            
+        ax.set_xlim(-0.2, 2.2)
+        ax.set_ylim(-0.5, idx + 0.5)
+        ax.set_yticks([])
+        if ax is axes[0]:
+            ax.set_ylabel("← trials (non-consecutive)")
+        ax.set_xlabel("time rel. to\nstim onset (s)")
+        ax.invert_yaxis()
+        ax.set_aspect(0.1)
+        ax.title.set_text("VIS+" if "vis" in stim_name else "AUD+")
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['left'].set_visible(False)
+        
     return fig

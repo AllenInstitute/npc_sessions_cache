@@ -549,7 +549,7 @@ def plot_licks_by_block(session: npc_sessions.DynamicRoutingSession) -> plt.Figu
     fig.tight_layout()
     return fig
 
-def plot_lick_raster_by_block(session: npc_sessions.DynamicRoutingSession) -> plt.Figure:
+def plot_lick_raster_by_block(session: npc_sessions.DynamicRoutingSession) -> matplotlib.figure.Figure:
     lick_times = session.processing['behavior']['licks'].timestamps
     trials = pl.DataFrame(session.trials[:])
     lick_times_by_trial = tuple(lick_times[slice(*start_stop)] for start_stop in np.searchsorted(lick_times, trials.select('start_time', 'stop_time')))
@@ -579,15 +579,21 @@ def plot_lick_raster_by_block(session: npc_sessions.DynamicRoutingSession) -> pl
     for ax, stim_name in zip(axes, ("vis1", "sound1")):
         ax: plt.Axes
         
-        trial_idx_in_block = 0
-        for idx, trial in enumerate(trials.filter(pl.col('stim_name') == stim_name).iter_rows(named=True)):
-            
-            # block switch lines
-            if trial['trial_index_in_block'] < trial_idx_in_block:
+        idx_in_block = 0
+        previous_trial_idx = -1
+        stim_trials = trials.filter(pl.col('stim_name') == stim_name)
+        for idx, trial in enumerate(stim_trials.iter_rows(named=True)):
+        
+            # block label
+            if idx_in_block == (len(stim_trials.filter(pl.col('block_index') == trial['block_index'])) // 2):
+                ax.text(-0.3, idx, "V" if "vis" in trial["context_name"] else "A", fontsize=10, ha='center', va='center')
+        
+            # block switch horizontal lines
+            if trial['trial_index_in_block'] < previous_trial_idx:
                 ax.axhline(idx - .5, color='grey', lw=.5)
-            trial_idx_in_block = trial['trial_index_in_block']
+            previous_trial_idx = trial['trial_index_in_block']
                 
-            # response window lines
+            # response window vertical lines
             ax.axvline(response_window_start_time, color='grey', lw=.5)
             ax.axvline(response_window_stop_time, color='grey', lw=.5)
             times = trial['stim_centered_lick_times']

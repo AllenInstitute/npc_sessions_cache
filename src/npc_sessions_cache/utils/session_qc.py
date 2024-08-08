@@ -293,11 +293,12 @@ def copy_current_qc_data(
     session_id: str | npc_session.SessionRecord,
     output_path: str | pathlib.Path | upath.UPath,
     store_path: str | pathlib.Path | upath.UPath = DEFAULT_SESSION_QC_PATH,
+    function_name_filter: str | None = None,
 ) -> None:
     output_path = upath.UPath(output_path)
     store_path = upath.UPath(store_path)
     key = QCStore.normalize_key(session_id)
-    for path in store_path.rglob(key + "*"):
+    for path in store_path.rglob(f"*{function_name_filter or ''}/*{key}*"):
         new_path = output_path / path.relative_to(store_path)
         new_path.parent.mkdir(parents=True, exist_ok=True)
         new_path.write_bytes(path.read_bytes())

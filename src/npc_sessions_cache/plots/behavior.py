@@ -550,7 +550,7 @@ def plot_licks_by_block(session: npc_sessions.DynamicRoutingSession) -> plt.Figu
     return fig
 
 def plot_lick_raster_by_block(session: npc_sessions.DynamicRoutingSession) -> plt.Figure:
-    lick_times = session.processing['behavior'].licks['timestamps'][:]
+    lick_times = session.processing['behavior']['licks'].timestamps
     trials = pl.DataFrame(session.trials[:])
     lick_times_by_trial = tuple(lick_times[slice(*start_stop)] for start_stop in np.searchsorted(lick_times, trials.select('start_time', 'stop_time')))
     trials = (

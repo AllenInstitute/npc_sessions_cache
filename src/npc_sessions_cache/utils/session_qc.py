@@ -13,7 +13,8 @@ import tempfile
 import traceback
 from collections.abc import Iterable, Iterator, Mapping
 from types import FunctionType
-from typing import Union
+from typing import Callable, Union
+import typing
 
 import matplotlib.figure
 import npc_session
@@ -237,6 +238,36 @@ def get_qc_functions(module_name: str | None = None) -> dict[tuple[str, str], Fu
             functions[(m, normalize_function_name(name))] = callable_obj
     return functions
 
+def write_output_from_single_function(
+    session_id: str | npc_session.SessionRecord,
+    function: Callable[npc_sessions.DynamicRoutingSession, Data],
+    function_name: str,
+    module_name: str = "other",
+    store_path: str | pathlib.Path | upath.UPath = DEFAULT_SESSION_QC_PATH,
+    skip_existing: bool = True,
+    skip_previously_failed: bool = True,
+    session: npc_sessions.DynamicRoutingSession | None = None,
+) -> None:
+    if session is None:
+        session = npc_sessions.DynamicRoutingSession(session_id)
+    store = QCStore(module_name, function_name, root_path=store_path)
+    key = store.normalize_key(session_id)
+    if skip_existing and key in store:
+        logger.info(f"Skipping {module_name}.{function_name} for {key} - data already exists")
+        return
+    if skip_previously_failed and store.is_errored(key):
+        logger.info(f"Skipping {module_name}.{function_name} for {key} - previously failed to write data")
+        return
+    logger.info(f"Running {module_name}.{function_name} for {session_id}")
+    try:
+        data = function(session)
+    except Exception:
+        data = traceback.format_exc()
+    if data is None:
+        logger.warning(f"{module_name}.{function_name} returned None - update it to return one or more of {typing.get_args(Data)}") # type: ignore
+        return
+    store.write_data(key, data)
+
 def write_session_qc(
     session_id: str | npc_session.SessionRecord,
     store_path: str | pathlib.Path | upath.UPath = DEFAULT_SESSION_QC_PATH,
@@ -247,24 +278,17 @@ def write_session_qc(
     if session is None:
         session = npc_sessions.DynamicRoutingSession(session_id)
     for (module_name, function_name), function  in get_qc_functions().items():
-        store = QCStore(module_name, function_name, root_path=store_path)
-        key = store.normalize_key(session_id)
-        if skip_existing and key in store:
-            logger.info(f"Skipping {module_name}.plot_{function_name} for {key} - qc data already exists")
-            continue
-        if skip_previously_failed and store.is_errored(key):
-            logger.info(f"Skipping {module_name}.plot_{function_name} for {key} - previously failed to write qc data")
-            continue
-        logger.info(f"Running {module_name}.plot_{function_name} for {session_id}")
-        try:
-            data = function(session)
-        except Exception:
-            data = traceback.format_exc()
-        if data is None:
-            logger.warning(f"{module_name}.plot_{function_name} returned None - update it to return one or more plt.Fig, dict or str")
-            continue
-        store.write_data(key, data)
-
+        write_output_from_single_function(
+            session_id,
+            function=function,
+            function_name=normalize_function_name(function_name),
+            module_name=module_name,
+            store_path=store_path,
+            skip_existing=skip_existing,
+            skip_previously_failed=skip_previously_failed,
+            session=session,
+        )
+        
 def copy_current_qc_data(
     session_id: str | npc_session.SessionRecord,
     output_path: str | pathlib.Path | upath.UPath,

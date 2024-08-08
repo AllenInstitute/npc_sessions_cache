@@ -250,6 +250,7 @@ def write_output_from_single_function(
 ) -> None:
     if session is None:
         session = npc_sessions.DynamicRoutingSession(session_id)
+    function_name = normalize_function_name(function_name)
     store = QCStore(module_name, function_name, root_path=store_path)
     key = store.normalize_key(session_id)
     if skip_existing and key in store:
@@ -277,7 +278,7 @@ def write_session_qc(
 ) -> None:
     if session is None:
         session = npc_sessions.DynamicRoutingSession(session_id)
-    for (module_name, function_name), function  in get_qc_functions().items():
+    for (module_name, function_name), function in get_qc_functions().items():
         write_output_from_single_function(
             session_id,
             function=function,

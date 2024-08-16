@@ -8,7 +8,7 @@ import npc_session
 import numpy as np
 import numpy.typing as npt
 import polars as pl
-import unit_utils
+import utils
 
 
 def plot(session_id: str) -> plt.Figure:
@@ -17,10 +17,10 @@ def plot(session_id: str) -> plt.Figure:
     except (AttributeError, TypeError):
         session_id = npc_session.SessionRecord(session_id).id
 
-    licks_all_sessions = unit_utils.get_component_zarr('licks')
-    trials_all_sessions = unit_utils.get_component_df('trials')
-    all_sessions = unit_utils.get_component_df('session')
-    performance_all_sessions = unit_utils.get_component_df('performance')
+    licks_all_sessions = utils.get_component_zarr('licks')
+    trials_all_sessions = utils.get_component_df('trials')
+    all_sessions = utils.get_component_df('session')
+    performance_all_sessions = utils.get_component_df('performance')
 
     performance = performance_all_sessions.filter(pl.col('session_id') == session_id)
     trials = trials_all_sessions.filter(pl.col('session_id') == session_id)

@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 CCF_MIDLINE_ML = 5700
 
-CACHE_VERSION = 'v0.0.231'
+CACHE_VERSION = 'v0.0.232'
 
 @functools.cache
 def get_component_lf(nwb_component: npc_lims.NWBComponentStr) -> pl.LazyFrame:
@@ -115,6 +115,66 @@ def get_good_units_df() -> pl.DataFrame:
     ).collect()
     logger.info(f"Fetched {len(good_units)} good units")
     return good_units
+    
+def get_prod_trials(cross_modal_dprime_threshold: float = 1.0) -> pl.DataFrame:
+    return (
+        get_component_df('trials')
+        .join(
+            other=(
+                get_component_df('session')
+                .filter(
+                    pl.col('keywords').list.contains('production'),
+                    ~pl.col('keywords').list.contains('opto_perturbation'),
+                    ~pl.col('keywords').list.contains('injection_perturbation'),
+                    ~pl.col('keywords').list.contains('hab'),
+                    ~pl.col('keywords').list.contains('training'),
+                    ~pl.col('keywords').list.contains('context_naive'),
+                    ~pl.col('keywords').list.contains('templeton'),
+                )
+            ),
+            on='session_id',
+            how='semi',
+        )
+        # exclude sessions based on task performance:
+        .join(
+            other=(
+                get_component_df('performance')
+                .filter(
+                    # pl.col('same_modal_dprime') > 1.0,
+                    pl.col('cross_modal_dprime') > cross_modal_dprime_threshold,
+                )
+                .with_columns(
+                    pl.col('block_index').count().over('session_id').alias('n_passing_blocks'),
+                )
+                .filter(
+                    pl.col('n_passing_blocks') > 3,
+                )
+            ),
+            on='session_id',
+            how='semi',
+        )
+        # .lazy()
+        # basic filtering on trial type: exclude autoreward trials:
+        .filter(
+            ~pl.col('is_reward_scheduled'),
+        )
+        # filter blocks with too few trials:
+        .with_columns(
+            pl.col('trial_index_in_block').max().over('session_id', 'block_index').alias('n_trials_in_block'),
+        )
+        .filter(
+            pl.col('n_trials_in_block') > 10,
+        )
+        # filter sessions with too few blocks:
+        .filter(
+            pl.col('block_index').n_unique().over('session_id') == 6,
+            pl.col('block_index').max().over('session_id') == 5,
+        )
+        # add a column that indicates if the first block in a session is aud context:
+        .with_columns(
+            (pl.col('context_name').first() == 'aud').over('session_id').alias('is_first_block_aud'),
+        )
+    )
 
 def copy_parquet_files_to_home() -> None:
     for component in ('units', 'session', 'subject', 'trials', 'epochs', 'performance', 'devices', 'electrode_groups', 'electrodes'):

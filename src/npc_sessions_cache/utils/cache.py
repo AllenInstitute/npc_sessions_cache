@@ -264,11 +264,11 @@ def write_all_components_to_cache(
         )
 
 
-def consolidate_all_caches() -> None:
+def consolidate_all_caches(version: str | None = None) -> None:
     """Consolidate all caches into a single file per component - with the
     exception of `units`, which are already reasonable size."""
     for component_name in typing.get_args(npc_lims.NWBComponentStr):
-        consolidate_cache(component_name)
+        consolidate_cache(component_name, version=version)
 
 
 def consolidate_cache(

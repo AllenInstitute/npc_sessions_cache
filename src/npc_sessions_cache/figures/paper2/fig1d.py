@@ -22,7 +22,7 @@ def get_rate_expr(stim: str, is_target: bool):
 def plot(is_target=True, is_first_block_aud=True) -> plt.Figure:
 
     df = (
-        utils.get_prod_trials(cross_modal_dprime_threshold=1.5)
+        utils.get_prod_trials(cross_modal_dprime_threshold=1.5, late_autorewards=False)
         # exclude autoreward trials:
         .filter(
             ~pl.col('is_reward_scheduled'),

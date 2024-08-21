@@ -7,7 +7,7 @@ import npc_session
 import numpy.typing as npt
 import polars as pl
 
-import utils 
+import npc_sessions_cache.figures.paper2.utils as utils
 
 plt.rcParams["font.family"] = "Arial"
 plt.rcParams["font.size"] = 8
@@ -22,7 +22,7 @@ def get_rate_expr(stim: str, is_target: bool):
 def plot(is_target=True, is_first_block_aud=True) -> plt.Figure:
 
     df = (
-        utils.get_prod_trials(cross_modal_dprime_threshold=1.5, late_autorewards=False)
+        utils.get_prod_trials(cross_modal_dprime_threshold=1.5)
         # exclude autoreward trials:
         .filter(
             ~pl.col('is_reward_scheduled'),
@@ -62,8 +62,8 @@ def plot(is_target=True, is_first_block_aud=True) -> plt.Figure:
         'target': common_line_params.copy(),
         'nontarget': common_line_params.copy(),
     }
-    line_params['target'] |= dict(c=[0.6]*3)
-    line_params['nontarget'] |= dict(c=[0.6]*3)
+    line_params['target'] |= dict(c=[0.8]*3)
+    line_params['nontarget'] |= dict(c=[0.8]*3)
     # line_params['nontarget'] |= dict(c=[0.7]*3, ls=':')
 
     for block_index in df['block_index'].unique().sort():

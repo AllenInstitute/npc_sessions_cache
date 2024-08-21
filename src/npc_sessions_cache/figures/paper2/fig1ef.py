@@ -4,7 +4,7 @@ import pathlib
 import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
-import utils
+import npc_sessions_cache.figures.paper2.utils as utils
 
 plt.rcParams["font.family"] = "Arial"
 plt.rcParams["font.size"] = 8
@@ -214,11 +214,10 @@ def plot_suppl(combined: bool = False, late_autorewards: bool | None = None):
                 xmin, xmax = -preTrials, 0
             ax.axvspan(xmin, xmax, color=[0.95] * 3, lw=0, zorder=-99, clip_on=False)
 
-            ax.legend(bbox_to_anchor=(1, 1), fontsize=8)
-            # title_text =
+            # ax.legend(bbox_to_anchor=(1, 1), fontsize=4)
             ax.set_title("")
             plt.tight_layout()
-            pyfile_path = pathlib.Path(__file__)
+            
             stim_name = "combined" if combined else figStimName
             if late_autorewards is not None:
                 autorewards_name = (
@@ -226,11 +225,7 @@ def plot_suppl(combined: bool = False, late_autorewards: bool | None = None):
                 )
             else:
                 autorewards_name = "all-autorewards"
-            figsave_path = pyfile_path.with_name(
-                f"{pyfile_path.stem}_suppl_{autorewards_name}_{'to-vis' if 'visual' in blockLabel else 'to-aud'}_{stim_name}"
-            )
-            fig.savefig(f"{figsave_path}.pdf", dpi=300, bbox_inches="tight")
-            fig.savefig(f"{figsave_path}.png", dpi=300, bbox_inches="tight")
+            utils.savefig(__file__, fig, suffix=f"suppl_{stim_name}_{'to-vis' if 'visual' in blockLabel else 'to-aud'}_{autorewards_name}")
 
 
 def plot(late_autorewards: bool | None = None):
@@ -302,6 +297,7 @@ def plot(late_autorewards: bool | None = None):
                 ),
                 ms=2,
                 zorder=99,
+                clip_on=False,
             )
         is_sem = False
         if is_sem:
@@ -328,6 +324,8 @@ def plot(late_autorewards: bool | None = None):
             )
         format_ax(ax, ax_idx, is_switch_to_rewarded, preTrials, postTrials, True)
         print(len(y), "mice")
+        ax.set_zorder(199)
+        
         plt.tight_layout()
 
         pyfile_path = pathlib.Path(__file__)
@@ -337,13 +335,13 @@ def plot(late_autorewards: bool | None = None):
             )
         else:
             autorewards_name = "all-autorewards"
-        figsave_path = pyfile_path.with_name(f"{pyfile_path.stem}_{autorewards_name}")
-        fig.savefig(f"{figsave_path}.pdf", dpi=300, bbox_inches="tight")
-        fig.savefig(f"{figsave_path}.png", dpi=300, bbox_inches="tight")
+        utils.savefig(__file__, fig, suffix=autorewards_name)
+
 
 
 # %%
 if __name__ == "__main__":
-    plot_suppl(combined=True, late_autorewards=True)
-    plot_suppl(combined=False, late_autorewards=True)
-    plot(late_autorewards=True)
+    for late_autorewards in (True, False, None):
+        for combined in (True, False):
+            plot_suppl(combined=combined, late_autorewards=late_autorewards)
+            plot(late_autorewards=late_autorewards)

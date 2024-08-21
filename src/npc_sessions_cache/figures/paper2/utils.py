@@ -1,9 +1,15 @@
 import functools
 import logging
+import pathlib
+from matplotlib import pyplot as plt
 import polars as pl
 import npc_lims
 import upath
 import zarr
+
+plt.rcParams["font.family"] = "Arial"
+plt.rcParams["font.size"] = 8
+plt.rcParams["pdf.fonttype"] = 42
 
 logger = logging.getLogger(__name__)
 
@@ -12,14 +18,14 @@ CCF_MIDLINE_ML = 5700
 CACHE_VERSION = 'v0.0.234'
 
 @functools.cache
-def get_component_lf(nwb_component: npc_lims.NWBComponentStr) -> pl.LazyFrame:
+def get_component_lf(nwb_component: npc_lims.NWBComponentStr) -> pl.DataFrame:
     path = npc_lims.get_cache_path(
-        nwb_component, 
+        nwb_component,
         version=CACHE_VERSION,
         consolidated=True,
     )
     logger.info(f"Reading dataframe from {path}")
-    return pl.scan_parquet(path)
+    return pl.scan_parquet(path.as_posix())
 
 @functools.cache
 def get_component_df(nwb_component: npc_lims.NWBComponentStr) -> pl.DataFrame:
@@ -189,7 +195,14 @@ def copy_parquet_files_to_home() -> None:
         dest = upath.UPath(f'//allen/ai/homedirs/ben.hardcastle/dr-dashboard/data/{CACHE_VERSION}/{component}.parquet')
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(source.read_bytes())
-        
+
+def savefig(py__file__: str, fig: plt.Figure, suffix: str):
+    pyfile_path = pathlib.Path(py__file__)
+    suffix = suffix[1:] if suffix.startswith("_") else suffix
+    figsave_path = pyfile_path.with_name(f"{pyfile_path.stem}_{suffix}")
+    fig.savefig(f"{figsave_path}.png", dpi=300, bbox_inches='tight')
+    fig.savefig(f"{figsave_path}.pdf", dpi=300, bbox_inches="tight")
+    
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     copy_parquet_files_to_home()

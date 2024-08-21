@@ -16,6 +16,8 @@ dependencies = [
     "ipywidgets>=8.1.0",
     "npc_sessions>=0.0.230",
     "npc-sync>=0.1.16",
+    "dynamic-routing-analysis @ git+https://github.com/AllenInstitute/dynamic_routing_analysis",
+    "hvplot>=0.10.0",
 ]
 requires-python = ">=3.9"
 readme = "README.md"
@@ -45,6 +47,8 @@ write_cache = "npc_sessions_cache.scripts.write_sessions_to_cache:main"
 plugins = [
     "pdm-bump",
 ]
+[tool.pdm.resolution.overrides]
+polars = ">=0.2"
 
 [tool.pdm.dev-dependencies]
 dev = [

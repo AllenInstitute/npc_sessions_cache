@@ -119,8 +119,10 @@ def get_good_units_df() -> pl.DataFrame:
 def get_prod_trials(cross_modal_dprime_threshold: float = 1.0, late_autorewards: bool | None = None) -> pl.DataFrame:
     if late_autorewards is None:
         late_autorewards_expr = pl.lit(True)
-    else:
-        late_autorewards_expr = pl.col('keywords').list.contains('late_autorewards') == late_autorewards
+    elif late_autorewards == True:
+        late_autorewards_expr = pl.col('keywords').list.contains('late_autorewards') == True
+    elif late_autorewards == False:
+        late_autorewards_expr = pl.col('keywords').list.contains('early_autorewards') == True
     
     return (
         get_component_df('trials')

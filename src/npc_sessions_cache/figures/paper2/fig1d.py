@@ -9,6 +9,9 @@ import polars as pl
 
 import utils 
 
+plt.rcParams["font.family"] = "Arial"
+plt.rcParams["font.size"] = 8
+plt.rcParams['pdf.fonttype'] = 42 
 
 def get_rate_expr(stim: str, is_target: bool):
     stim_col = pl.col(f'is_{stim}_{"non" if not is_target else ""}target')
@@ -16,10 +19,14 @@ def get_rate_expr(stim: str, is_target: bool):
     total_trials = stim_col.sum()
     return (response_trials / total_trials).over(['session_id', 'block_index'])
 
-def plot() -> plt.Figure:
+def plot(is_target=True, is_first_block_aud=True) -> plt.Figure:
 
     df = (
         utils.get_prod_trials(cross_modal_dprime_threshold=1.5)
+        # exclude autoreward trials:
+        .filter(
+            ~pl.col('is_reward_scheduled'),
+        )
         # calculate response rates in each block:
         .with_columns(
             get_rate_expr(stim='vis', is_target=True).alias(a := 'vis_target_response_rate'),
@@ -40,15 +47,14 @@ def plot() -> plt.Figure:
     print(df.unique('session_id').select(pl.col('is_first_block_aud').first().over('session_id'))['is_first_block_aud'].value_counts())
     
     
-    is_first_block_aud = False
     is_boxplot = False
     is_ci_lines = True
-    is_median_marker = False
-    is_median_line = True
+    is_median_marker = True
+    is_median_line = False
 
-    fig, axes = plt.subplots(1, df.n_unique('block_index'), figsize=(df.n_unique('block_index') * 2, 3), sharey=True)
+    fig, axes = plt.subplots(1, df.n_unique('block_index'), figsize=(6,2.5), sharey=True)
 
-    modalitites = ('aud', 'vis') if is_first_block_aud else ('vis', 'aud') 
+    modalities = ('aud', 'vis')
     xpos = (0, 1)
 
     common_line_params = dict(alpha=1, lw=.3)
@@ -56,8 +62,9 @@ def plot() -> plt.Figure:
         'target': common_line_params.copy(),
         'nontarget': common_line_params.copy(),
     }
-    line_params['target'] |= dict(c=[0.5]*3)
-    line_params['nontarget'] |= dict(c=[0.7]*3, ls=':')
+    line_params['target'] |= dict(c=[0.6]*3)
+    line_params['nontarget'] |= dict(c=[0.6]*3)
+    # line_params['nontarget'] |= dict(c=[0.7]*3, ls=':')
 
     for block_index in df['block_index'].unique().sort():
         block_df = (
@@ -74,15 +81,21 @@ def plot() -> plt.Figure:
         )
         ax: plt.Axes = axes[block_index]
         box_data = []
-        for target in ('nontarget', 'target'):
-            y = block_df.select(*[f"{modality}_{target}_response_rate" for modality in modalitites]).to_numpy().T
-            ax.plot(xpos, y, **line_params[target])
-            if is_median_marker:
-                ax.plot(xpos, np.median(y, axis=-1), '+', c=-0.1 + np.array(line_params[target]['c']), ms=6, zorder=99)
-            if is_median_line:
-                ax.plot(xpos, np.median(y, axis=-1), c=-0.1 + np.array(line_params[target]['c']), lw=1.5, zorder=99)
-            
-            box_data.extend([y[0, :].flatten(), y[1, :].flatten()])
+
+        target = 'target' if is_target else 'nontarget'
+        y = block_df.select(*[f"{modality}_{target}_response_rate" for modality in modalities]).to_numpy().T
+        ax.plot(xpos, y, **line_params[target])
+        if is_median_marker:
+            for i, y_ in enumerate(y):
+                if not is_target:
+                    color = [.5]*3 
+                else:
+                    color = 'cr'[(block_index % 2 + i + is_first_block_aud + (modalities[0] == 'aud'))%2] # type: ignore
+                ax.plot(xpos[i], np.median(y_), 'o', c=color, ms=2, zorder=99, clip_on=False)
+        if is_median_line:
+            ax.plot(xpos, np.median(y, axis=-1), c=[.5]*3, lw=1, zorder=99, clip_on=False)
+        
+        box_data.extend([y[0, :].flatten(), y[1, :].flatten()])
             
         if is_boxplot:
             lw = .5
@@ -106,38 +119,53 @@ def plot() -> plt.Figure:
             import matplotlib.cbook
             stats = matplotlib.cbook.boxplot_stats(box_data, bootstrap=10_000)
             for i, stat in enumerate(stats):
-                ax.plot([xpos[i % 2]]*2, [stat['cilo'], stat['cihi']], c=[0.4]*3, lw=1.5, zorder=98)
+                ax.plot([xpos[i % 2]]*2, [stat['cilo'], stat['cihi']], c=[0.5]*3, lw=1, zorder=98, clip_on=False)
                 #TODO save stats
-                
+        
         context = ('vis', 'aud')[(block_index + is_first_block_aud) % 2]
-        ax.set_title('V' if context == 'vis' else 'A')
-        ax.set_aspect(1.5)
+        ax.set_title('V' if context == 'vis' else 'A', fontsize=8)
+        
+        # vis block grey patch:
+        if block_index % 2 == is_first_block_aud:
+            ax.axvspan(
+                xmin=xpos[0]-.2,
+                xmax=xpos[1]+.2,
+                ymax=1.2,
+                color=[.95]*3, lw=0, zorder=-1, clip_on=False,
+                )
+            
+        ax.set_aspect(2)
         for spine in ax.spines.values():
             spine.set_visible(False)
         
         if block_index == 0:
-            ax.set_ylabel("response rate")
+            ax.set_ylabel("response probability")
             ax.set_yticks([0, 0.5, 1])
+            ax.set_yticklabels(ax.get_yticklabels())
             ax.spines['left'].set_visible(True)
+            ax.spines['left'].set_position(('data',-.2))
         else:
             ax.yaxis.set_visible(False)
 
         x_pad = 0.05
         ax.set_xlim(xpos[0] - x_pad, xpos[1] + x_pad)
         ax.set_xticks(xpos)
-        ax.set_xticklabels(modalitites)
+        ax.set_xticklabels([f"{m.upper()}+" for m in modalities])
     fig.tight_layout()
         
     return fig
 
 if __name__ == "__main__":
-    fig = plot()
-    
-        
-    pyfile_path = pathlib.Path(__file__)
-    figsave_path = pyfile_path.with_name(f"{pyfile_path.stem}")
-    fig.savefig(f"{figsave_path}.png", dpi=300, bbox_inches='tight')
-    
-    # make sure text is editable in illustrator before saving pdf:
-    plt.rcParams['pdf.fonttype'] = 42 
-    fig.savefig(f"{figsave_path}.pdf", dpi=300, bbox_inches='tight')
+    for is_target in (True, False):
+        for is_first_block_aud in (True, False):
+            fig = plot(is_target=is_target, is_first_block_aud=is_first_block_aud)
+                
+            pyfile_path = pathlib.Path(__file__)
+            t = 'target' if is_target else 'nontarget'
+            av = 'aud' if is_first_block_aud else 'vis'
+            figsave_path = pyfile_path.with_name(f"{pyfile_path.stem}-{t}_{av}-first")
+            
+            fig.savefig(f"{figsave_path}.png", dpi=300, bbox_inches='tight')
+            
+            # make sure text is editable in illustrator before saving pdf:
+            fig.savefig(f"{figsave_path}.pdf", dpi=300, bbox_inches='tight')

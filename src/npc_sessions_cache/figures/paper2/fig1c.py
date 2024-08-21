@@ -9,7 +9,7 @@ import numpy as np
 import numpy.typing as npt
 import polars as pl
 import utils
-
+plt.rcParams["font.family"] = "Arial"
 
 def plot(session_id: str) -> plt.Figure:
     try:

@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 CCF_MIDLINE_ML = 5700
 
-CACHE_VERSION = 'v0.0.232'
+CACHE_VERSION = 'v0.0.234'
 
 @functools.cache
 def get_component_lf(nwb_component: npc_lims.NWBComponentStr) -> pl.LazyFrame:
@@ -116,7 +116,12 @@ def get_good_units_df() -> pl.DataFrame:
     logger.info(f"Fetched {len(good_units)} good units")
     return good_units
     
-def get_prod_trials(cross_modal_dprime_threshold: float = 1.0) -> pl.DataFrame:
+def get_prod_trials(cross_modal_dprime_threshold: float = 1.0, late_autorewards: bool | None = None) -> pl.DataFrame:
+    if late_autorewards is None:
+        late_autorewards_expr = pl.lit(True)
+    else:
+        late_autorewards_expr = pl.col('keywords').list.contains('late_autorewards') == late_autorewards
+    
     return (
         get_component_df('trials')
         .join(
@@ -130,6 +135,7 @@ def get_prod_trials(cross_modal_dprime_threshold: float = 1.0) -> pl.DataFrame:
                     ~pl.col('keywords').list.contains('training'),
                     ~pl.col('keywords').list.contains('context_naive'),
                     ~pl.col('keywords').list.contains('templeton'),
+                    late_autorewards_expr,
                 )
             ),
             on='session_id',
@@ -152,11 +158,6 @@ def get_prod_trials(cross_modal_dprime_threshold: float = 1.0) -> pl.DataFrame:
             ),
             on='session_id',
             how='semi',
-        )
-        # .lazy()
-        # basic filtering on trial type: exclude autoreward trials:
-        .filter(
-            ~pl.col('is_reward_scheduled'),
         )
         # filter blocks with too few trials:
         .with_columns(

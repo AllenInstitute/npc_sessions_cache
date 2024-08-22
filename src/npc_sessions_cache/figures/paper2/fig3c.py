@@ -17,23 +17,33 @@ plt.rcParams["pdf.fonttype"] = 42
 
 
 def plot(
-    session_id: str, stim_names=("vis1", "vis2", "sound1", "sound2")
+    unit_id: str, stim_names=("vis1", "vis2", "sound1", "sound2")
 ) -> plt.Figure:
+
+    # in case unit_id is an npc_sessions object
     try:
         session_id = npc_session.SessionRecord(
-            session_id.id
-        ).id  # in case session_id is an npc_sessions object
+            unit_id.id
+        ).id  # in case unit_id is an npc_sessions object
     except (AttributeError, TypeError):
-        session_id = npc_session.SessionRecord(session_id).id
+        session_id = npc_session.SessionRecord(unit_id).id
 
-    licks_all_sessions = utils.get_component_zarr("licks")
+    units_all_sessions = utils.get_component_df("units")
+    licks_all_sessions = utils.get_component_zarr("spike_times")
     trials_all_sessions = utils.get_component_df("trials")
     all_sessions = utils.get_component_df("session")
     performance_all_sessions = utils.get_component_df("performance")
-
+    
     performance = performance_all_sessions.filter(pl.col("session_id") == session_id)
     trials = trials_all_sessions.filter(pl.col("session_id") == session_id)
-    lick_times: npt.NDArray = licks_all_sessions[session_id]["timestamps"][:]
+    if trials.is_empty():
+        raise ValueError(f"No trials found for {session_id}")
+    
+    unit = units_all_sessions.filter(pl.col('unit_id') == unit_id)
+    
+    #! session id is without idx for spike times 
+    spike_times_session_id = '_'.join(unit_id.split('_')[:2])
+    lick_times: npt.NDArray = licks_all_sessions[spike_times_session_id][unit_id][:]
 
     modality_to_rewarded_stim = {"aud": "sound1", "vis": "vis1"}
 
@@ -41,7 +51,7 @@ def plot(
     pad_start = 1.5  # seconds
     lick_times_by_trial = tuple(
         lick_times[slice(start, stop)]
-        if 0 <= start < stop < len(lick_times)
+        if 0 <= start < stop <= len(lick_times)
         else []
         for start, stop in np.searchsorted(
             lick_times, trials.select(pl.col("start_time") - pad_start, "stop_time")
@@ -67,6 +77,7 @@ def plot(
         .all()
     )
 
+
     # select VIStarget / AUDtarget trials
     trials_ = trials_.filter(
         #! filter out autoreward trials triggered by 10 misses:
@@ -76,7 +87,7 @@ def plot(
 
     # create dummy instruction trials for the non-rewarded stimuli for easier
     # alignment of blocks:
-    trials_ = trials_.collect()
+    trials_: pl.DataFrame = trials_.collect()
     for block_index in trials_["block_index"].unique():
         context_name = trials_.filter(pl.col("block_index") == block_index)[
             "context_name"
@@ -110,7 +121,6 @@ def plot(
         .count()
         .over("stim_name", "block_index"),
     )
-
 
     scatter_params = dict(
         marker="|",
@@ -266,16 +276,25 @@ def plot(
                 zorder=99,
             )
             if lick_times.size == 1 and lick_times[0] is None:
-                continue
-            ax.eventplot(positions=lick_times, **eventplot_params)
+                pass
+            else:
+                ax.eventplot(positions=lick_times, **eventplot_params)
 
             # times of interest
             override_params = dict(alpha=1)
             if trial["is_rewarded"]:
                 time_of_interest = trial["reward_time"] - trial["stim_start_time"]
                 override_params |= dict(marker=".", color="c", edgecolor="none")
+                ax.eventplot(
+                    positions=[time_of_interest],
+                    **eventplot_params | dict(color="c"),
+                )
+                continue
             elif trial["is_false_alarm"]:
-                time_of_interest = lick_times[lick_times > 0][0]
+                if trial["response_time"] is None:
+                    assert trial["task_control_response_time"] is not None, "false alarm without response time"
+                    continue
+                time_of_interest = trial["response_time"] - trial["stim_start_time"]
                 false_alarm_line = True  # set False to draw a dot instead of a line
                 if false_alarm_line:
                     ax.eventplot(
@@ -287,15 +306,15 @@ def plot(
                     override_params |= dict(marker=".", color="r", edgecolor="none")
             else:
                 continue
-            ax.scatter(
-                time_of_interest,
-                ypos,
-                **scatter_params | override_params,
-                zorder=99,
-                clip_on=False,
-            )
+            # ax.scatter(
+            #     time_of_interest,
+            #     ypos,
+            #     **scatter_params | override_params,
+            #     zorder=99,
+            #     clip_on=False,
+            # )
         last_ypos.append(ypos)
-        
+
         # stim onset vertical line
         ax.axvline(x=0, **line_params)
 
@@ -331,7 +350,7 @@ def plot(
         ax.spines["right"].set_visible(False)
         ax.spines["left"].set_visible(False)
         ax.set_zorder(199)
-         
+
     is_pass = (
         len(
             pl.DataFrame(performance).filter(
@@ -341,32 +360,40 @@ def plot(
         )
         > 3
     )
+    if unit.is_empty():
+        location = "not in units df"
+    else:
+        location = unit["location"][0]
     fig.suptitle(
-        f"{'pass' if is_pass else 'fail'}\n{session_id}"
+        f"{'behavior pass' if is_pass else 'behavior fail'}\n{unit_id}\n{location}"
     )  #! update to session.id
     return fig
 
 
 if __name__ == "__main__":
+    import pickle
 
-    a = "715710_2024-07-17_0"  # VIS first, many misses in last block
-    b = "681532_2023-10-18_0"  # VIS first, attractor-like clusterings of FAs
-    c = "714753_2024-07-02_0"  # AUD first, low FA rate, some blocks apparently don't need instruction trial
-    # for session_id in ['714748_2024-06-24','664851_2023-11-16','666986_2023-08-16',
-    #                     '667252_2023-09-28','674562_2023-10-03','681532_2023-10-18',
-    #                     '708016_2024-04-29','714753_2024-07-02','644866_2023-02-10']:
-    # session_id = '620263_2022-07-26' #< session with 10 autorewards
-
-    stim_names = ("vis1", "vis2", "sound1", "sound2")
-    for session_id, stim_names in zip(
-        (b, c), (stim_names, ("sound1", "vis1"))
-    ):
-        pyfile_path = pathlib.Path(__file__)
-        print(f"plotting {pyfile_path.stem} for {session_id}")
-        fig = plot(session_id, stim_names)
-
-        figsave_path = pyfile_path.with_name(f"{pyfile_path.stem}_{session_id}")
+    stim_names = ("sound1", "vis1", "sound2", "vis2")
+    target_stim_names = ("sound1", "vis1")
+    f = pathlib.Path('c:/users/ben.hardcastle/downloads/list_of_context_units.pkl')
+    p = pickle.loads(f.read_bytes())
+    unit_ids = []
+    for k,v in p.items():
+        unit_ids.extend(v)
+    pyfile_path = pathlib.Path(__file__)
+    raise_on_error = False
+    for unit_id in sorted(unit_ids):
+        print(f"plotting {pyfile_path.stem} for {unit_id}")
+        try:
+            fig = plot(unit_id, stim_names)
+        except Exception as exc:
+            if raise_on_error:
+                raise
+            print(f"failed: {exc!r}")
+            continue
+        figsave_path = pyfile_path.with_name(f"{pyfile_path.stem}_{unit_id}")
         fig.savefig(f"{figsave_path}.png", dpi=300, bbox_inches="tight")
 
         # make sure text is editable in illustrator before saving pdf:
         fig.savefig(f"{figsave_path}.pdf", dpi=300, bbox_inches="tight")
+        plt.close(fig)

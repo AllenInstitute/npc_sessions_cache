@@ -134,7 +134,6 @@ def plot(
         ax: plt.Axes
 
         stim_trials = trials_.filter(pl.col("stim_name") == stim)
-        colum
         idx_in_block = 0
         for idx, trial in enumerate(stim_trials.iter_rows(named=True)):
 

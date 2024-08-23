@@ -431,7 +431,7 @@ def plot(unit_id: str, stim_names=("vis1", "vis2", "sound1", "sound2")) -> plt.F
                 color="k",
                 rotation=0,
             )
-        ax.set_xlabel("Time after\nstimulus onset(s)")
+        ax.set_xlabel("Time after\nstimulus onset (s)")
         ax.invert_yaxis()
         ax.set_aspect(0.1)
         stim_to_label = {
@@ -464,20 +464,41 @@ def plot(unit_id: str, stim_names=("vis1", "vis2", "sound1", "sound2")) -> plt.F
     )  #! update to session.id
     return fig
 
-
-if __name__ == "__main__":
+def get_unit_ids_shailaja_pkl() -> tuple[str, ...]:
     import pickle
-
-    stim_names = ("sound1", "vis1", "sound2", "vis2")
-    target_stim_names = ("sound1", "vis1")
     f = pathlib.Path("c:/users/ben.hardcastle/downloads/list_of_context_units.pkl")
     p = pickle.loads(f.read_bytes())
     unit_ids = []
     for k, v in p.items():
         unit_ids.extend(v)
+    return tuple(sorted(unit_ids))
+
+def get_unit_ids_shawn_session_list() -> pl.Series:
+    sessions = [f"{i}_0" for i in ('714748_2024-06-24','664851_2023-11-16','666986_2023-08-16',
+                    '667252_2023-09-28','674562_2023-10-03','681532_2023-10-18',
+                    '708016_2024-04-29','714753_2024-07-02','644866_2023-02-10',
+'674562_2023-10-05','712141_2024-06-06')]
+    top_k = 20
+    units = (
+        pl.read_csv("c:/users/ben.hardcastle/downloads/context_encoding_units.csv")
+        .group_by('session_id')
+        .agg(
+            pl.col('unit_id').top_k_by(by=pl.col('context drop score'), k=top_k)
+        )
+        .explode('unit_id')
+    ).get_column('unit_id')
+    if len(units) < top_k * len(sessions):
+        print(f"Expected {top_k * len(sessions)} units, got {len(units)}")
+    return units
+
+if __name__ == "__main__":
+
+    stim_names = ("sound1", "vis1", "sound2", "vis2")
+    target_stim_names = ("sound1", "vis1")
     pyfile_path = pathlib.Path(__file__)
     raise_on_error = False
-    for unit_id in sorted(unit_ids):
+    get_unit_id_func = get_unit_ids_shawn_session_list
+    for unit_id in sorted(get_unit_id_func()):
         print(f"plotting {pyfile_path.stem} for {unit_id}")
         try:
             fig = plot(unit_id, stim_names)
@@ -487,6 +508,11 @@ if __name__ == "__main__":
             print(f"failed: {exc!r}")
             continue
         figsave_path = pyfile_path.with_name(f"{pyfile_path.stem}_{unit_id}")
+        if get_unit_id_func is get_unit_ids_shawn_session_list:
+            materials_path = pathlib.Path("C:/Users/ben.hardcastle/OneDrive - Allen Institute/Shared Documents - Dynamic Routing/DR Manuscripts/DR Paper 2 - context representations/Figures/Figure 3/materials")
+            requested_path = materials_path / "top_context_units_by_session"
+            requested_path.mkdir(exist_ok=True, parents=True)
+            figsave_path = requested_path / figsave_path.name
         fig.savefig(f"{figsave_path}.png", dpi=300, bbox_inches="tight")
 
         # make sure text is editable in illustrator before saving pdf:

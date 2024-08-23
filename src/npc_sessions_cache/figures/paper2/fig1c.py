@@ -85,7 +85,7 @@ def plot(
         for stim_name in stim_names:
             if autorewarded_stim == stim_name:
                 continue
-            extra_df = trials_.filter(
+            extra_df = trials.filter( # filter original trials, not modified ones with dummy instruction trials
                 pl.col("block_index") == block_index,
                 pl.col("is_reward_scheduled"),
                 pl.col("trial_index_in_block")

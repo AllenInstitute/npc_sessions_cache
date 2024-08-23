@@ -10,15 +10,14 @@ import numpy.typing as npt
 import polars as pl
 
 import npc_sessions_cache.figures.paper2.utils as utils
+import npc_sessions_cache.plots.spikes as spikes
 
 plt.rcParams["font.family"] = "Arial"
 plt.rcParams["font.size"] = 8
 plt.rcParams["pdf.fonttype"] = 42
 
 
-def plot(
-    unit_id: str, stim_names=("vis1", "vis2", "sound1", "sound2")
-) -> plt.Figure:
+def plot(unit_id: str, stim_names=("vis1", "vis2", "sound1", "sound2")) -> plt.Figure:
 
     # in case unit_id is an npc_sessions object
     try:
@@ -33,34 +32,35 @@ def plot(
     trials_all_sessions = utils.get_component_df("trials")
     all_sessions = utils.get_component_df("session")
     performance_all_sessions = utils.get_component_df("performance")
-    
+
     performance = performance_all_sessions.filter(pl.col("session_id") == session_id)
     trials = trials_all_sessions.filter(pl.col("session_id") == session_id)
     if trials.is_empty():
         raise ValueError(f"No trials found for {session_id}")
-    
-    unit = units_all_sessions.filter(pl.col('unit_id') == unit_id)
-    
-    #! session id is without idx for spike times 
-    spike_times_session_id = '_'.join(unit_id.split('_')[:2])
-    lick_times: npt.NDArray = licks_all_sessions[spike_times_session_id][unit_id][:]
 
+    unit = units_all_sessions.filter(pl.col("unit_id") == unit_id)
+
+    #! session id is without idx for spike times
+    spike_times_session_id = "_".join(unit_id.split("_")[:2])
+    subject_lick_times: npt.NDArray = licks_all_sessions[spike_times_session_id][unit_id][:]
+    if not subject_lick_times.size:
+        raise ValueError(f"No lick times found for {unit_id}")
     modality_to_rewarded_stim = {"aud": "sound1", "vis": "vis1"}
 
     # add licks to trials:
     pad_start = 1.5  # seconds
     lick_times_by_trial = tuple(
-        lick_times[slice(start, stop)]
-        if 0 <= start < stop <= len(lick_times)
-        else []
+        subject_lick_times[slice(start, stop)] if 0 <= start < stop <= len(subject_lick_times) else []
         for start, stop in np.searchsorted(
-            lick_times, trials.select(pl.col("start_time") - pad_start, "stop_time")
+            subject_lick_times, trials.select(pl.col("start_time") - pad_start, "stop_time")
         )
     )
-    trials_ = (
-        trials.lazy()
+    if not lick_times_by_trial or not any(np.array(a).any() for a in lick_times_by_trial):
+        raise ValueError(f"No lick times found matching trial times {unit} - either no task presented or major timing issue")
+    trials = (
+        trials
         .with_columns(
-            pl.Series(name="lick_times", values=lick_times_by_trial),
+            pl.Series(name="lick_times", values=lick_times_by_trial, dtype=pl.List(pl.Float64)), # doesn't handle empty entries well without explicit dtype
         )
         .with_row_index()
         .explode("lick_times")
@@ -75,19 +75,16 @@ def plot(
             maintain_order=True,
         )
         .all()
-    )
-
-
-    # select VIStarget / AUDtarget trials
-    trials_ = trials_.filter(
-        #! filter out autoreward trials triggered by 10 misses:
-        # (pl.col('is_reward_scheduled').eq(True) & (pl.col('trial_index_in_block') < 5)) | pl.col('is_reward_scheduled').eq(False),
-        pl.col("stim_name").is_in(stim_names),
+        .filter(
+            pl.col("stim_name").is_in(stim_names),
+            #! filter out autoreward trials triggered by 10 misses:
+            # (pl.col('is_reward_scheduled').eq(True) & (pl.col('trial_index_in_block') < 5)) | pl.col('is_reward_scheduled').eq(False),
+        )
     )
 
     # create dummy instruction trials for the non-rewarded stimuli for easier
     # alignment of blocks:
-    trials_: pl.DataFrame = trials_.collect()
+    trials_: pl.DataFrame = trials
     for block_index in trials_["block_index"].unique():
         context_name = trials_.filter(pl.col("block_index") == block_index)[
             "context_name"
@@ -96,7 +93,7 @@ def plot(
         for stim_name in stim_names:
             if autorewarded_stim == stim_name:
                 continue
-            extra_df = trials_.filter(
+            extra_df = trials.filter( # filter original trials, not modified ones with dummy instruction trials
                 pl.col("block_index") == block_index,
                 pl.col("is_reward_scheduled"),
                 pl.col("trial_index_in_block")
@@ -136,11 +133,14 @@ def plot(
     response_window_start_time = 0.1  # np.median(np.diff(trials.select('stim_start_time', 'response_window_start_time')))
     response_window_stop_time = 1  # np.median(np.diff(trials.select('stim_start_time', 'response_window_stop_time')))
     xlim_0 = -1
-    block_height_on_page = 120 / trials_.n_unique(
-        "block_index"
+    aud_block_color = 'orange'
+    add_psth = True
+    nominal_rows_per_block = 20
+    block_height_on_page = (
+        (6 + add_psth) * nominal_rows_per_block / trials_.n_unique("block_index")
     )  # height of each row will be this value / len(block_df)
     fig, axes = plt.subplots(
-        1, len(stim_names), figsize=(1.5 * len(stim_names), 6), sharey=True
+        1, len(stim_names), figsize=(1.5 * len(stim_names), 6 + add_psth), sharey=True
     )
     last_ypos: list[float] = []
     for ax, stim in zip(axes, stim_names):
@@ -204,7 +204,7 @@ def plot(
                         fontsize=8,
                         ha="center",
                         va="center",
-                        color="k",
+                        color="grey" if is_vis_block else aud_block_color,
                         rotation=rotation,
                     )
 
@@ -267,7 +267,7 @@ def plot(
                 ax.axhspan(ypos - halfline, ypos + halfline, **green_patch_params)
 
             # licks
-            lick_times = np.array(trial["stim_centered_lick_times"])
+            trial_lick_times = np.array(trial["stim_centered_lick_times"])
             eventplot_params = dict(
                 lineoffsets=ypos,
                 linewidths=0.3,
@@ -275,10 +275,10 @@ def plot(
                 color=[0.6] * 3,
                 zorder=99,
             )
-            if lick_times.size == 1 and lick_times[0] is None:
+            if trial_lick_times.size == 1 and trial_lick_times[0] is None:
                 pass
             else:
-                ax.eventplot(positions=lick_times, **eventplot_params)
+                ax.eventplot(positions=trial_lick_times, **eventplot_params)
 
             # times of interest
             override_params = dict(alpha=1)
@@ -292,7 +292,9 @@ def plot(
                 continue
             elif trial["is_false_alarm"]:
                 if trial["response_time"] is None:
-                    assert trial["task_control_response_time"] is not None, "false alarm without response time"
+                    assert (
+                        trial["task_control_response_time"] is not None
+                    ), "false alarm without response time"
                     continue
                 time_of_interest = trial["response_time"] - trial["stim_start_time"]
                 false_alarm_line = True  # set False to draw a dot instead of a line
@@ -306,19 +308,110 @@ def plot(
                     override_params |= dict(marker=".", color="r", edgecolor="none")
             else:
                 continue
-            # ax.scatter(
-            #     time_of_interest,
-            #     ypos,
-            #     **scatter_params | override_params,
-            #     zorder=99,
-            #     clip_on=False,
-            # )
         last_ypos.append(ypos)
+    # format axes and add PSTH
+    xlim_1 = 2.0
+    for ax, stim in zip(axes, stim_names):
+        ax: plt.Axes
+        if add_psth:
+            average_block_psth = True
+            bin_size_s = 25 / 1000
+            max_spike_rate = 60  # Hz
+            scale_bar_len = max_spike_rate / 4 # Hz
+            ypad = 5
+            ymin = max(last_ypos) + ypad
+            ymax = ymin + nominal_rows_per_block
+            ypos = ymax + 0.5
+            
+            def hist_(a):
+                n_trials = len(a)
+                a = np.concatenate(a)
+                hist, bin_edges = np.histogram(a, bins=round((xlim_1 - xlim_0) / bin_size_s), range=(xlim_0, xlim_1))
+                # convert to spikes per second
+                hist = (hist / np.diff(bin_edges)[0]) / n_trials
+                return hist, bin_edges[:-1] + np.diff(bin_edges)[0] / 2
+            
+            def plot_(hist, bin_edges, **plot_kwargs):
+                # need to plot upside down, scaled
+                ax.plot(
+                    bin_edges,
+                    ymax - (hist / max_spike_rate) * (ymax - ymin),
+                    **plot_kwargs,
+                )
+                
+            for context_name, color in zip(("aud", "vis"), ('orange', 'grey')):
+                
+                if average_block_psth:
+                    hist_results = []
+                    for _, block_trials in trials.group_by("block_index"):
+                        df = (
+                            block_trials.filter(
+                                pl.col(f"is_{context_name}_context"),
+                                pl.col("stim_name") == stim,
+                            )
+                        )
+                        a = df["stim_centered_lick_times"].to_numpy()
+                        if not a.size:
+                            continue
+                        hist, bin_edges = spikes.makePSTH_numba(
+                            spikes=np.sort(subject_lick_times), startTimes=np.array(df["stim_start_time"]-xlim_0),
+                            windowDur=(xlim_1 + pad_start), #binSize=bin_size_s,
+                        )
+                        bin_edges = bin_edges + xlim_0
 
+                        # hist, bin_edges = hist_(a)
+                        hist_results.append(hist)
+                        plot_(hist, bin_edges, lw=.3, c=color, alpha=.3)
+                    plot_(np.mean(hist_results, axis=0), bin_edges, lw=.5, c=color)
+                else:
+                    df = (
+                        trials.filter(
+                            pl.col(f"is_{context_name}_context"),
+                            pl.col("stim_name") == stim,
+                        )
+                    )
+                    hist, bin_edges = spikes.makePSTH_numba(
+                        spikes=np.array(np.concatenate(df["stim_centered_lick_times"])), startTimes=np.array(df["stim_start_time"])-pad_start,
+                        windowDur=(xlim_1 + pad_start), binSize=bin_size_s, 
+                    )
+                    plot_(hist, bin_edges, lw=.5, c=color)
+                    
+            # response window cyan patch
+            rect = patches.Rectangle(
+                xy=(response_window_start_time, ymin),
+                width=response_window_stop_time - response_window_start_time,
+                height=ymax - ymin + .5,
+                linewidth=0,
+                edgecolor="none",
+                facecolor=[0.85, 0.95, 1, 0.5],
+                zorder=-1,
+            )
+            ax.add_patch(rect)
+            if ax is axes[0]:
+                # add a scale bar
+                length = (ymax - ymin) * scale_bar_len / max_spike_rate
+                ax.plot(
+                    [xlim_0 - .1, xlim_0 - .1],
+                    [ymax - length, ymax],
+                    c="k",
+                    lw=1,
+                    clip_on=False,
+                )
+                ax.text(
+                    x=xlim_0 - 0.6,
+                    y=ymax - (length / 2),
+                    s=f"{scale_bar_len} Hz",
+                    fontsize=6,
+                    ha="center",
+                    va="center",
+                    color="k",
+                    rotation=0,
+                )
+                
         # stim onset vertical line
         ax.axvline(x=0, **line_params)
 
-        ax.set_xlim(xlim_0, 2.0)
+        ax.set_xlim(xlim_0, xlim_1)
         ax.set_ylim(-0.5, max(ypos, *last_ypos) + 0.5)
         ax.set_xticks([-1, 0, 1, 2])
         ax.set_xticklabels("" if v % 2 else str(v) for v in ax.get_xticks())
@@ -375,13 +468,13 @@ if __name__ == "__main__":
 
     stim_names = ("sound1", "vis1", "sound2", "vis2")
     target_stim_names = ("sound1", "vis1")
-    f = pathlib.Path('c:/users/ben.hardcastle/downloads/list_of_context_units.pkl')
+    f = pathlib.Path("c:/users/ben.hardcastle/downloads/list_of_context_units.pkl")
     p = pickle.loads(f.read_bytes())
     unit_ids = []
-    for k,v in p.items():
+    for k, v in p.items():
         unit_ids.extend(v)
     pyfile_path = pathlib.Path(__file__)
-    raise_on_error = False
+    raise_on_error = True
     for unit_id in sorted(unit_ids):
         print(f"plotting {pyfile_path.stem} for {unit_id}")
         try:
@@ -397,3 +490,4 @@ if __name__ == "__main__":
         # make sure text is editable in illustrator before saving pdf:
         fig.savefig(f"{figsave_path}.pdf", dpi=300, bbox_inches="tight")
         plt.close(fig)
+        

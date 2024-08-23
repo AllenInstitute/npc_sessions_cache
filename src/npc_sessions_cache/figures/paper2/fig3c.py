@@ -317,7 +317,7 @@ def plot(unit_id: str, stim_names=("vis1", "vis2", "sound1", "sound2")) -> plt.F
             average_block_psth = True
             bin_size_s = 25 / 1000
             max_spike_rate = 60  # Hz
-            scale_bar_len = max_spike_rate / 4 # Hz
+            scale_bar_len = 10 # Hz
             ypad = 5
             ymin = max(last_ypos) + ypad
             ymax = ymin + nominal_rows_per_block
@@ -329,12 +329,12 @@ def plot(unit_id: str, stim_names=("vis1", "vis2", "sound1", "sound2")) -> plt.F
                 hist, bin_edges = np.histogram(a, bins=round((xlim_1 - xlim_0) / bin_size_s), range=(xlim_0, xlim_1))
                 # convert to spikes per second
                 hist = (hist / np.diff(bin_edges)[0]) / n_trials
-                return hist, bin_edges[:-1] + np.diff(bin_edges)[0] / 2
+                return hist, bin_edges[:-1]
             
             def plot_(hist, bin_edges, **plot_kwargs):
                 # need to plot upside down, scaled
                 ax.plot(
-                    bin_edges,
+                    bin_edges + np.diff(bin_edges)[0] / 2,
                     ymax - (hist / max_spike_rate) * (ymax - ymin),
                     **plot_kwargs,
                 )
@@ -354,15 +354,15 @@ def plot(unit_id: str, stim_names=("vis1", "vis2", "sound1", "sound2")) -> plt.F
                         if not a.size:
                             continue
                         hist, bin_edges = spikes.makePSTH_numba(
-                            spikes=np.sort(subject_lick_times), startTimes=np.array(df["stim_start_time"]-xlim_0),
-                            windowDur=(xlim_1 + pad_start), #binSize=bin_size_s,
+                            spikes=np.sort(subject_lick_times),
+                            startTimes=np.array(df["stim_start_time"] - pad_start),
+                            windowDur=pad_start + xlim_1, binSize=bin_size_s,
                         )
-                        bin_edges = bin_edges + xlim_0
-
+                        bin_edges = bin_edges - pad_start
                         # hist, bin_edges = hist_(a)
                         hist_results.append(hist)
                         plot_(hist, bin_edges, lw=.3, c=color, alpha=.3)
-                    plot_(np.mean(hist_results, axis=0), bin_edges, lw=.5, c=color)
+                    plot_(np.mean(hist_results, axis=0), bin_edges, lw=.75, c=color)
                 else:
                     df = (
                         trials.filter(
@@ -371,9 +371,11 @@ def plot(unit_id: str, stim_names=("vis1", "vis2", "sound1", "sound2")) -> plt.F
                         )
                     )
                     hist, bin_edges = spikes.makePSTH_numba(
-                        spikes=np.array(np.concatenate(df["stim_centered_lick_times"])), startTimes=np.array(df["stim_start_time"])-pad_start,
-                        windowDur=(xlim_1 + pad_start), binSize=bin_size_s, 
+                        spikes=np.sort(subject_lick_times),
+                        startTimes=np.array(df["stim_start_time"] - pad_start),
+                        windowDur=pad_start + xlim_1, binSize=bin_size_s,
                     )
+                    bin_edges = bin_edges - pad_start
                     plot_(hist, bin_edges, lw=.5, c=color)
                     
             # response window cyan patch
@@ -474,7 +476,7 @@ if __name__ == "__main__":
     for k, v in p.items():
         unit_ids.extend(v)
     pyfile_path = pathlib.Path(__file__)
-    raise_on_error = True
+    raise_on_error = False
     for unit_id in sorted(unit_ids):
         print(f"plotting {pyfile_path.stem} for {unit_id}")
         try:

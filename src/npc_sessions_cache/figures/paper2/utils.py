@@ -203,6 +203,36 @@ def savefig(py__file__: str, fig: plt.Figure, suffix: str):
     fig.savefig(f"{figsave_path}.png", dpi=300, bbox_inches='tight')
     fig.savefig(f"{figsave_path}.pdf", dpi=300, bbox_inches="tight")
     
+
+def save_unit_context_columns() -> None:
+    import npc_sessions_cache.plots.spikes as spikes
+    import tqdm
+    all_new_cols = []
+    for unit_id, session_id in tqdm.tqdm(get_good_units_df()['unit_id', 'session_id'].iter_rows(),total=len(get_good_units_df())):
+        new_cols = {}
+        spike_times_session_id = "_".join(unit_id.split("_")[:2])
+        unit_spike_times = get_component_zarr("spike_times")[spike_times_session_id][unit_id][:]
+        trials = get_component_df("trials").filter(pl.col('session_id') == session_id)
+        new_cols['unit_id'] = unit_id
+        for stim in ('vis', 'aud'):
+            for target in ('target', 'nontarget'):
+                for context in ('vis', 'aud'):
+                    psth = spikes.makePSTH_numba(
+                        spikes=unit_spike_times,
+                        startTimes=trials.filter(
+                            pl.col(f'is_{stim}_{target}'),
+                            pl.col(f'is_{context}_context'),
+                        )['quiescent_start_time'].to_numpy(),
+                        windowDur=1.5,
+                        binSize=0.025,
+                    )
+                    new_cols[f"{stim}_{target}_{context}_context_baseline_rate"] = np.mean(psth)
+                a = new_cols[f"{stim}_{target}_aud_context_baseline_rate"]
+                v = new_cols[f"{stim}_{target}_vis_context_baseline_rate"]
+                new_cols[f"{stim}_{target}_context_index"] = (a - v) / (a + v)
+        all_new_cols.append(new_cols)
+    pl.DataFrame(all_new_cols).write_parquet("unit_context_columns.parquet")
+    
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     copy_parquet_files_to_home()

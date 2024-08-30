@@ -16,7 +16,12 @@ plt.rcParams["font.size"] = 8
 plt.rcParams["pdf.fonttype"] = 42
 
 
-def plot(unit_id: str, stim_names=("vis1", "vis2", "sound1", "sound2"), with_instruction_trial_whitespace: bool = False) -> plt.Figure:
+def plot(
+    unit_id: str,
+    stim_names=("vis1", "vis2", "sound1", "sound2"),
+    with_instruction_trial_whitespace: bool = False,
+    max_psth_spike_rate: float = 60, # Hz
+) -> plt.Figure:
 
     # in case unit_id is an npc_sessions object
     try:
@@ -310,28 +315,20 @@ def plot(unit_id: str, stim_names=("vis1", "vis2", "sound1", "sound2"), with_ins
     for ax, stim in zip(axes, stim_names):
         ax: plt.Axes
         if add_psth:
-            average_block_psth = True
+            average_block_psth = True # plot PSTHs for individual blocks, and their average
             bin_size_s = 25 / 1000
-            max_spike_rate = 60  # Hz
-            scale_bar_len = 10 # Hz
+            scale_bar_len = max(1, int(max_psth_spike_rate / 4)) # Hz
             ypad = 5
             ymin = max(last_ypos) + ypad
             ymax = ymin + nominal_rows_per_block
             ypos = ymax + 0.5
             
-            def hist_(a):
-                n_trials = len(a)
-                a = np.concatenate(a)
-                hist, bin_edges = np.histogram(a, bins=round((xlim_1 - xlim_0) / bin_size_s), range=(xlim_0, xlim_1))
-                # convert to spikes per second
-                hist = (hist / np.diff(bin_edges)[0]) / n_trials
-                return hist, bin_edges[:-1]
-            
-            def plot_(hist, bin_edges, **plot_kwargs):
+            def add_psth_plot(hist, bin_edges, **plot_kwargs):
                 # need to plot upside down, scaled
+                norm_spike_rate = (hist / max_psth_spike_rate) * (ymax - ymin)
                 ax.plot(
                     bin_edges + np.diff(bin_edges)[0] / 2,
-                    ymax - (hist / max_spike_rate) * (ymax - ymin),
+                    ymax - norm_spike_rate,
                     **plot_kwargs,
                 )
                 
@@ -357,8 +354,8 @@ def plot(unit_id: str, stim_names=("vis1", "vis2", "sound1", "sound2"), with_ins
                         bin_edges = bin_edges - pad_start
                         # hist, bin_edges = hist_(a)
                         hist_results.append(hist)
-                        plot_(hist, bin_edges, lw=.3, c=color, alpha=.3)
-                    plot_(np.mean(hist_results, axis=0), bin_edges, lw=.75, c=color)
+                        add_psth_plot(hist, bin_edges, lw=.3, c=color, alpha=.3)
+                    add_psth_plot(np.mean(hist_results, axis=0), bin_edges, lw=.75, c=color)
                 else:
                     df = (
                         trials.filter(
@@ -372,9 +369,9 @@ def plot(unit_id: str, stim_names=("vis1", "vis2", "sound1", "sound2"), with_ins
                         windowDur=pad_start + xlim_1, binSize=bin_size_s,
                     )
                     bin_edges = bin_edges - pad_start
-                    plot_(hist, bin_edges, lw=.5, c=color)
+                    add_psth_plot(hist, bin_edges, lw=.5, c=color)
                     
-            # response window cyan patch
+            # response window cyan patch in PSTH
             rect = patches.Rectangle(
                 xy=(response_window_start_time, ymin),
                 width=response_window_stop_time - response_window_start_time,
@@ -387,7 +384,7 @@ def plot(unit_id: str, stim_names=("vis1", "vis2", "sound1", "sound2"), with_ins
             ax.add_patch(rect)
             if ax is axes[0]:
                 # add a scale bar
-                length = (ymax - ymin) * scale_bar_len / max_spike_rate
+                length = (ymax - ymin) * scale_bar_len / max_psth_spike_rate
                 ax.plot(
                     [xlim_0 - .1, xlim_0 - .1],
                     [ymax - length, ymax],
@@ -523,7 +520,7 @@ def get_unit_ids_baseline_psth_parquet():
 
 if __name__ == "__main__":
 
-    stim_names = ("sound1", "vis1", "sound2", "vis2")
+    all_stim_names = ("sound1", "vis1", "sound2", "vis2")
     target_stim_names = ("sound1", "vis1")
     pyfile_path = pathlib.Path(__file__)
     
@@ -532,7 +529,11 @@ if __name__ == "__main__":
     for unit_id in get_unit_id_func():
         print(f"plotting {pyfile_path.stem} for {unit_id}")
         try:
-            fig = plot(unit_id, stim_names, with_instruction_trial_whitespace=False)
+            fig = plot(
+                unit_id=unit_id,
+                stim_names=all_stim_names,
+                with_instruction_trial_whitespace=False,
+            )
         except Exception as exc:
             if raise_on_error:
                 raise

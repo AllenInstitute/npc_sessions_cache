@@ -16,7 +16,7 @@ plt.rcParams["font.size"] = 8
 plt.rcParams["pdf.fonttype"] = 42
 
 
-def plot(unit_id: str, stim_names=("vis1", "vis2", "sound1", "sound2")) -> plt.Figure:
+def plot(unit_id: str, stim_names=("vis1", "vis2", "sound1", "sound2"), with_instruction_trial_whitespace: bool = False) -> plt.Figure:
 
     # in case unit_id is an npc_sessions object
     try:
@@ -84,28 +84,29 @@ def plot(unit_id: str, stim_names=("vis1", "vis2", "sound1", "sound2")) -> plt.F
     # create dummy instruction trials for the non-rewarded stimuli for easier
     # alignment of blocks:
     trials_: pl.DataFrame = trials
-    for block_index in trials_["block_index"].unique():
-        context_name = trials_.filter(pl.col("block_index") == block_index)[
-            "context_name"
-        ][0]
-        autorewarded_stim = modality_to_rewarded_stim[context_name]
-        for stim_name in stim_names:
-            if autorewarded_stim == stim_name:
-                continue
-            extra_df = trials.filter( # filter original trials, not modified ones with dummy instruction trials
-                pl.col("block_index") == block_index,
-                pl.col("is_reward_scheduled"),
-                pl.col("trial_index_in_block")
-                <= 5,  # after 10 misses, an instruction trial is triggered: we don't want to duplicate these
-            ).with_columns(
-                # switch the stim name:
-                stim_name=pl.lit(stim_name),
-                # make sure there's no info that will trigger plotting:
-                is_response=pl.lit(False),
-                is_rewarded=pl.lit(False),
-                stim_centered_spike_times=pl.lit([]),
-            )
-            trials_ = pl.concat([trials_, extra_df])
+    if with_instruction_trial_whitespace:
+        for block_index in trials_["block_index"].unique():
+            context_name = trials_.filter(pl.col("block_index") == block_index)[
+                "context_name"
+            ][0]
+            autorewarded_stim = modality_to_rewarded_stim[context_name]
+            for stim_name in stim_names:
+                if autorewarded_stim == stim_name:
+                    continue
+                extra_df = trials.filter( # filter original trials, not modified ones with dummy instruction trials
+                    pl.col("block_index") == block_index,
+                    pl.col("is_reward_scheduled"),
+                    pl.col("trial_index_in_block")
+                    <= 5,  # after 10 misses, an instruction trial is triggered: we don't want to duplicate these
+                ).with_columns(
+                    # switch the stim name:
+                    stim_name=pl.lit(stim_name),
+                    # make sure there's no info that will trigger plotting:
+                    is_response=pl.lit(False),
+                    is_rewarded=pl.lit(False),
+                    stim_centered_spike_times=pl.lit([]),
+                )
+                trials_ = pl.concat([trials_, extra_df])
 
     # add columns for easier parsing of block structure:
     trials_ = trials_.sort("start_time").with_columns(
@@ -118,13 +119,6 @@ def plot(unit_id: str, stim_names=("vis1", "vis2", "sound1", "sound2")) -> plt.F
         .over("stim_name", "block_index"),
     )
 
-    scatter_params = dict(
-        marker="|",
-        s=20,
-        color=[0.85] * 3,
-        alpha=1,
-        edgecolor="none",
-    )
     line_params = dict(
         color="grey",
         lw=0.3,
@@ -227,7 +221,11 @@ def plot(unit_id: str, stim_names=("vis1", "vis2", "sound1", "sound2")) -> plt.F
                 if trial["is_vis_context"] and len(block_df) > num_instructed_trials:
                     # vis block grey patch
                     ax.axhspan(
-                        ymin=ypositions[num_instructed_trials] - halfline,
+                        ymin=(
+                            ypositions[num_instructed_trials] - halfline
+                            if is_rewarded_stim or with_instruction_trial_whitespace
+                            else ypositions[0] - halfline
+                        ),
                         ymax=ypositions[-1] + halfline,
                         color=[0.95] * 3,
                         lw=0,
@@ -239,21 +237,20 @@ def plot(unit_id: str, stim_names=("vis1", "vis2", "sound1", "sound2")) -> plt.F
                     xy=(
                         response_window_start_time,
                         (
-                            y := max(
-                                0,
+                            y0 := (
                                 (
                                     ypos
-                                    if is_rewarded_stim
+                                    if is_rewarded_stim or not with_instruction_trial_whitespace
                                     else ypositions[
                                         min(num_instructed_trials, len(block_df) - 1)
                                     ]
-                                ),
+                                )
                             )
                             - halfline
                         ),
                     ),
                     width=response_window_stop_time - response_window_start_time,
-                    height=(ypositions[-1] + halfline) - y,
+                    height=(ypositions[-1] + halfline) - y0,
                     linewidth=0,
                     edgecolor="none",
                     facecolor=[0.85, 0.95, 1, 0.5],
@@ -460,7 +457,7 @@ def plot(unit_id: str, stim_names=("vis1", "vis2", "sound1", "sound2")) -> plt.F
         location = unit["location"][0]
     fig.suptitle(
         f"{'behavior pass' if is_pass else 'behavior fail'}\n{unit_id}\n{location}"
-    )  #! update to session.id
+    )
     return fig
 
 def get_unit_ids_shailaja_pkl() -> tuple[str, ...]:
@@ -529,13 +526,13 @@ if __name__ == "__main__":
     stim_names = ("sound1", "vis1", "sound2", "vis2")
     target_stim_names = ("sound1", "vis1")
     pyfile_path = pathlib.Path(__file__)
+    
     raise_on_error = False
-    get_unit_id_func = get_unit_ids_shawn_session_list
-    get_unit_id_func = get_unit_ids_baseline_psth_parquet
+    get_unit_id_func = get_specific_unit_ids
     for unit_id in get_unit_id_func():
         print(f"plotting {pyfile_path.stem} for {unit_id}")
         try:
-            fig = plot(unit_id, stim_names)
+            fig = plot(unit_id, stim_names, with_instruction_trial_whitespace=False)
         except Exception as exc:
             if raise_on_error:
                 raise

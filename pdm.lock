@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = []
 lock_version = "4.5.0"
-content_hash = "sha256:e1dbfc1d9656860dd98b9a5749f0f142c59ce89c92dde081c1b5bd22ff89b635"
+content_hash = "sha256:fe1834b44fa82638b919fd57d17424d34a92dd93c6b4a9b90650dd3590609133"
 
 [[metadata.targets]]
 requires_python = ">=3.9"
@@ -2890,6 +2890,21 @@ files = [
 ]
 
 [[package]]
+name = "nptyping"
+version = "2.5.0"
+requires_python = ">=3.7"
+summary = "Type hints for NumPy."
+dependencies = [
+    "numpy<2.0.0,>=1.20.0; python_version >= \"3.8\"",
+    "numpy==1.21.5; python_version < \"3.8\"",
+    "typing-extensions<5.0.0,>=4.0.0; python_version < \"3.10\"",
+]
+files = [
+    {file = "nptyping-2.5.0-py3-none-any.whl", hash = "sha256:764e51836faae33a7ae2e928af574cfb701355647accadcc89f2ad793630b7c8"},
+    {file = "nptyping-2.5.0.tar.gz", hash = "sha256:e3d35b53af967e6fb407c3016ff9abae954d3a0568f7cc13a461084224e8e20a"},
+]
+
+[[package]]
 name = "numba"
 version = "0.59.1"
 requires_python = ">=3.9"
@@ -3707,6 +3722,21 @@ summary = "Pygments is a syntax highlighting package written in Python."
 files = [
     {file = "pygments-2.18.0-py3-none-any.whl", hash = "sha256:b8e6aca0523f3ab76fee51799c488e38782ac06eafcf95e7ba832985c8e7b13a"},
     {file = "pygments-2.18.0.tar.gz", hash = "sha256:786ff802f32e91311bff3889f6e9a86e81505fe99f2735bb6d60ae0c5004f199"},
+]
+
+[[package]]
+name = "pynrrd"
+version = "1.0.0"
+requires_python = ">=3.7"
+summary = "Pure python module for reading and writing NRRD files."
+dependencies = [
+    "nptyping",
+    "numpy>=1.11.1",
+    "typing-extensions",
+]
+files = [
+    {file = "pynrrd-1.0.0-py2.py3-none-any.whl", hash = "sha256:65e5a61920d2f01ecf321eb41b0472940e181e4ba5e8a32f01ef5499d4192db5"},
+    {file = "pynrrd-1.0.0.tar.gz", hash = "sha256:4eb4caba03fbca1b832114515e748336cb67bce70c7f3ae36bfa2e135fc990d2"},
 ]
 
 [[package]]

@@ -18,6 +18,7 @@ dependencies = [
     "npc-sync>=0.1.16",
     "dynamic-routing-analysis @ git+https://github.com/AllenInstitute/dynamic_routing_analysis",
     "hvplot>=0.10.0",
+    "pynrrd>=1.0.0",
 ]
 requires-python = ">=3.9"
 readme = "README.md"

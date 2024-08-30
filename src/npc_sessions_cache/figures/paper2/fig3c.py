@@ -10,7 +10,6 @@ import numpy.typing as npt
 import polars as pl
 
 import npc_sessions_cache.figures.paper2.utils as utils
-import npc_sessions_cache.plots.spikes as spikes
 
 plt.rcParams["font.family"] = "Arial"
 plt.rcParams["font.size"] = 8
@@ -353,7 +352,7 @@ def plot(unit_id: str, stim_names=("vis1", "vis2", "sound1", "sound2")) -> plt.F
                         a = df["stim_centered_spike_times"].to_numpy()
                         if not a.size:
                             continue
-                        hist, bin_edges = spikes.makePSTH_numba(
+                        hist, bin_edges = utils.makePSTH_numba(
                             spikes=np.sort(unit_spike_times),
                             startTimes=np.array(df["stim_start_time"] - pad_start),
                             windowDur=pad_start + xlim_1, binSize=bin_size_s,
@@ -370,7 +369,7 @@ def plot(unit_id: str, stim_names=("vis1", "vis2", "sound1", "sound2")) -> plt.F
                             pl.col("stim_name") == stim,
                         )
                     )
-                    hist, bin_edges = spikes.makePSTH_numba(
+                    hist, bin_edges = utils.makePSTH_numba(
                         spikes=np.sort(unit_spike_times),
                         startTimes=np.array(df["stim_start_time"] - pad_start),
                         windowDur=pad_start + xlim_1, binSize=bin_size_s,

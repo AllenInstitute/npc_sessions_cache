@@ -1,11 +1,15 @@
 import functools
 import logging
 import pathlib
-from matplotlib import pyplot as plt
-import polars as pl
+
 import npc_lims
+import numba
+import numpy as np
+import numpy.typing as npt
+import polars as pl
 import upath
 import zarr
+from matplotlib import pyplot as plt
 
 plt.rcParams["font.family"] = "Arial"
 plt.rcParams["font.size"] = 8
@@ -232,6 +236,35 @@ def save_unit_context_columns() -> None:
                 new_cols[f"{stim}_{target}_context_index"] = (a - v) / (a + v)
         all_new_cols.append(new_cols)
     pl.DataFrame(all_new_cols).write_parquet("unit_context_columns.parquet")
+    
+
+@numba.njit
+def makePSTH_numba(
+    spikes: npt.NDArray[np.floating],
+    startTimes: npt.NDArray[np.floating],
+    windowDur: float,
+    binSize: float = 0.001,
+    convolution_kernel: float = 0.05,
+):
+    spikes = spikes.flatten()
+    startTimes = startTimes - convolution_kernel / 2
+    windowDur = windowDur + convolution_kernel
+    bins = np.arange(0, windowDur + binSize, binSize)
+    convkernel = np.ones(int(convolution_kernel / binSize))
+    counts = np.zeros(bins.size - 1)
+    for i, start in enumerate(startTimes):
+        startInd = np.searchsorted(spikes, start)
+        endInd = np.searchsorted(spikes, start + windowDur)
+        counts = (
+            counts + np.histogram(spikes[startInd:endInd] - start, bins)[0]
+        )
+
+    counts = counts / startTimes.size
+    counts = np.convolve(counts, convkernel) / (binSize * convkernel.size)
+    return (
+        counts[convkernel.size - 1 : -convkernel.size],
+        bins[: -convkernel.size - 1],
+    )
     
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)

@@ -129,7 +129,7 @@ def component_exists(
     )
     if consolidated_zarr:
         z = zarr.open(path)
-        if npc_session.SessionRecord(session_id) in z:
+        if npc_session.SessionRecord(session_id).id in z:
             return True
         else:
             return False
@@ -327,7 +327,7 @@ def _write_timeseries_to_cache(
     version: str | None = None,
     skip_existing: bool = True,
 ) -> None:
-    session_id = npc_session.SessionRecord(session_id)
+    session_id = npc_session.SessionRecord(session_id).id
     cache_path = npc_lims.get_cache_path(
         nwb_component=component_name,
         version=version or npc_sessions.get_package_version(),

@@ -64,7 +64,8 @@ def get_ccf_structure_tree_df() -> pl.DataFrame:
     path = local_path if local_path.exists() else cloud_path
     logging.info(f"Using CCF structure tree from {path.as_posix()}")
     return (
-        pl.scan_csv(path.as_posix())
+        pl.read_csv(path.as_posix())
+        .lazy()
         .with_columns(
             color_hex_int=pl.col("color_hex_triplet").str.to_integer(base=16),
             color_hex_str=pl.lit("0x") + pl.col("color_hex_triplet"),

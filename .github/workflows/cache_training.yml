@@ -1,9 +1,9 @@
 name: Cache training
 
 on: 
-  schedule:
-    # every _ hours
-    - cron: '0 */6 * * *'
+  # schedule:
+  #   # every _ hours
+  #   - cron: '0 */6 * * *'
   push:
     tags:        
       - '*'           # Push events to every tag not containing /

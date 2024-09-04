@@ -1,5 +1,6 @@
 # %%
 import pathlib
+from typing import Iterable
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -281,7 +282,6 @@ def plot(late_autorewards: bool | None = None):
                 y.pop()
                 continue
             y[-1] = np.nanmean(y[-1], axis=0)
-
         m = np.nanmean(y, axis=0)
         ax.plot(x, m, color=clr, label=stimLbl, lw=0.3, zorder=99)
         if is_switch_to_rewarded:
@@ -328,7 +328,6 @@ def plot(late_autorewards: bool | None = None):
         
         plt.tight_layout()
 
-        pyfile_path = pathlib.Path(__file__)
         if late_autorewards is not None:
             autorewards_name = (
                 "late-autorewards" if late_autorewards else "early-autorewards"
@@ -338,10 +337,167 @@ def plot(late_autorewards: bool | None = None):
         utils.savefig(__file__, fig, suffix=autorewards_name)
 
 
+def plot_last_rewarded_vs_first_unrewarded(late_autorewards: bool | None = None, scatter: bool = True):
+    # %% 
+    
+    trials_df = utils.get_prod_trials(
+        cross_modal_dprime_threshold=1.5, late_autorewards=late_autorewards
+    ).filter(
+        ~(pl.col("is_reward_scheduled") & (pl.col("trial_index_in_block") > 14)),
+    )
 
+    fig, axes = plt.subplots(1, 1, figsize=(2, 2))
+    if not isinstance(axes, Iterable):
+        axes = [axes]
+    for ax_idx, (ax, stimLbl, clr) in enumerate(
+        zip(axes, ("unrewarded target stim",), "k")
+    ):
+        is_switch_to_rewarded = "unrewarded" not in stimLbl
+        preTrials = 1
+        postTrials = 1
+        x = np.arange(-preTrials, postTrials + 1)
+        y = []
+        for subject_id, subject_df in trials_df.group_by(["subject_id"]):
+            y.append([])
+            for session_id, session_df in subject_df.group_by(["session_id"]):
+                d = session_df
+                trialBlock = np.array(d["block_index"])
+                trialResp = np.array(d["is_response"])
+                trialStim = np.array(d["stim_name"])
+                goStim = np.array(d["is_go"])
+                nogoStim = np.array(d["is_nogo"])
+                targetStim = np.array(d["is_vis_target"] | d["is_aud_target"])
+                autoReward = np.array(d["is_reward_scheduled"])
+                for blockInd in np.unique(trialBlock):  # range(1,6):
+                    rewStim = trialStim[(trialBlock == blockInd) & goStim][0]
+                    nonRewStim = trialStim[
+                        (trialBlock == blockInd) & nogoStim & targetStim
+                    ][0]
+                    if (
+                        blockInd > 0
+                    ):  # and rewStim == blockRewardStim: #! blockRewardStim is defined in the previous cell
+                        stim = nonRewStim if "unrewarded" in stimLbl else rewStim
+                        trials = trialStim == stim  # & ~autoReward
+                        y[-1].append(np.full(preTrials + postTrials + 1, np.nan))
+                        pre = trialResp[
+                            (trialBlock == blockInd - 1) & trials & ~autoReward
+                        ]  # & ~autoReward makes no difference
+                        i = min(preTrials, pre.size)
+                        y[-1][-1][preTrials - i : preTrials] = pre[-i:]
+                        post = trialResp[(trialBlock == blockInd) & trials]
+                        i = min(postTrials, post.size)
+                        y[-1][-1][preTrials + 1 : preTrials + 1 + i] = post[:i]
+                if np.all(np.isnan(y[-1][-1])):
+                    y[-1].pop()
+            if len(y[-1]) == 0 or np.all(np.isnan(y[-1])):
+                y.pop()
+                continue
+            y[-1] = np.nanmean(y[-1], axis=0)
+        y = np.array(y)
+        m = np.nanmean(y, axis=0)
+        if scatter:
+            ax.scatter(y[:, -1], y[:, 0], facecolor='k', edgecolor='none', lw=0, label=stimLbl, zorder=99, s=.8, clip_on=False)
+            ax.set_xlim(0, 1)
+            ax.set_ylim(0, 1)            
+            for side in ("right", "top"):
+                ax.spines[side].set_visible(False)
+            ax.set_aspect(1)
+            ax.set_yticks([0, 0.5, 1])
+            ax.set_xticks([0, 0.5, 1])
+            ax.set_ylabel("response probability\nlast rewarded")
+            ax.set_xlabel("response probability\nfirst unrewarded")
+        else:
+            xpos = (0, 1)
+
+            common_line_params = dict(alpha=1, lw=.3)
+            line_params = {
+                'target': common_line_params.copy(),
+                'nontarget': common_line_params.copy(),
+            }
+            line_params['target'] |= dict(c=[0.8]*3)
+            ax.plot(xpos, [y[:, 0], y[:, -1]], color=[0.8]*3, label=stimLbl, lw=0.3, zorder=10)
+            # format_ax(ax, ax_idx, is_switch_to_rewarded, preTrials, postTrials, True)
+            for side in ("right", "top"):
+                ax.spines[side].set_visible(False)
+            ax.set_xlim(-0.2, 1.2)
+            ax.set_ylim(-0, 1)
+            ax.set_aspect(3)
+            ax.set_xticks([0, 1])
+            ax.set_xticklabels(['last\nrewarded', 'first\nunrewarded'], fontsize=6)
+            ax.plot(xpos, [np.nanmedian(y[:, 0]), np.nanmedian(y[:, -1])], 'k.', label=stimLbl, zorder=99, clip_on=False)
+            # ax.plot(xpos, [np.median(y[:, 0]), np.median(y[:, -1])], 'k', label=stimLbl, zorder=99, clip_on=False)
+            ax.set_ylabel("response probability")
+            lower = np.full(len(x), np.nan)
+            upper = np.full(len(x), np.nan)
+            for i in range(len(x)):
+                ys = y[~np.isnan(y[:, i]), i]
+                lower[i], upper[i] = np.percentile(
+                    [
+                        np.nanmedian(np.random.choice(ys, size=ys.size, replace=True))
+                        for _ in range(1000)
+                    ],
+                    (5, 95),
+                )
+            # add vertical lines as error bars
+            ax.vlines(
+                x=xpos,
+                ymin=lower[::2],
+                ymax=upper[::2],
+                color=[0.5] * 3,
+                lw=1,
+                clip_on=False,
+                zorder=50,
+            )
+            is_sem = False
+            if is_sem:
+                s = np.nanstd(y, axis=0) / (len(y) ** 0.5)
+                ax.fill_between(
+                    x, m + s, m - s, color=clr, alpha=0.1, edgecolor="none", zorder=50
+                )
+            else:
+                y = np.array(y)
+                lower = np.full(len(m), np.nan)
+                upper = np.full(len(m), np.nan)
+                for i in range(len(m)):
+                    ys = y[~np.isnan(y[:, i]), i]
+                    # all nans at i=0 will raise a warning
+                    lower[i], upper[i] = np.percentile(
+                        [
+                            np.nanmean(np.random.choice(ys, size=ys.size, replace=True))
+                            for _ in range(1000)
+                        ],
+                        (5, 95),
+                    )
+                ax.fill_between(
+                    x, upper, lower, color=clr, alpha=0.1, edgecolor="none", zorder=50
+                )
+        print(len(y), "mice")
+        ax.set_zorder(199)
+        
+        plt.tight_layout()
+
+        suffix = "last-vs-first"
+        if late_autorewards is not None:
+            suffix += (
+                "_late-autorewards" if late_autorewards else "_early-autorewards"
+            )
+        else:
+            suffix += "_all-autorewards"
+        if scatter:
+            suffix += "_scatter"
+        else:
+            suffix += "_lines"
+        utils.savefig(__file__, fig, suffix=suffix)
+        
+        
 # %%
 if __name__ == "__main__":
     for late_autorewards in (True, False, None):
         for combined in (True, False):
-            plot_suppl(combined=combined, late_autorewards=late_autorewards)
-            plot(late_autorewards=late_autorewards)
+            # plot_suppl(combined=combined, late_autorewards=late_autorewards)
+            # plot(late_autorewards=late_autorewards)
+            # %%
+            plot_last_rewarded_vs_first_unrewarded(late_autorewards=None, scatter=False)
+            plot_last_rewarded_vs_first_unrewarded(late_autorewards=None, scatter=True)
+
+# %%

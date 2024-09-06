@@ -303,6 +303,7 @@ def consolidate_cache(
             compression=_PARQUET_COMPRESSION,
             compression_level=_COMPRESSION_LEVEL,
         )
+        logger.info(f"len {component_name} = {len(table)}")
     elif consolidated_cache_path.suffix == ".zarr":
         logger.info(f"Consolidating {component_name} zarr cache not supported yet")
     logger.info(f"Wrote {consolidated_cache_path}")

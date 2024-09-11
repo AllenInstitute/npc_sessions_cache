@@ -532,7 +532,7 @@ if __name__ == "__main__":
     target_stim_names = ("sound1", "vis1")
     pyfile_path = pathlib.Path(__file__)
     
-    raise_on_error = False
+    skip_existing = True
     get_unit_id_func = get_specific_unit_ids
     for unit_id in get_unit_id_func():
         print(f"plotting {pyfile_path.stem} for {unit_id}")

@@ -506,7 +506,7 @@ def get_grouped_baseline_psth_parquet():
     dfs = []
     for stim in ("vis", "aud"):
         for target in ("target",):
-            col = pl.col(f"{stim}_{target}_context_index").abs()
+            col = pl.col(f"{stim}_{target}_context_selectivity_index").abs()
             dfs.append(
                 u
                 .group_by(

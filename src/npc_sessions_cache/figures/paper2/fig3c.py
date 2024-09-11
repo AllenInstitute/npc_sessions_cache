@@ -21,6 +21,7 @@ def plot(
     stim_names=("vis1", "vis2", "sound1", "sound2"),
     with_instruction_trial_whitespace: bool = False,
     max_psth_spike_rate: float = 60, # Hz
+    use_session_obj: bool = False,
 ) -> plt.Figure:
 
     # in case unit_id is an npc_sessions object
@@ -30,27 +31,34 @@ def plot(
         ).id  # in case unit_id is an npc_sessions object
     except (AttributeError, TypeError):
         session_id = npc_session.SessionRecord(unit_id).id
+    if use_session_obj:
+        import npc_sessions
+        obj = npc_sessions.Session(session_id)
+        trials = pl.DataFrame(obj.trials[:])
+        units = pl.DataFrame(obj.units[:][['spike_times', 'location', 'structure', 'unit_id']])
+        unit = units.filter(pl.col("unit_id") == unit_id)
+        unit_spike_times = unit['spike_times'].to_numpy()[0]
+    else:
+        units_all_sessions = utils.get_component_df("units")
+        spike_times_all_sessions = utils.get_component_zarr("spike_times")
+        trials_all_sessions = utils.get_component_df("trials")
+        all_sessions = utils.get_component_df("session")
 
-    units_all_sessions = utils.get_component_df("units")
-    spike_times_all_sessions = utils.get_component_zarr("spike_times")
-    trials_all_sessions = utils.get_component_df("trials")
-    all_sessions = utils.get_component_df("session")
+        trials = trials_all_sessions.filter(pl.col("session_id") == session_id)
+
+        unit = units_all_sessions.filter(pl.col("unit_id") == unit_id)
+
+        #! session id is without idx for spike times
+        spike_times_session_id = "_".join(unit_id.split("_")[:2])
+        unit_spike_times: npt.NDArray = spike_times_all_sessions[spike_times_session_id][unit_id][:]
     performance_all_sessions = utils.get_component_df("performance")
-
     performance = performance_all_sessions.filter(pl.col("session_id") == session_id)
-    trials = trials_all_sessions.filter(pl.col("session_id") == session_id)
+    
     if trials.is_empty():
         raise ValueError(f"No trials found for {session_id}")
-
-    unit = units_all_sessions.filter(pl.col("unit_id") == unit_id)
-
-    #! session id is without idx for spike times
-    spike_times_session_id = "_".join(unit_id.split("_")[:2])
-    unit_spike_times: npt.NDArray = spike_times_all_sessions[spike_times_session_id][unit_id][:]
     if not unit_spike_times.size:
         raise ValueError(f"No spike times found for {unit_id}")
     modality_to_rewarded_stim = {"aud": "sound1", "vis": "vis1"}
-
     # add spikes to trials:
     pad_start = 1.5  # seconds
     spike_times_by_trial = tuple(
@@ -533,6 +541,7 @@ if __name__ == "__main__":
                 unit_id=unit_id,
                 stim_names=all_stim_names,
                 with_instruction_trial_whitespace=False,
+                use_session_obj=False,
             )
         except Exception as exc:
             if raise_on_error:

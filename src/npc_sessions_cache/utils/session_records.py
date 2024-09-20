@@ -230,9 +230,9 @@ def get_session_record(session_id: str | npc_session.SessionRecord, session: npc
     if session.is_task:
         trials = session.trials[:]
         performance = session.performance[:]
-    epochs = session.epochs[:]
+    epochs_df = session.epochs[:]
     def is_in_epochs(name):
-        return any(name.strip('_').lower() == epoch.lower() for epoch in epochs.stim_name.to_list())
+        return any(name.strip('_').lower() == epoch.lower() for epoch in epochs_df.stim_name.to_list())
     if session.is_annotated:
         units = session.units[:]
 
@@ -256,7 +256,7 @@ def get_session_record(session_id: str | npc_session.SessionRecord, session: npc
         experimenters=session.experimenter,
         notes=session.notes,
         issues=session.info.issues,
-        epochs=epochs.stim_name.to_list(),
+        epochs=epochs_df.stim_name.to_list(),
         allen_path=session.info.allen_path.as_posix(),
         cloud_path=session.info.cloud_path.as_posix(),
         task_version=session.task_version if session.is_task else None,
@@ -278,8 +278,8 @@ def get_session_record(session_id: str | npc_session.SessionRecord, session: npc
         is_opto_perturbation_control="opto_perturbation_control" in session.keywords,
         is_injection_perturbation=session.info.session_kwargs.get('is_injection_perturbation', False),
         # is_injection_perturbation_control=session.info.session_kwargs.get('is_injection_perturbation_control', False),
-        is_timing_issues="timing_issues" in epochs.tags.explode().unique(),
-        is_invalid_times="invalid_times" in epochs.tags.explode().unique(),
+        is_timing_issues="timing_issues" in epochs_df.tags.explode().unique(),
+        is_invalid_times="invalid_times" in epochs_df.tags.explode().unique(),
         is_production=session.info.session_kwargs.get('is_production', True),
         is_naive=session.info.session_kwargs.get('is_naive', False),
         is_context_naive=session.info.session_kwargs.get('is_context_naive', False) or session.is_templeton,

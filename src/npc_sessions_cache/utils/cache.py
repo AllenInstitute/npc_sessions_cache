@@ -182,7 +182,7 @@ def write_and_upload_session_nwb(
     session: npc_sessions.DynamicRoutingSession,
     skip_existing: bool = True,
     version: str | None = None,
-    zarr: bool = True,
+    zarr: bool = False,
     metadata_only: bool = False,  # for testing
 ) -> None:
     """

@@ -14,7 +14,6 @@ dependencies = [
     "traitlets<=5.9.0",
     "ipympl>=0.9.3",
     "ipywidgets>=8.1.0",
-    "npc-sessions>=0.0.242",
     "npc-sync>=0.1.16",
     "npc-lims>=0.1.174",
     "dynamic-routing-analysis @ git+https://github.com/AllenInstitute/dynamic_routing_analysis",
@@ -24,6 +23,7 @@ dependencies = [
     "aind-session>=0.2.1",
     "pyarrow>=14.0",
     "polars>=1.7.1",
+    "npc-sessions>=0.0.244",
 ]
 requires-python = ">=3.9"
 readme = "README.md"

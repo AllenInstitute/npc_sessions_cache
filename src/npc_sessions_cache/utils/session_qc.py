@@ -21,6 +21,7 @@ import npc_session
 import npc_sessions
 import upath
 from typing_extensions import TypeAlias
+from npc_sessions_cache.utils import qc_temp
 
 logger = logging.getLogger(__name__)
 
@@ -289,7 +290,7 @@ def write_session_qc(
             skip_previously_failed=skip_previously_failed,
             session=session,
         )
-        
+
 def copy_current_qc_data(
     session_id: str | npc_session.SessionRecord,
     output_path: str | pathlib.Path | upath.UPath,
@@ -299,10 +300,15 @@ def copy_current_qc_data(
     output_path = upath.UPath(output_path)
     store_path = upath.UPath(store_path)
     key = QCStore.normalize_key(session_id)
+    copied_qc_image_paths = []
     for path in store_path.rglob(f"*{function_name_filter or ''}/*{key}*"):
         new_path = output_path / path.relative_to(store_path)
         new_path.parent.mkdir(parents=True, exist_ok=True)
         new_path.write_bytes(path.read_bytes())
+        copied_qc_image_paths.append(new_path)
+    qc = qc_temp.paths_to_QualityControl(copied_qc_image_paths)
+    qc.write_standard_file(prefix="nwb")
+
 
 if __name__ == "__main__":
     import doctest

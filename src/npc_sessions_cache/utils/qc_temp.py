@@ -21,16 +21,18 @@ def _parse_dynamic_routing_asset_path_meta_info(
 
 def paths_to_QualityControl(
     paths: list[upath.UPath],
+    results_dir: upath.UPath,
 ) -> quality_control.QualityControl:
     """
-    >>> paths = [upath.UPath('/timing/assorted_lick_times/620263_2022-07-26_0.png'), upath.UPath('/timing/assorted_lick_times/620263_2022-07-26_1.png'), upath.UPath('behavior/running/620263_2022-07-26_0.png')]
-    >>> qc = paths_to_QualityControl(paths)
+    >>> paths = [upath.UPath('/root/capsule/results/620263_2022-07-26_0/timing/assorted_lick_times/620263_2022-07-26_0.png'), upath.UPath('/root/capsule/results/620263_2022-07-26_0/timing/assorted_lick_times/620263_2022-07-26_1.png'), upath.UPath('/root/capsule/results/620263_2022-07-26_0/behavior/running/620263_2022-07-26_0.png')]
+    >>> qc = paths_to_QualityControl(paths, upath.UPath('/root/capsule/results/620263_2022-07-26_0'))
     >>> assert len(qc.evaluations) == 2
     >>> assert qc.evaluations[0].evaluation_name == "timing"
-    >>> assert qc.evaluations[0].qc_metrics[0].reference.startswith("/timing/assorted_lick_times")
+    >>> assert qc.evaluations[0].qc_metrics[0].reference.startswith("timing/assorted_lick_times")
     """
     qc_metadata = {}
     for path in paths:
+        path = path.relative_to(results_dir)
         minor_type, major_type = \
             _parse_dynamic_routing_asset_path_meta_info(path)
         if major_type not in qc_metadata:

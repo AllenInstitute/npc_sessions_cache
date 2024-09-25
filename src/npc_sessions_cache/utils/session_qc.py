@@ -306,7 +306,8 @@ def copy_current_qc_data(
         new_path.parent.mkdir(parents=True, exist_ok=True)
         new_path.write_bytes(path.read_bytes())
         copied_qc_image_paths.append(new_path)
-    qc = qc_temp.paths_to_QualityControl(copied_qc_image_paths)
+    qc = qc_temp.paths_to_QualityControl(
+        copied_qc_image_paths, f"/root/capsule/results/{session_id}")
     qc.write_standard_file(
         output_directory=pathlib.Path("/root/capsule/results/"), prefix="nwb")
 

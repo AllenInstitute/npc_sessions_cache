@@ -307,7 +307,8 @@ def copy_current_qc_data(
         new_path.write_bytes(path.read_bytes())
         copied_qc_image_paths.append(new_path)
     qc = qc_temp.paths_to_QualityControl(copied_qc_image_paths)
-    qc.write_standard_file(prefix="nwb")
+    qc.write_standard_file(
+        output_directory=pathlib.Path("/root/capsule/results/"), prefix="nwb")
 
 
 if __name__ == "__main__":

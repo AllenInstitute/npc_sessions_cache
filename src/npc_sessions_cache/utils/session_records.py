@@ -42,16 +42,16 @@ DEFAULT_SESSION_METADATA_PATH = upath.UPath(
 )
 
 
-@pydantic.dataclasses.dataclass  # (frozen=True, unsafe_hash=True)
+@pydantic.dataclasses.dataclass(config=dict(arbitrary_types_allowed=True)) 
 class Record:
     """A row in the sessions table"""
 
     # required - should be available for all sessions ------------------ #
     project: str
-    session_id: npc_session.SessionRecord
-    date: npc_session.DateRecord
-    time: npc_session.TimeRecord
-    subject: npc_session.SubjectRecord
+    session_id: str | npc_session.SessionRecord
+    date: str | npc_session.DateRecord
+    time: str | npc_session.TimeRecord
+    subject: str | npc_session.SubjectRecord
     subject_age_days: int
     subject_sex: str
     subject_genotype: str

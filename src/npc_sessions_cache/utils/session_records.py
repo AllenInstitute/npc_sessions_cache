@@ -42,7 +42,7 @@ DEFAULT_SESSION_METADATA_PATH = upath.UPath(
 )
 
 
-@pydantic.dataclass  # (frozen=True, unsafe_hash=True)
+@pydantic.dataclasses.dataclass  # (frozen=True, unsafe_hash=True)
 class Record:
     """A row in the sessions table"""
 

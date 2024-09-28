@@ -31,6 +31,7 @@ import npc_session
 import npc_sessions
 import numpy as np
 import pandas as pd
+import pydantic
 import upath
 from typing_extensions import Self
 
@@ -41,7 +42,7 @@ DEFAULT_SESSION_METADATA_PATH = upath.UPath(
 )
 
 
-@dataclasses.dataclass  # (frozen=True, unsafe_hash=True)
+@pydantic.dataclass  # (frozen=True, unsafe_hash=True)
 class Record:
     """A row in the sessions table"""
 

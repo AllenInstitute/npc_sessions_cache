@@ -265,7 +265,7 @@ def get_session_record(
 
     def get_intermodal_dprime(modality: str) -> list[float | None]:
         return [
-            v if not np.isnan(v) else None
+            float(v) if not np.isnan(v) else None
             for v in performance.query(
                 f"rewarded_modality == '{modality}'"
             ).cross_modal_dprime.to_numpy()
@@ -340,11 +340,11 @@ def get_session_record(
             if session.is_task
             else None
         ),
-        n_hits=performance.n_hits if session.is_task else None,
-        n_trials=performance.n_trials if session.is_task else None,
-        n_responses=performance.n_responses if session.is_task else None,
+        n_hits=performance.n_hits.to_list() if session.is_task else None,
+        n_trials=performance.n_trials.to_list() if session.is_task else None,
+        n_responses=performance.n_responses.to_list() if session.is_task else None,
         n_contingent_rewards=(
-            performance.n_contingent_rewards if session.is_task else None
+            performance.n_contingent_rewards.to_list() if session.is_task else None
         ),
         intramodal_dprime_vis=(
             performance.vis_intra_dprime.mean() if session.is_task else None

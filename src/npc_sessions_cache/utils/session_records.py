@@ -51,7 +51,7 @@ class Record:
     session_id: str | npc_session.SessionRecord
     date: str | npc_session.DateRecord
     time: str | npc_session.TimeRecord
-    subject: str | npc_session.SubjectRecord
+    subject: int | npc_session.SubjectRecord
     subject_age_days: int
     subject_sex: str
     subject_genotype: str

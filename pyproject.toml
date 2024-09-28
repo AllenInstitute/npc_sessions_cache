@@ -24,6 +24,7 @@ dependencies = [
     "aind-session>=0.2.1",
     "pyarrow>=14.0",
     "polars>=1.7.1",
+    "eval-type-backport>=0.2.0",
 ]
 requires-python = ">=3.9"
 readme = "README.md"

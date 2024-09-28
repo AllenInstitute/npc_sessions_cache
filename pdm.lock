@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = []
 lock_version = "4.5.0"
-content_hash = "sha256:bf34d4140866fa6fe78d76af4a2d09e2462cb4a192dae34b226155798a94986c"
+content_hash = "sha256:ceea8696a795328ede4f18695a20f8d4e39c18f43769344a68a9f5eb82585819"
 
 [[metadata.targets]]
 requires_python = ">=3.9"
@@ -1291,6 +1291,16 @@ dependencies = [
 ]
 files = [
     {file = "etelemetry-0.3.1-py3-none-any.whl", hash = "sha256:a64f09bcd55cbfa5684e4d9fb6d1d6a018ab99d2ea28e638435c4c26e6814a6b"},
+]
+
+[[package]]
+name = "eval-type-backport"
+version = "0.2.0"
+requires_python = ">=3.8"
+summary = "Like `typing._eval_type`, but lets older Python versions use newer typing features."
+files = [
+    {file = "eval_type_backport-0.2.0-py3-none-any.whl", hash = "sha256:ac2f73d30d40c5a30a80b8739a789d6bb5e49fdffa66d7912667e2015d9c9933"},
+    {file = "eval_type_backport-0.2.0.tar.gz", hash = "sha256:68796cfbc7371ebf923f03bdf7bef415f3ec098aeced24e054b253a0e78f7b37"},
 ]
 
 [[package]]

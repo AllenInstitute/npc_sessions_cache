@@ -148,7 +148,34 @@ def get_good_units_df() -> pl.DataFrame:
     logger.info(f"Fetched {len(good_units)} good units")
     return good_units
 
+from typing import TypeVar
 
+T = TypeVar("T", pl.DataFrame, pl.LazyFrame)
+def filter_prod_sessions(
+    df: T,
+    cross_modal_dprime_threshold: float = 1.0,
+    late_autorewards: bool | None = None,
+) -> T:
+    """
+    Filter the dataframe to only include sessions that are pass dprime threshold
+    specified in at least 3 blocks. 
+    
+    usage:
+    electrodes = get_component_df("electrodes").pipe(filter_prod_sessions, cross_modal_dprime_threshold=1.0)    
+    """
+    prod_trials = get_prod_trials(cross_modal_dprime_threshold, late_autorewards)
+    if isinstance(df, pl.LazyFrame):
+        prod_trials = prod_trials.lazy()
+    return (
+        df
+        .join(
+            other=prod_trials,
+            on="session_id",
+            how="semi", # only keep rows in left table that have match in right table (ie prod sessions)
+        )
+    )
+
+@functools.cache
 def get_prod_trials(
     cross_modal_dprime_threshold: float = 1.0, late_autorewards: bool | None = None
 ) -> pl.DataFrame:
@@ -169,8 +196,14 @@ def get_prod_trials(
             other=(
                 get_component_df("session").filter(
                     pl.col("keywords").list.contains("production"),
+                    ~pl.col("keywords").list.contains("issues"),
+                    pl.col("keywords").list.contains("task"),
+                    pl.col("keywords").list.contains("ephys"),
+                    pl.col("keywords").list.contains("ccf"),
                     ~pl.col("keywords").list.contains("opto_perturbation"),
+                    ~pl.col("keywords").list.contains("opto_control"),
                     ~pl.col("keywords").list.contains("injection_perturbation"),
+                    ~pl.col("keywords").list.contains("injection_control"),
                     ~pl.col("keywords").list.contains("hab"),
                     ~pl.col("keywords").list.contains("training"),
                     ~pl.col("keywords").list.contains("context_naive"),

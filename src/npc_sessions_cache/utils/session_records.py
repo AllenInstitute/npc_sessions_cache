@@ -200,6 +200,12 @@ class RecordStore(collections.abc.MutableMapping):
                 f"Record for {key} does not exist on disk: added to 'missing' list"
             )
             raise KeyError(f"{key} not in RecordStore")
+        except TypeError:
+            logger.debug(
+                f"Record for {key} does not match current model: deleting"
+            )
+            del self[key]
+            raise KeyError(f"{key} not in RecordStore")
         else:
             self._cache[key] = record
             logger.debug(f"Added {key} to cache")

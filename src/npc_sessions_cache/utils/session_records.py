@@ -24,10 +24,9 @@ import dataclasses
 import json
 import logging
 import pathlib
-from collections.abc import Iterator, Mapping
 import traceback
+from collections.abc import Iterator, Mapping
 
-import npc_lims
 import npc_session
 import npc_sessions
 import numpy as np
@@ -37,9 +36,12 @@ from typing_extensions import Self
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_SESSION_METADATA_PATH = upath.UPath('s3://aind-scratch-data/dynamic-routing/session_metadata')
+DEFAULT_SESSION_METADATA_PATH = upath.UPath(
+    "s3://aind-scratch-data/dynamic-routing/session_metadata"
+)
 
-@dataclasses.dataclass#(frozen=True, unsafe_hash=True)
+
+@dataclasses.dataclass  # (frozen=True, unsafe_hash=True)
 class Record:
     """A row in the sessions table"""
 
@@ -69,12 +71,14 @@ class Record:
     epochs: list[str]
 
     is_ephys: bool
+    is_deep_insertions: bool
     is_sync: bool
     is_video: bool
     is_templeton: bool
     is_annotated: bool
     is_hab: bool
     is_task: bool
+    is_late_autorewards: bool
     is_spontaneous: bool
     is_spontaneous_rewards: bool
     is_rf_mapping: bool
@@ -89,7 +93,7 @@ class Record:
     is_production: bool
 
     is_naive: bool
-    is_context_naive: bool # better would be `days_of_context_training`
+    is_context_naive: bool  # better would be `days_of_context_training`
 
     # currently not possible ------------------------------------------- #
     # is_injection_perturbation_control: bool #! injection metadata not in cloud, Vayle needs to update
@@ -103,12 +107,16 @@ class Record:
     areas_hit: list[str] | None = None
 
     # behavior stuff --------------------------------------------------- #
-    n_passing_blocks: int | None = None
     task_duration: float | None = None
+    n_passing_blocks: int | None = None
     intramodal_dprime_vis: float | None = None
     intramodal_dprime_aud: float | None = None
     intermodal_dprime_vis_blocks: list[float | None] | None = None
     intermodal_dprime_aud_blocks: list[float | None] | None = None
+    n_hits: list[float | None] | None = None
+    n_contingent_rewards: list[float | None] | None = None
+    n_responses: list[float | None] | None = None
+    n_trials: list[float | None] | None = None
 
     def to_json(self) -> str:
         return json.dumps(
@@ -123,11 +131,13 @@ class Record:
         assert isinstance(json_content, Mapping)
         return cls(**json_content)
 
+
 class RecordStore(collections.abc.MutableMapping):
 
     def __init__(
-        self, 
-        path: str | pathlib.Path | upath.UPath = DEFAULT_SESSION_METADATA_PATH / 'records',
+        self,
+        path: str | pathlib.Path | upath.UPath = DEFAULT_SESSION_METADATA_PATH
+        / "records",
         create: bool = True,
     ) -> None:
         self.path = upath.UPath(str(path))
@@ -135,10 +145,14 @@ class RecordStore(collections.abc.MutableMapping):
         if create:
             self.path.mkdir(parents=True, exist_ok=True)
         elif not self.path.exists():
-            raise FileNotFoundError(f"Path does not exist or is not accessible: {self.path}")
+            raise FileNotFoundError(
+                f"Path does not exist or is not accessible: {self.path}"
+            )
 
         if not self.path.protocol and not self.path.is_dir():
-            raise ValueError(f"Expected record store path to be a directory: {self.path}")
+            raise ValueError(
+                f"Expected record store path to be a directory: {self.path}"
+            )
 
         # setup internal cache for Record objects
         self._cache: dict[npc_session.SessionRecord, Record] = {}
@@ -174,13 +188,17 @@ class RecordStore(collections.abc.MutableMapping):
             logger.debug(f"Record for {key} fetched from cache")
             return self._cache[key]
         if key in self._missing:
-            logger.debug(f"{key} in 'missing' list: previously established that record does not exist on disk")
+            logger.debug(
+                f"{key} in 'missing' list: previously established that record does not exist on disk"
+            )
             raise KeyError(f"{key} not in RecordStore")
         try:
             record = self.read_record(key)
         except FileNotFoundError:
             self._missing.add(key)
-            logger.debug(f"Record for {key} does not exist on disk: added to 'missing' list")
+            logger.debug(
+                f"Record for {key} does not exist on disk: added to 'missing' list"
+            )
             raise KeyError(f"{key} not in RecordStore")
         else:
             self._cache[key] = record
@@ -221,8 +239,12 @@ class RecordStore(collections.abc.MutableMapping):
     def from_pandas(self, df: pd.DataFrame) -> None:
         for record in df.itertuples(index=False):
             self[record.session_id] = Record(**record._asdict())
-            
-def get_session_record(session_id: str | npc_session.SessionRecord, session: npc_sessions.DynamicRoutingSession | None = None) -> Record:
+
+
+def get_session_record(
+    session_id: str | npc_session.SessionRecord,
+    session: npc_sessions.DynamicRoutingSession | None = None,
+) -> Record:
     if session is None:
         session = npc_sessions.Session(session_id)
     assert session is not None
@@ -231,15 +253,22 @@ def get_session_record(session_id: str | npc_session.SessionRecord, session: npc
         trials = session.trials[:]
         performance = session.performance[:]
     epochs_df = session.epochs[:]
+
     def is_in_epochs(name):
-        return any(name.strip('_').lower() == epoch.lower() for epoch in epochs_df.stim_name.to_list())
+        return any(
+            name.strip("_").lower() == epoch.lower()
+            for epoch in epochs_df.stim_name.to_list()
+        )
+
     if session.is_annotated:
         units = session.units[:]
 
     def get_intermodal_dprime(modality: str) -> list[float | None]:
         return [
             v if not np.isnan(v) else None
-            for v in performance.query(f"rewarded_modality == '{modality}'").cross_modal_dprime.to_numpy()
+            for v in performance.query(
+                f"rewarded_modality == '{modality}'"
+            ).cross_modal_dprime.to_numpy()
         ]
 
     return Record(
@@ -248,10 +277,14 @@ def get_session_record(session_id: str | npc_session.SessionRecord, session: npc
         date=session.id.date,
         time=npc_session.TimeRecord(session.session_start_time.time()),
         subject=session.id.subject,
-        subject_age_days=int(session.subject.age.strip('PD')),
+        subject_age_days=int(session.subject.age.strip("PD")),
         subject_sex=session.subject.sex,
         subject_genotype=session.subject.genotype,
-        implant=session.probe_insertion_info.get('shield', {}).get('name', None) if session.probe_insertion_info else None,
+        implant=(
+            session.probe_insertion_info.get("shield", {}).get("name", None)
+            if session.probe_insertion_info
+            else None
+        ),
         rig=session.rig,
         experimenters=session.experimenter,
         notes=session.notes,
@@ -263,48 +296,85 @@ def get_session_record(session_id: str | npc_session.SessionRecord, session: npc
         ephys_day=session.info.experiment_day if session.is_ephys else None,
         behavior_day=session.info.behavior_day if session.is_task else None,
         is_ephys=session.is_ephys,
+        is_deep_insertions=session.is_surface_channels,
         is_sync=session.is_sync,
         is_video=session.is_video,
         is_templeton=session.is_templeton,
         is_annotated=session.is_annotated,
         is_hab=session.is_hab,
         is_task=session.is_task,
-        is_spontaneous=is_in_epochs('Spontaneous'),
-        is_spontaneous_rewards=is_in_epochs('SpontaneousRewards'),
-        is_rf_mapping=is_in_epochs('RFMapping'),
+        is_late_autorewards=session.is_task and session.is_late_autorewards,
+        is_spontaneous=is_in_epochs("Spontaneous"),
+        is_spontaneous_rewards=is_in_epochs("SpontaneousRewards"),
+        is_rf_mapping=is_in_epochs("RFMapping"),
         is_optotagging="optotagging" in session.keywords,
         is_optotagging_control="optotagging_control" in session.keywords,
         is_opto_perturbation=(is_opto_task := "opto_perturbation" in session.keywords),
         is_opto_perturbation_control="opto_perturbation_control" in session.keywords,
-        is_injection_perturbation=session.info.session_kwargs.get('is_injection_perturbation', False),
+        is_injection_perturbation=session.info.session_kwargs.get(
+            "is_injection_perturbation", False
+        ),
         # is_injection_perturbation_control=session.info.session_kwargs.get('is_injection_perturbation_control', False),
         is_timing_issues="timing_issues" in epochs_df.tags.explode().unique(),
         is_invalid_times="invalid_times" in epochs_df.tags.explode().unique(),
-        is_production=session.info.session_kwargs.get('is_production', True),
-        is_naive=session.info.session_kwargs.get('is_naive', False),
-        is_context_naive=session.info.session_kwargs.get('is_context_naive', False) or session.is_templeton,
+        is_production=session.info.session_kwargs.get("is_production", True),
+        is_naive=session.info.session_kwargs.get("is_naive", False),
+        is_context_naive=session.info.session_kwargs.get("is_context_naive", False)
+        or session.is_templeton,
         probe_letters_available="".join(session.probe_letters_to_use),
         perturbation_areas=sorted(trials.opto_label.unique()) if is_opto_task else None,
-        areas_hit=sorted(units.structure.unique()) if session.is_annotated else None, # add injection areas
-        n_passing_blocks=len(performance.query(f"cross_modal_dprime >= {1.5 if session.is_training else 1.0}")) if session.is_task else None,
-        task_duration=trials.stop_time.max() - trials.start_time.min() if session.is_task else None,
-        intramodal_dprime_vis=performance.vis_intra_dprime.mean() if session.is_task else None,
-        intramodal_dprime_aud=performance.aud_intra_dprime.mean() if session.is_task else None,
-        intermodal_dprime_vis_blocks=get_intermodal_dprime('vis') if session.is_task else None,
-        intermodal_dprime_aud_blocks=get_intermodal_dprime('aud') if session.is_task else None,
+        areas_hit=(
+            sorted(units.structure.unique()) if session.is_annotated else None
+        ),  # add injection areas
+        task_duration=(
+            trials.stop_time.max() - trials.start_time.min()
+            if session.is_task
+            else None
+        ),
+        n_passing_blocks=(
+            len(
+                performance.query(
+                    f"cross_modal_dprime >= {1.5 if session.is_training else 1.0}"
+                )
+            )
+            if session.is_task
+            else None
+        ),
+        n_hits=performance.n_hits if session.is_task else None,
+        n_trials=performance.n_trials if session.is_task else None,
+        n_responses=performance.n_responses if session.is_task else None,
+        n_contingent_rewards=(
+            performance.n_contingent_rewards if session.is_task else None
+        ),
+        intramodal_dprime_vis=(
+            performance.vis_intra_dprime.mean() if session.is_task else None
+        ),
+        intramodal_dprime_aud=(
+            performance.aud_intra_dprime.mean() if session.is_task else None
+        ),
+        intermodal_dprime_vis_blocks=(
+            get_intermodal_dprime("vis") if session.is_task else None
+        ),
+        intermodal_dprime_aud_blocks=(
+            get_intermodal_dprime("aud") if session.is_task else None
+        ),
     )
+
 
 def write_session_record(
     session_id: str | npc_session.SessionRecord,
-    store_path: str | pathlib.Path | upath.UPath = DEFAULT_SESSION_METADATA_PATH / 'records',
+    store_path: str | pathlib.Path | upath.UPath = DEFAULT_SESSION_METADATA_PATH
+    / "records",
     skip_existing: bool = True,
     skip_previously_failed: bool = True,
     session: npc_sessions.Session | None = None,
 ) -> None:
     store = RecordStore(store_path)
-    error_path = store.path / 'errors'
+    error_path = store.path / "errors"
     error_path.mkdir(parents=True, exist_ok=True)
-    store._missing.update({store._normalize_key(p.stem) for p in error_path.glob('*.txt')})
+    store._missing.update(
+        {store._normalize_key(p.stem) for p in error_path.glob("*.txt")}
+    )
     key = store._normalize_key(session_id)
     print(key)
     if skip_existing and key in store:
@@ -315,7 +385,9 @@ def write_session_record(
         logger.info(f"Skipping {key} - previously failed to get record")
         return
     if key in store:
-        logger.info(f"Clearing exsiting record for {key} before fetching new record (in case it errors)")
+        logger.info(
+            f"Clearing exsiting record for {key} before fetching new record (in case it errors)"
+        )
         del store[key]
     try:
         store[key] = get_session_record(session_id, session=session)
@@ -325,9 +397,12 @@ def write_session_record(
         error.unlink(missing_ok=True)
         logger.info(f"Removed {error.as_posix()} after successful record write")
 
+
 def write_session_table_from_records(
-    store_path: str | pathlib.Path | upath.UPath = DEFAULT_SESSION_METADATA_PATH / 'records',
-    table_path: str | pathlib.Path | upath.UPath = DEFAULT_SESSION_METADATA_PATH / 'sessions.parquet',
+    store_path: str | pathlib.Path | upath.UPath = DEFAULT_SESSION_METADATA_PATH
+    / "records",
+    table_path: str | pathlib.Path | upath.UPath = DEFAULT_SESSION_METADATA_PATH
+    / "sessions.parquet",
     update_existing: bool = False,
 ) -> None:
     """
@@ -350,11 +425,14 @@ def write_session_table_from_records(
     if not table_path.exists():
         raise FileNotFoundError(f"Failed to write session table to {table_path}")
 
+
 def get_session_table(
-    table_path: str | pathlib.Path | upath.UPath = DEFAULT_SESSION_METADATA_PATH / 'sessions.parquet',
+    table_path: str | pathlib.Path | upath.UPath = DEFAULT_SESSION_METADATA_PATH
+    / "sessions.parquet",
 ) -> pd.DataFrame:
     table_path = upath.UPath(table_path)
     return getattr(pd, f"read_{table_path.suffix.strip('.')}")(table_path)
+
 
 if __name__ == "__main__":
     import doctest

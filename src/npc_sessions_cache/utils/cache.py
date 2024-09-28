@@ -169,13 +169,19 @@ def write_nwb_component_to_cache(
                 f"{session_id} {component_name} is empty - but we're writing it to cache so we don't have to check again"
             )
         df = add_session_metadata(df, session_id)
-        _write_df_to_cache(
-            session_id=session_id,
-            component_name=component_name,
-            df=df,
-            version=version,
-            skip_existing=skip_existing,
-        )
+        try:
+            _write_df_to_cache(
+                session_id=session_id,
+                component_name=component_name,
+                df=df,
+                version=version,
+                skip_existing=skip_existing,
+            )
+        except ValueError as e:
+            if df.empty:
+                logger.warning(f"{session_id} {component_name} is empty - skipping write to cache")
+            else:
+                raise e
 
 
 def write_and_upload_session_nwb(

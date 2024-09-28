@@ -324,10 +324,9 @@ def get_session_record(
         # is_injection_perturbation_control=session.info.session_kwargs.get('is_injection_perturbation_control', False),
         is_timing_issues="timing_issues" in epochs_df.tags.explode().unique(),
         is_invalid_times="invalid_times" in epochs_df.tags.explode().unique(),
-        is_production=session.info.session_kwargs.get("is_production", True),
+        is_production=session.is_production,
         is_naive=session.info.session_kwargs.get("is_naive", False),
-        is_context_naive=session.info.session_kwargs.get("is_context_naive", False)
-        or session.is_templeton,
+        is_context_naive=session.is_context_naive or session.is_templeton,
         probe_letters_available="".join(session.probe_letters_to_use),
         perturbation_areas=sorted(trials.opto_label.unique()) if is_opto_task else None,
         areas_hit=(

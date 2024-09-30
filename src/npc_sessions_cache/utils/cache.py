@@ -7,11 +7,14 @@
 from __future__ import annotations
 
 import logging
+import random
 import tempfile
+import time
 import typing
 from collections.abc import Mapping
 
 import boto3
+import botocore.exceptions
 import ndx_events
 import npc_io
 import npc_lims
@@ -417,7 +420,20 @@ def _write_spike_times_to_zarr_cache(
         "spike_times", consolidated=True, version=version or npc_sessions.get_package_version()
     )
     z = zarr.open(zarr_path, mode="a")
-    z.create_group(session_id, overwrite=True)
+    for delay_sec in (0, 10 * random.sample(range(10), 1), 60 * random.sample(range(10), 1)):
+        time.sleep(delay_sec)
+        try:
+            z.create_group(session_id, overwrite=True)
+        except OSError as exc:
+            c = exc.__context__ or exc.__cause__
+            if c and c is botocore.exceptions.ClientError and "SlowDown" in c.__str__():
+                logger.warning(f"Rate limited by AWS S3 while writing spike times to zarr cache - retrying in {delay_sec} seconds")
+                # AWS S3 is rate limiting us, so try again later
+                continue
+            else:
+                raise exc
+        else:
+            break
     for _, row in units.iterrows():
         z[session_id][row["unit_id"]] = row["spike_times"]
 

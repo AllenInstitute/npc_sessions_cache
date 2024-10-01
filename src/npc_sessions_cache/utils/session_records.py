@@ -47,8 +47,10 @@ class Record:
     """A row in the sessions table"""
 
     # required - should be available for all sessions ------------------ #
-    project: str
     session_id: str | npc_session.SessionRecord
+    is_production: bool
+    project: str
+    n_passing_blocks: int | None = None
     date: str | npc_session.DateRecord
     time: str | npc_session.TimeRecord
     subject: int | npc_session.SubjectRecord
@@ -86,18 +88,18 @@ class Record:
     is_optotagging: bool
     is_optotagging_control: bool
     is_opto_perturbation: bool
-    is_opto_perturbation_control: bool
+    is_opto_control: bool = False
     is_injection_perturbation: bool
-
+    is_injection_control: bool = False
+    
     is_timing_issues: bool
     is_invalid_times: bool
-    is_production: bool
 
     is_naive: bool
     is_context_naive: bool  # better would be `days_of_context_training`
 
     # currently not possible ------------------------------------------- #
-    # is_injection_perturbation_control: bool #! injection metadata not in cloud, Vayle needs to update
+    # is_injection_control: bool #! injection metadata not in cloud, Vayle needs to update
     # is_duragel: bool | None = None
     # virus_name: str | None = None
     # virus_area: str | None = None
@@ -109,7 +111,6 @@ class Record:
 
     # behavior stuff --------------------------------------------------- #
     task_duration: float | None = None
-    n_passing_blocks: int | None = None
     mean_intramodal_dprime_vis: float | None = None
     mean_intramodal_dprime_aud: float | None = None
     intermodal_dprime_vis_blocks: list[float | None] | None = None
@@ -317,16 +318,14 @@ def get_session_record(
         is_optotagging="optotagging" in session.keywords,
         is_optotagging_control="optotagging_control" in session.keywords,
         is_opto_perturbation=(is_opto_task := "opto_perturbation" in session.keywords),
-        is_opto_perturbation_control="opto_perturbation_control" in session.keywords,
-        is_injection_perturbation=session.info.session_kwargs.get(
-            "is_injection_perturbation", False
-        ),
-        # is_injection_perturbation_control=session.info.session_kwargs.get('is_injection_perturbation_control', False),
+        is_opto_control="opto_control" in session.keywords,
+        is_injection_perturbation="injection_perturbation" in session.keywords,
+        is_injection_control="injection_control" in session.keywords,
         is_timing_issues="timing_issues" in epochs_df.tags.explode().unique(),
         is_invalid_times="invalid_times" in epochs_df.tags.explode().unique(),
         is_production=session.is_production,
-        is_naive=session.info.session_kwargs.get("is_naive", False),
-        is_context_naive=session.is_context_naive or session.is_templeton,
+        is_naive="is_naive" in session.keywords,
+        is_context_naive=session.is_context_naive,
         probe_letters_available="".join(session.probe_letters_to_use),
         perturbation_areas=sorted(trials.opto_label.unique()) if is_opto_task else None,
         areas_hit=(

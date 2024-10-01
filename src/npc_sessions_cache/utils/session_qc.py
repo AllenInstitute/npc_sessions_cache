@@ -232,6 +232,8 @@ def get_qc_functions(module_name: str | None = None) -> dict[tuple[str, str], Fu
         for name in dir(module):
             if not name.startswith("plot_"):
                 continue
+            if "utils" in name.split("_"):
+                continue
             callable_obj = getattr(module, name)
             if not inspect.isfunction(callable_obj):
                 continue

@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     pass
 
 
-def plot_bad_lick_times(
+def _plot_bad_lick_times(
     session: npc_sessions.DynamicRoutingSession,
 ) -> tuple[matplotlib.figure.Figure, ...]:
     """A loop making eventplots vsyncs for trials with:
@@ -42,11 +42,11 @@ def plot_bad_lick_times(
         *trials_with_lick_outside_response_window,
         *trials_with_lick_inside_response_window_but_not_recorded,
     ):
-        figs.append(plot_trial_lick_timing(session, idx))
+        figs.append(_plot_trial_lick_timing(session, idx))
     return tuple(figs)
 
 
-def plot_assorted_lick_times(
+def _plot_assorted_lick_times(
     session: npc_sessions.DynamicRoutingSession,
 ) -> tuple[matplotlib.figure.Figure, ...]:
     sync_time = session._trials.response_time
@@ -73,7 +73,7 @@ def plot_assorted_lick_times(
     return tuple(figs)
 
 
-def plot_trial_lick_timing(
+def _plot_trial_lick_timing(
     session: npc_sessions.DynamicRoutingSession, trial_idx: int
 ) -> matplotlib.figure.Figure:
     if not session.is_sync or session._trials._sync is None:
@@ -175,7 +175,7 @@ def plot_trial_lick_timing(
     return fig
 
 
-def plot_lick_times_on_sync_and_script(
+def _plot_lick_times_on_sync_and_script(
     session: npc_sessions.DynamicRoutingSession,
 ) -> tuple[matplotlib.figure.Figure, matplotlib.figure.Figure]:
     """
@@ -226,7 +226,7 @@ def plot_diode_flip_intervals(
     return fig
 
 
-def plot_vsyncs_and_diode_flips_at_ends_of_each_stim(
+def _plot_vsyncs_and_diode_flips_at_ends_of_each_stim(
     session: npc_sessions.DynamicRoutingSession,
 ) -> matplotlib.figure.Figure:
     rich.print("[bold] Fraction long frames [/bold]")
@@ -273,28 +273,46 @@ def plot_vsyncs_and_diode_flips_at_ends_of_each_stim(
     return fig
 
 
-def plot_histogram_of_vsync_intervals(session) -> matplotlib.figure.Figure:
+def _plot_histogram_of_frame_intervals(session) -> matplotlib.figure.Figure:
     stim_frame_times = {
         k: v
         for k, v in session.stim_frame_times.items()
         if not isinstance(v, Exception)
     }
 
-    fig_hist, axes_hist = plt.subplots(1, len(stim_frame_times))
-    fig_hist.set_size_inches(12, 6)
+    fig_hist, axes_hist = plt.subplots(2, len(stim_frame_times))
+    fig_hist.set_size_inches(12, 6 * len(stim_frame_times))
 
     for ax, (stim_name, stim_times) in zip(axes_hist, stim_frame_times.items()):
-        ax.hist(np.diff(stim_times), bins=np.arange(0, 0.1, 0.001))
+        ax.hist(np.diff(stim_times) * 1000, bins=np.arange(0, 0.1, 0.001))
         ax.set_yscale("log")
         ax.axvline(1 / 60, c="k", ls="dotted")
         ax.set_title(stim_name.split("_")[0])
-        ax.set_xlabel("time (s)")
+        ax.set_xlabel("vsync interval (ms)")
         ax.set_ylabel("frame interval count")
     plt.tight_layout()
     return fig_hist
 
+def plot_vsync_intervals(session: npc_sessions.DynamicRoutingSession) -> matplotlib.figure.Figure:
+    for vsync_block in session.sync_data.vsync_times_in_blocks:
+        if len(vsync_block) == len(next(v for k,v in session.stim_frame_times.items() if session.task_stim_name in k)):
+            break
+    else:
+        raise ValueError(f"No block with matching stim_frame_times for {session.id} containing {session.task_stim_name}: {session.stim_frame_times.values()}")
 
-def plot_reward_times(session) -> matplotlib.figure.Figure:
+    fig, ax = plt.figure(figsize=(4,4)), plt.gca()
+    fig.set_size_inches(4,4)
+    xlim = 1000 * 2/60
+    ax.hist(np.diff(vsync_block) * 1000, bins=np.arange(0, xlim, xlim / 200))
+    n_outliers = len(np.diff(vsync_block) > xlim)
+    ax.set_yscale("log")
+    ax.axvline(1 / 60, c="k", ls="dotted")
+    ax.set_title(f"vsync intervals around expected\n({100 * n_outliers/len(vsync_block)}% ({n_outliers}) intervals > {xlim})\n{session.task_stim_name}")
+    ax.set_xlabel("vsync interval (ms)")
+    ax.set_ylabel("count")
+    return fig
+
+def _plot_reward_times(session) -> matplotlib.figure.Figure:
     fig, ax = plt.subplots()
     ax.hist(session.trials[:].reward_time - session.trials[:].response_time)
     ax.xaxis.label.set_text("contingent_reward_time - response_time (s)")

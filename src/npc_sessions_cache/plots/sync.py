@@ -72,6 +72,7 @@ def plot_barcode_intervals(
             "barcode_times_raw": raw,
             "barcode_times_corrected": corrected,
             "max_deviation_from_median_interval": max_deviation,
+            "max_deviation_from_30s_interval": np.max(np.abs(intervals - 30)),
         }
 
     fig, ax = plt.subplots(1, 3)
@@ -88,7 +89,7 @@ def plot_barcode_intervals(
     )
     rich.print(sync_max_deviation_string)
 
-    ax[0].plot(sync_intervals)
+    ax[0].plot(sync_intervals, "k")
     legend = []
     for device_name, device_data in device_barcode_dict.items():
         ax[1].plot(np.diff(device_data["barcode_times_raw"]))
@@ -111,4 +112,4 @@ def plot_barcode_intervals(
     ax[2].set_title("Probe Barcode Intervals Corrected")
 
     plt.tight_layout()
-    return fig
+    return fig, {k:v for k,v in device_barcode_dict.items() if "barcode_times" not in k}

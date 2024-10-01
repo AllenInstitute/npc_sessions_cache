@@ -13,10 +13,10 @@ if TYPE_CHECKING:
 import npc_sessions_cache.plots.plot_utils as plot_utils
 
 
-def plot_barcode_times(
+def _plot_barcode_times(
     session: npc_sessions.DynamicRoutingSession,
 ) -> matplotlib.figure.Figure:
-    timing_info = npc_ephys.get_ephys_timing_on_pxi(session.ephys_recording_dirs)
+    timing_info = session.ephys_timing_data # skips unused probes
     fig = plt.figure()
     for info in timing_info:
         (
@@ -40,10 +40,6 @@ def plot_barcode_intervals(
     Plot barcode intervals for sync and for each probe after sample rate
     correction
     """
-    full_exp_recording_dirs = [
-        npc_ephys.get_single_oebin_path(directory).parent
-        for directory in session.ephys_record_node_dirs
-    ]
 
     barcode_rising = session.sync_data.get_rising_edges(0, "seconds")
     barcode_falling = session.sync_data.get_falling_edges(0, "seconds")
@@ -53,19 +49,10 @@ def plot_barcode_intervals(
         total_time_on_line=session.sync_data.total_seconds,
     )
 
-    timing_pxi = npc_ephys.get_ephys_timing_on_pxi(full_exp_recording_dirs)
-    timing_sync = tuple(
-        npc_ephys.get_ephys_timing_on_sync(
-            session.sync_path, session.ephys_recording_dirs
-        )
-    )
     device_barcode_dict = {}
-    for info in timing_pxi:
+    for info in session.ephys_timing_data: # skips unused probes
         if "NI-DAQmx" in info.device.name or "LFP" in info.device.name:
             continue
-
-        device_sync = [d for d in timing_sync if d.device.name == info.device.name][0]
-
         (
             ephys_barcode_times,
             ephys_barcode_ids,
@@ -77,7 +64,7 @@ def plot_barcode_intervals(
             total_time_on_line=info.device.ttl_sample_numbers[-1] / info.sampling_rate,
         )
         raw = ephys_barcode_times
-        corrected = ephys_barcode_times * (30000 / device_sync.sampling_rate)
+        corrected = ephys_barcode_times * (30000 / info.sampling_rate)
         intervals = np.diff(corrected)
         max_deviation = np.max(np.abs(intervals - np.median(intervals)))
 

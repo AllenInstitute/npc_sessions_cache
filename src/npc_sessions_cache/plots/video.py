@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 import npc_sessions_cache.plots.plot_utils as plot_utils
 
 
-def plot_video_info(
+def _plot_video_info(
     session: npc_sessions.DynamicRoutingSession,
     capture_stdout: bool = True,
 ) -> str | None:
@@ -68,9 +68,10 @@ def plot_video_info(
         output = captured_output.getvalue()
         captured_output.close()
         return output
-        
+    else:
+        return None
 
-def plot_camera_frame_grabs_simple(
+def plot_camera_frame_grabs(
     session: npc_sessions.DynamicRoutingSession,
     paths: Iterable[upath.UPath] | None = None,
     num_frames_to_grab: int = 5,
@@ -125,7 +126,7 @@ def plot_video_frames_with_licks(
     trial_idx: int | None = None,
     lick_time: float | None = None,
 ) -> matplotlib.figure.Figure:
-    NUM_LICKS = 3 if (trial_idx is None and lick_time is None) else 1
+    NUM_LICKS = 8 if (trial_idx is None and lick_time is None) else 1
     NUM_CAMERAS = 2  # 1 x face, 1 x body
 
     FRAMES_EITHER_SIDE_OF_LICK = 2
@@ -143,9 +144,11 @@ def plot_video_frames_with_licks(
         )
         if not response_times.shape:
             raise ValueError(f"{session.id} has no lick response times")
-        lick_times = sorted(
-            random.sample(tuple(response_times[~np.isnan(response_times)]), NUM_LICKS)
-        )
+        lick_times = np.percentile(
+            response_times[~np.isnan(response_times)],
+            np.arange(0, 100, 100 / NUM_LICKS),
+            method='closest_observation',
+        )  
     else:
         lick_times = [lick_time]
 

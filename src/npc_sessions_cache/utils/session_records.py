@@ -50,7 +50,6 @@ class Record:
     session_id: str | npc_session.SessionRecord
     is_production: bool
     project: str
-    n_passing_blocks: int | None = None
     date: str | npc_session.DateRecord
     time: str | npc_session.TimeRecord
     subject: int | npc_session.SubjectRecord
@@ -81,6 +80,10 @@ class Record:
     is_annotated: bool
     is_hab: bool
     is_task: bool
+    # is_timing_issues: bool # cut as it's not clear what this means
+    is_invalid_times: bool
+    is_naive: bool
+    is_context_naive: bool  # better would be `days_of_context_training`
     is_late_autorewards: bool
     is_spontaneous: bool
     is_spontaneous_rewards: bool
@@ -88,15 +91,9 @@ class Record:
     is_optotagging: bool
     is_optotagging_control: bool
     is_opto_perturbation: bool
-    is_opto_control: bool = False
     is_injection_perturbation: bool
+    is_opto_control: bool = False
     is_injection_control: bool = False
-    
-    is_timing_issues: bool
-    is_invalid_times: bool
-
-    is_naive: bool
-    is_context_naive: bool  # better would be `days_of_context_training`
 
     # currently not possible ------------------------------------------- #
     # is_injection_control: bool #! injection metadata not in cloud, Vayle needs to update
@@ -113,6 +110,7 @@ class Record:
     task_duration: float | None = None
     mean_intramodal_dprime_vis: float | None = None
     mean_intramodal_dprime_aud: float | None = None
+    n_passing_blocks: int | None = None
     intermodal_dprime_vis_blocks: list[float | None] | None = None
     intermodal_dprime_aud_blocks: list[float | None] | None = None
     n_hits: list[float | None] | None = None
@@ -321,7 +319,7 @@ def get_session_record(
         is_opto_control="opto_control" in session.keywords,
         is_injection_perturbation="injection_perturbation" in session.keywords,
         is_injection_control="injection_control" in session.keywords,
-        is_timing_issues="timing_issues" in epochs_df.tags.explode().unique(),
+        # is_timing_issues="timing_issues" in epochs_df.tags.explode().unique(),
         is_invalid_times="invalid_times" in epochs_df.tags.explode().unique(),
         is_production=session.is_production,
         is_naive="is_naive" in session.keywords,

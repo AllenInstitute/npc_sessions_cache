@@ -71,7 +71,7 @@ def _plot_video_info(
     else:
         return None
 
-def plot_camera_frame_grabs(
+def plot_camera_frames(
     session: npc_sessions.DynamicRoutingSession,
     paths: Iterable[upath.UPath] | None = None,
     num_frames_to_grab: int = 5,
@@ -84,7 +84,8 @@ def plot_camera_frame_grabs(
         paths = session.video_paths
 
     paths = tuple(paths)
-
+    if len(paths) == 3: # beh, eye, face
+        paths = (paths[0], paths[-1], paths[-2]) # beh, face, eye
     fig = plt.figure(
         figsize=[10, 3 * len(paths)], constrained_layout=True, facecolor="0.5"
     )
@@ -223,3 +224,4 @@ def plot_video_frames_with_licks(
 
     plt.tight_layout()
     return fig
+

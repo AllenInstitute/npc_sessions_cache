@@ -1,13 +1,77 @@
 import datetime
-from typing import TYPE_CHECKING, Literal
+import itertools
+from typing import TYPE_CHECKING, Iterable, Literal
 
+import matplotlib
+import matplotlib.figure
 import npc_samstim
 import npc_sync
 import numpy as np
+import numpy.typing as npt
 from matplotlib import pyplot as plt
 
 import npc_sessions
 
+def get_audio_waveforms(
+    session: npc_sessions.DynamicRoutingSession,
+    start_times_on_sync: Iterable[float],
+    duration_sec: float,
+    resampling_factor: int | float | None = None,
+) -> tuple[npc_samstim.SimpleWaveform | None, ...]:
+    """Extract sections of audio recording.
+    
+    - resulting length of samples will be original * resampling_factor, if not
+      None
+    """
+    return npc_samstim.get_waveforms_from_nidaq_recording(
+        start_times_on_sync=start_times_on_sync,
+        duration_sec=duration_sec,
+        sync=session.sync_data,
+        recording_dirs=session.ephys_recording_dirs,
+        waveform_type="audio",
+        resampling_factor=resampling_factor,
+    )
+
+def plot_microphone_response(
+    session: npc_sessions.DynamicRoutingSession,
+) -> matplotlib.figure.Figure:
+    """
+    - plot difference between audio volume and baseline
+    - take 90th percentile of voltage signals at:
+            - quiescent period start time 
+            - audio stim start time 
+        - with duration of audio stim
+        - preferred to the max, which could be a single outlier, and mean/median
+          which might not capture AM noise well
+    - only for task trials with aud stim 
+    - plot on time course of entire task to make it easier to debug
+    """
+    BIT_VOLTS = 0.0003052 # from structure.oebin
+    aud_trials = session.trials[:].query("is_aud_stim")
+    baseline_start_times = aud_trials["quiescent_start_time"].to_numpy()
+    stim_start_times = aud_trials["stim_start_time"].to_numpy()
+    waveforms = get_audio_waveforms(
+        session=session,
+        start_times_on_sync=np.concatenate([baseline_start_times, stim_start_times]),
+        duration_sec=np.nanmedian(aud_trials["stim_stop_time"].to_numpy() - stim_start_times),
+        resampling_factor=None,
+    )
+    baseline_volumes = [np.percentile(waveform.samples, 95) if waveform is not None else None for waveform in waveforms[: len(baseline_start_times)]]
+    stim_volumes = [np.percentile(waveform.samples, 95) if waveform is not None else None for waveform in waveforms[len(baseline_start_times) :]]
+    assert len(baseline_volumes) == len(baseline_start_times) and len(stim_volumes) == len(stim_start_times)
+    volume_deltas = np.array([(stim - baseline if stim is not None and baseline is not None else np.nan) for stim, baseline in zip(stim_volumes, baseline_volumes)])
+    fig, axes = plt.subplots(1,2, figsize=(6,3), sharey=True)
+    ax = axes[0]
+    ax.scatter(stim_start_times, volume_deltas * BIT_VOLTS * 1000, s=.8, c=['r' if abs(v) < 10 else 'k' for v in volume_deltas])
+    if np.all(volume_deltas > 0):
+        ax.set_ylim(0)
+    ax.set(xlabel="experiment time (s)", ylabel="stim - quiescent (mV)")
+    ax = axes[1]
+    ax.hist(volume_deltas * BIT_VOLTS * 1000, bins=10, orientation='horizontal', color='k')
+    # ax = plt.gca()
+    ax.set(xlabel="trials")
+    fig.suptitle(f"mic response for aud stim trials in task\n{session.id}")
+    return fig
 
 def get_audio_latencies(
     session: npc_sessions.DynamicRoutingSession, stim_type: Literal["task", "mapping"]

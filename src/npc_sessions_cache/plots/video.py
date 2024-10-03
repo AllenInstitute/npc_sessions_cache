@@ -122,7 +122,7 @@ def plot_camera_frames(
     return fig
 
 
-def plot_video_frames_with_licks(
+def plot_lick_triggered_frames(
     session: npc_sessions.DynamicRoutingSession,
     trial_idx: int | None = None,
     lick_time: float | None = None,

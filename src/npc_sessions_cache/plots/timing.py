@@ -293,24 +293,6 @@ def _plot_histogram_of_frame_intervals(session) -> matplotlib.figure.Figure:
     plt.tight_layout()
     return fig_hist
 
-def plot_vsync_intervals(session: npc_sessions.DynamicRoutingSession) -> matplotlib.figure.Figure:
-    for vsync_block in session.sync_data.vsync_times_in_blocks:
-        if len(vsync_block) == len(next(v for k,v in session.stim_frame_times.items() if session.task_stim_name in k)):
-            break
-    else:
-        raise ValueError(f"No block with matching stim_frame_times for {session.id} containing {session.task_stim_name}: {session.stim_frame_times.values()}")
-
-    fig, ax = plt.figure(figsize=(4,4)), plt.gca()
-    fig.set_size_inches(4,4)
-    xlim = 1000 * 2/60
-    ax.hist(np.diff(vsync_block) * 1000, bins=np.arange(0, xlim, xlim / 200))
-    n_outliers = len(np.diff(vsync_block) > xlim)
-    ax.set_yscale("log")
-    ax.axvline(1 / 60, c="k", ls="dotted")
-    ax.set_title(f"vsync intervals around expected\n({100 * n_outliers/len(vsync_block)}% ({n_outliers}) intervals > {xlim})\n{session.task_stim_name}")
-    ax.set_xlabel("vsync interval (ms)")
-    ax.set_ylabel("count")
-    return fig
 
 def _plot_reward_times(session) -> matplotlib.figure.Figure:
     fig, ax = plt.subplots()

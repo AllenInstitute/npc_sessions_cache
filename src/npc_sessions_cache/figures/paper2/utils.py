@@ -296,7 +296,7 @@ def write_unit_context_columns(units_df: pl.DataFrame | None = None) -> None:
     """Takes ~5 hours for all units"""
     import tqdm
 
-    import npc_sessions_cache.plots.spikes as spikes
+    import npc_sessions_cache.plots.ephys as ephys
 
     all_new_cols = []
     if units_df is None:
@@ -314,7 +314,7 @@ def write_unit_context_columns(units_df: pl.DataFrame | None = None) -> None:
         for stim in ("vis", "aud"):
             for target in ("target", "nontarget"):
                 for context in ("vis", "aud"):
-                    psth = spikes.makePSTH_numba(
+                    psth = ephys.makePSTH_numba(
                         spikes=unit_spike_times,
                         startTimes=trials.filter(
                             pl.col(f"is_{stim}_{target}"),

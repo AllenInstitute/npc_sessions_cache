@@ -25,6 +25,7 @@ dependencies = [
     "pyarrow>=14.0",
     "polars>=1.7.1",
     "eval-type-backport>=0.2.0",
+    "npc_samstim>=0.1.5",
 ]
 requires-python = ">=3.9"
 readme = "README.md"

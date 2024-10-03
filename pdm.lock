@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = []
 lock_version = "4.5.0"
-content_hash = "sha256:ceea8696a795328ede4f18695a20f8d4e39c18f43769344a68a9f5eb82585819"
+content_hash = "sha256:73ff122fb08912834bfa6d7600249727a79c27b491d122e4ad6b663398757841"
 
 [[metadata.targets]]
 requires_python = ">=3.9"
@@ -2930,7 +2930,7 @@ files = [
 
 [[package]]
 name = "npc-samstim"
-version = "0.1.4"
+version = "0.1.5"
 requires_python = ">=3.9"
 summary = "Tools for processing stim data from Sam's DynamicRoutingTask, compatible with data in the cloud."
 dependencies = [
@@ -2941,8 +2941,8 @@ dependencies = [
     "numba>=0.59.0",
 ]
 files = [
-    {file = "npc-samstim-0.1.4.tar.gz", hash = "sha256:74de6fe149386f0ed857e531b4e0670457f27984267b6820c1ec1f869f77ff86"},
-    {file = "npc_samstim-0.1.4-py3-none-any.whl", hash = "sha256:9c0536bf8bd07e249ca117851074d6b9c2962005044255ed8d1302a0e2ecb9b3"},
+    {file = "npc_samstim-0.1.5-py3-none-any.whl", hash = "sha256:a5a848044c82240479878b8d61ef855bafcc2ed9533572fb7c07cc0568d7a775"},
+    {file = "npc_samstim-0.1.5.tar.gz", hash = "sha256:adad93d8534b9bbf0b3acf34e3af5083c133cbefb34e21b2f95233458e25c3c8"},
 ]
 
 [[package]]
@@ -2995,23 +2995,23 @@ files = [
 
 [[package]]
 name = "npc-stim"
-version = "0.1.8"
+version = "0.1.9"
 requires_python = ">=3.9"
 summary = "Tools for accessing and processing stim data, compatible with data in the cloud."
 dependencies = [
     "npc-io>=0.1.26",
     "npc-session>=0.1.33",
-    "npc-sync>=0.1.3",
+    "npc-sync>=0.1.19",
     "scipy>=1.12.0",
 ]
 files = [
-    {file = "npc_stim-0.1.8-py3-none-any.whl", hash = "sha256:0c46fe0ff5f520ee6d54bf0f2ac31887a305202b328c7bc72cbbc4d4f72fc9d0"},
-    {file = "npc_stim-0.1.8.tar.gz", hash = "sha256:1ffc00bf616e5236e16ed806d9f479eef97f9bfa989b63894d9e757be1b9bf2c"},
+    {file = "npc_stim-0.1.9-py3-none-any.whl", hash = "sha256:64f0eb63452f600c2ac6f8cde620b10d28d6350cd192e98007e98f33cbcd09ac"},
+    {file = "npc_stim-0.1.9.tar.gz", hash = "sha256:e3cb92d4b8c06e85fba2b8ffd13ff78f2c03fe61c7fa23315e7c92f9357e48aa"},
 ]
 
 [[package]]
 name = "npc-sync"
-version = "0.1.18"
+version = "0.1.19"
 requires_python = ">=3.9"
 summary = "Repackaging of AllenSDK.SyncDataset with extra functionality, compatible with data in the cloud."
 dependencies = [
@@ -3023,8 +3023,8 @@ dependencies = [
     "typing-extensions>=4.9.0",
 ]
 files = [
-    {file = "npc_sync-0.1.18-py3-none-any.whl", hash = "sha256:435dacb2949749854c876338800e802422dfe61af82d11b627cddaa523dc9040"},
-    {file = "npc_sync-0.1.18.tar.gz", hash = "sha256:c6199b264433740644e28f5a27b3165c07871aef9189432148433cbfba6ad709"},
+    {file = "npc_sync-0.1.19-py3-none-any.whl", hash = "sha256:2dd3ad5b4dad8633946d82de897d8b7d37bfb7456ccf5ac794d834149357698d"},
+    {file = "npc_sync-0.1.19.tar.gz", hash = "sha256:e6f3dd2578504fe9959604706387627e4c07a8c21cba3dd852f8c122d3f55b8e"},
 ]
 
 [[package]]

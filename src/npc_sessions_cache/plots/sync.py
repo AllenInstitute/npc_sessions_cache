@@ -35,19 +35,11 @@ def _plot_barcode_times(
 
 def plot_barcode_intervals(
     session: npc_sessions.DynamicRoutingSession,
-) -> matplotlib.figure.Figure:
+) -> tuple[matplotlib.figure.Figure, dict]:
     """
     Plot barcode intervals for sync and for each probe after sample rate
     correction
     """
-
-    barcode_rising = session.sync_data.get_rising_edges(0, "seconds")
-    barcode_falling = session.sync_data.get_falling_edges(0, "seconds")
-    barcode_times, barcodes = npc_ephys.extract_barcodes_from_times(
-        barcode_rising,
-        barcode_falling,
-        total_time_on_line=session.sync_data.total_seconds,
-    )
 
     device_barcode_dict = {}
     for info in session.ephys_timing_data: # skips unused probes
@@ -74,7 +66,16 @@ def plot_barcode_intervals(
             "max_deviation_from_median_interval": max_deviation,
             "max_deviation_from_30s_interval": np.max(np.abs(intervals - 30)),
         }
-
+    t0 = min([min(v["barcode_times_raw"]) for v in device_barcode_dict.values()])
+    t1 = max([max(v["barcode_times_raw"]) for v in device_barcode_dict.values()])
+    barcode_rising = session.sync_data.get_rising_edges(0, "seconds")
+    barcode_falling = session.sync_data.get_falling_edges(0, "seconds")
+    barcode_times, barcodes = npc_ephys.extract_barcodes_from_times(
+        barcode_rising[(barcode_rising >= t0) & (barcode_rising <= t1)],
+        barcode_falling[(barcode_falling >= t0) & (barcode_falling <= t1)],
+        total_time_on_line=session.sync_data.total_seconds,
+    )
+    
     fig, ax = plt.subplots(1, 3)
     fig.set_size_inches((8, 4))
     sync_intervals = np.diff(barcode_times)
@@ -113,3 +114,23 @@ def plot_barcode_intervals(
 
     plt.tight_layout()
     return fig, {k:v for k,v in device_barcode_dict.items() if "barcode_times" not in k}
+
+
+def plot_vsync_intervals(session: npc_sessions.DynamicRoutingSession) -> matplotlib.figure.Figure:
+    for vsync_block in session.sync_data.vsync_times_in_blocks:
+        if len(vsync_block) == len(next(v for k,v in session.stim_frame_times.items() if session.task_stim_name in k)):
+            break
+    else:
+        raise ValueError(f"No block with matching stim_frame_times for {session.id} containing {session.task_stim_name}: {session.stim_frame_times.values()}")
+
+    fig, ax = plt.figure(figsize=(4,4)), plt.gca()
+    fig.set_size_inches(4,4)
+    xlim = 1000 * 2/60
+    ax.hist(np.diff(vsync_block) * 1000, bins=np.arange(0, xlim, xlim / 200))
+    n_outliers = len(np.diff(vsync_block) > xlim)
+    ax.set_yscale("log")
+    ax.axvline(1 / 60, c="k", ls="dotted")
+    ax.set_title(f"vsync intervals around expected 1/60s ({100 * n_outliers/len(vsync_block)}% ({n_outliers}) intervals > {xlim})\n{session.task_stim_name}\nphotodiode available = {session.is_photodiode}", fontsize=7)
+    ax.set_xlabel("interval length (ms)")
+    ax.set_ylabel("count")
+    return fig

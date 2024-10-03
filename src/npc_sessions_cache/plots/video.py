@@ -71,6 +71,67 @@ def _plot_video_info(
     else:
         return None
 
+def plot_pupil_area_with_running(
+    session: npc_sessions.DynamicRoutingSession,
+) -> matplotlib.figure.Figure:
+    real_timestamps = np.array(session._eye_tracking.timestamps)[np.isnan(session._eye_tracking.pupil_area)]
+    valid_running_times = ~np.isnan(session._running_speed.timestamps) & ~np.isnan(session._running_speed.data)
+    # for xlim in range(0, round(real_timestamps[-1]), 1000):
+    plt.figure()
+    plt.plot(session._running_speed.timestamps[valid_running_times], -2 + session._running_speed.data[valid_running_times]/np.nanmedian(session._running_speed.data), lw=.2)
+    plt.plot(session._eye_tracking.timestamps, session._eye_tracking.pupil_area/np.nanmedian(session._eye_tracking.pupil_area), lw=.2)
+    plt.gca().legend(['running speed', 'pupil area'])
+    plt.gca().set_xlabel('time (s)')
+    # plt.gca().set_aspect(100)
+    plt.gcf().set_size_inches(15, 5)
+    plt.gca().get_yaxis().set_visible(False)
+    plt.title(f"{session.id}")
+    return plt.gcf()
+
+def plot_pupil_response(
+    session: npc_sessions.DynamicRoutingSession,
+) -> matplotlib.figure.Figure:
+    median_with_shaded_std = False
+    dur = 2.5 # s
+    pupil_area = session._eye_tracking.pupil_area
+    real_timestamps = session._eye_tracking.timestamps
+
+    query = 'is_vis_nontarget & ~is_response'
+    t0 = session.trials[:].query(query)['stim_start_time'].to_numpy()
+    # t0 = session.intervals['vis_rf_mapping_trials'][:].query('is_vis_nontarget & ~is_response')['stim_start_time'].to_numpy()
+    t1 = t0 + dur
+    trial_pupil_size = [
+        pupil_area[slice(start, stop)] - np.nanmean(pupil_area[slice(baseline_0, start)])
+        if 0 <= start < stop <= len(pupil_area) else []
+        for baseline_0, start, stop in np.searchsorted(
+            real_timestamps, np.array([t0 - 0.5, t0, t1]).T
+        )
+    ]
+    if median_with_shaded_std:
+        trial_pupil_size = np.array([t for t in trial_pupil_size if t []])
+        x = np.arange(0, dur, dur/trial_pupil_size.shape[1])
+        y = np.nanmedian(trial_pupil_size, 0)
+        plt.fill_between(
+            x, y - np.nanstd(trial_pupil_size, 0), y + np.nanstd(trial_pupil_size, 0),
+            alpha=.2
+        )
+        plt.plot(x, y)
+        # plt.show()
+    else:
+        for arr in trial_pupil_size:
+            x = np.arange(0, dur, dur/len(arr))
+            y = arr
+            plt.plot(x, y, lw=.2, alpha=.5, c='k')
+        if np.any(y):
+            plt.plot(x, np.nanmedian([t for t in trial_pupil_size if t []], 0), lw=2)
+            
+    plt.gca().set_ylim(-500, 500)
+    plt.gca().set(xlabel="time from vis stim onset (s)", ylabel="pupil area - baseline (pix)")
+    plt.title(f"pupil response to stim\n{query}\n{session.id}", fontsize=8)
+    plt.axhline(y=0, c='k', lw=.5, ls='--')
+    plt.axvline(x=0, c='k', lw=.5, ls='--')
+    return plt.gcf()
+
 def plot_camera_frames(
     session: npc_sessions.DynamicRoutingSession,
     paths: Iterable[upath.UPath] | None = None,

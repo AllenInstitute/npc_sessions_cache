@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterable
+from typing import TYPE_CHECKING, Iterable, Literal
 
 import matplotlib.axes
 import matplotlib.colors
@@ -11,6 +11,7 @@ import numba
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+import upath
 
 if TYPE_CHECKING:
     import pynwb
@@ -51,7 +52,7 @@ def makePSTH_numba(
         bins[: -convkernel.size - 1],
     )
 
-def plot_unit_quality_metrics_per_probe(session: npc_sessions.DynamicRoutingSession) -> matplotlib.figure.Figure:
+def plot_unit_metrics(session: npc_sessions.DynamicRoutingSession) -> tuple[matplotlib.figure.Figure, ...]:
     units: pd.DataFrame = session.units[:].query("default_qc")
 
     metrics = [
@@ -70,7 +71,7 @@ def plot_unit_quality_metrics_per_probe(session: npc_sessions.DynamicRoutingSess
         "amplitude": "uV",
         "amplitude_cutoff": "frequency",
     }
-
+    figures = []
     for metric in metrics:
         fig, _ = plt.subplots(1, len(probes))
         probe_index = 0
@@ -83,11 +84,35 @@ def plot_unit_quality_metrics_per_probe(session: npc_sessions.DynamicRoutingSess
             probe_index += 1
 
         fig.set_size_inches([10, 6])
-    plt.tight_layout()
-    return fig
+        plt.tight_layout()
+        figures.append(fig)
+    return tuple(figures)
 
+def get_sorting_view_links(
+    session: npc_sessions.DynamicRoutingSession,
+    key: Literal['sorting_summary', 'timeseries'],
+) -> tuple[upath.UPath, ...]:
+    vis = session.sorted_data.visualization_output_json()
+    links = []
+    for v in vis.values():
+        if (link := v.get(key)):
+            components = []
+            for h in link.split('#'):
+                components.extend(h.split('?'))
+            links.append(upath.UPath(*components))
+    return tuple(links)
+    
+def plot_sorting_view_summary_links(
+    session: npc_sessions.DynamicRoutingSession,
+) -> tuple[upath.UPath, ...]:
+    return get_sorting_view_links(session, 'sorting_summary')
 
-def plot_all_unit_spike_histograms(
+def plot_sorting_view_timeseries_links(
+    session: npc_sessions.DynamicRoutingSession,
+) -> tuple[upath.UPath, ...]:
+    return get_sorting_view_links(session, 'timeseries')
+
+def plot_all_spike_histograms(
     session: npc_sessions.DynamicRoutingSession,
 ) -> tuple[matplotlib.figure.Figure, ...]:  # -> tuple:# -> tuple:
     session.units[:].query("default_qc")
@@ -330,7 +355,7 @@ def _plot_ephys_image(
     return fig
 
 
-def plot_session_ephys_noise(
+def _plot_session_ephys_noise(
     session: npc_sessions.DynamicRoutingSession,
     lfp: bool = False,
     interval: utils.Interval = None,
@@ -359,13 +384,13 @@ def plot_session_ephys_noise(
             ax.xaxis.set_visible(False)
 
     fig.suptitle(
-        f'noise on channels with {"LFP" if lfp else "AP"} data | {session.session_id}',
+        f'noise on channels with {"LFP" if lfp else "AP"} data (red: med subtracted)\n{session.session_id}',
         fontsize=10,
     )
     return fig
 
 
-def plot_session_ephys_images(
+def plot_raw_ephys_segments(
     session: npc_sessions.DynamicRoutingSession,
     lfp: bool = False,
     interval: utils.Interval = None,
@@ -376,33 +401,39 @@ def plot_session_ephys_images(
         container = session._raw_lfp
     else:
         container = session._raw_ap
+    figures = []
+    for start_time in (10, -10):
+        fig, _ = plt.subplots(1, len(container.electrical_series), sharex=True, sharey=True)
+        for idx, (label, timeseries) in enumerate(container.electrical_series.items()):
+            ax = fig.axes[idx]
+            if interval is None:
+                interval = (timeseries.timestamps[0] + start_time, timeseries.timestamps[0] + start_time + .2)  
+            _plot_ephys_image(
+                timeseries,
+                ax=ax,
+                interval=interval,
+                median_subtraction=median_subtraction,
+                **imshow_kwargs,
+            )
+            ax.set_title(label, fontsize=8)
+            if idx > 0:
+                ax.yaxis.set_visible(False)
 
-    fig, _ = plt.subplots(1, len(container.electrical_series), sharex=True, sharey=True)
-    for idx, (label, timeseries) in enumerate(container.electrical_series.items()):
-        ax = fig.axes[idx]
-        _plot_ephys_image(
-            timeseries,
-            ax=ax,
-            interval=interval,
-            median_subtraction=median_subtraction,
-            **imshow_kwargs,
+            if idx != round(len(fig.axes) / 2):
+                ax.xaxis.set_visible(False)
+        fig.suptitle(
+            f'raw {"LFP" if lfp else "AP"} data | {median_subtraction=}\n{session.session_id}',
+            fontsize=10,
         )
-        ax.set_title(label, fontsize=8)
-        if idx > 0:
-            ax.yaxis.set_visible(False)
-
-        if idx != round(len(fig.axes) / 2):
-            ax.xaxis.set_visible(False)
-    fig.suptitle(
-        f'noise on channels with {"LFP" if lfp else "AP"} data | {median_subtraction=} | {session.session_id}',
-        fontsize=10,
-    )
-    return fig
+        figures.append(fig)
+    return tuple(figures)
 
 
-def plot_raw_ap_vs_surface(
+def _plot_raw_ap_vs_surface(
     session: npc_sessions.DynamicRoutingSession | pynwb.NWBFile,
-) -> tuple[matplotlib.figure.Figure, ...]:
+) -> tuple[matplotlib.figure.Figure, ...] | None:
+    if not session.is_surface_channels:
+        return None
     time_window = 0.5
 
     figs = []
@@ -490,7 +521,11 @@ def plot_optotagging(
     session: npc_sessions.DynamicRoutingSession | pynwb.NWBFile,
     combine_locations: bool = True,
     combine_probes: bool = False
-) -> tuple[matplotlib.figure.Figure, ...]:
+) -> tuple[matplotlib.figure.Figure, ...] | None:
+    try:
+        opto_trials = session.intervals['optotagging_trials'][:]
+    except KeyError:
+        return None
     electrodes = session.electrodes[:]
     units = session.units[:]
     good_unit_filter = (
@@ -510,12 +545,11 @@ def plot_optotagging(
         .drop(columns=["channel", "group_name"])
     )
 
-    opto_trials = session.intervals['optotagging_trials'][:]
     durations = sorted(opto_trials.duration.unique())
     powers = sorted(opto_trials.power.unique())
     probes = sorted(units.electrode_group_name.unique())
     locations = sorted(opto_trials.location.unique())
-    
+
     locations_are_probes = all(loc in probes for loc in locations)
 
     figs = []
@@ -602,13 +636,13 @@ def plot_optotagging(
                         ax.set_xlabel("milliseconds")
                     for marker_position in (0, duration / bin_size):
                         ax.annotate(
-                            '', 
-                            xy=(marker_position, all_resp.shape[0]), 
+                            '',
+                            xy=(marker_position, all_resp.shape[0]),
                             xycoords='data',
-                            xytext=(marker_position, all_resp.shape[0] + 0.5), 
-                            textcoords='data', 
+                            xytext=(marker_position, all_resp.shape[0] + 0.5),
+                            textcoords='data',
                             arrowprops=dict(arrowstyle="simple", color="black", lw=0),
-                        )                    
+                        )
                     ax.set_title(f"{power = :.1f}", y=1.05)
             figs.append(fig)
             if combine_probes:

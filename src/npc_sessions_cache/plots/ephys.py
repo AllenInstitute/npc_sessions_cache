@@ -6,6 +6,7 @@ import matplotlib.axes
 import matplotlib.colors
 import matplotlib.figure
 import matplotlib.pyplot as plt
+import matplotlib.pyplot
 import npc_ephys
 import numba
 import numpy as np
@@ -650,3 +651,25 @@ def plot_optotagging(
         if combine_locations:
             break
     return tuple(figs)
+
+def plot_unit_yield(session: npc_sessions.DynamicRoutingSession) -> matplotlib.figure.Figure:
+    units = session.units[:]
+    good_unit_filter = (
+        (units['amplitude_cutoff'] < 0.1)
+        & (units['isi_violations_ratio'] < 0.5)
+        & (units['presence_ratio'] > 0.95)
+    )
+    counts = []
+    for probe in sorted(units['electrode_group_name'].unique()):
+        probe_filter = units['electrode_group_name'] == probe
+        probe_units = units.loc[probe_filter]
+        good_units = units.loc[good_unit_filter & probe_filter]
+        counts.append(dict(probe=probe.removeprefix('probe'), good=len(good_units), bad=len(probe_units) - len(good_units)))
+
+    ax = pd.DataFrame.from_records(counts).plot.bar(x='probe', ylabel='units', stacked=True, color={"bad": "orange", "good": "green"}, width=.5, )
+    ax.set_title(f"unit yield (total={len(units)})\namplitude_cutoff < 0.1 | isi_violations_ratio < 0.5 | presence_ratio > 0.95\n{session.id}", fontsize=8)
+    ax.set_aspect(1/100)
+    fig = plt.gcf()
+    fig.set_size_inches(3, 3)
+    return fig
+

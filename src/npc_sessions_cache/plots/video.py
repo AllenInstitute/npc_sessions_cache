@@ -108,7 +108,7 @@ def plot_pupil_response(
         )
     ]
     if median_with_shaded_std:
-        trial_pupil_size = np.array([t for t in trial_pupil_size if t []])
+        trial_pupil_size = np.array([t for t in trial_pupil_size if t])
         x = np.arange(0, dur, dur/trial_pupil_size.shape[1])
         y = np.nanmedian(trial_pupil_size, 0)
         plt.fill_between(
@@ -123,7 +123,7 @@ def plot_pupil_response(
             y = arr
             plt.plot(x, y, lw=.2, alpha=.5, c='k')
         if np.any(y):
-            plt.plot(x, np.nanmedian([t for t in trial_pupil_size if t []], 0), lw=2)
+            plt.plot(x, np.nanmedian([t for t in trial_pupil_size if t], 0), lw=2)
             
     plt.gca().set_ylim(-500, 500)
     plt.gca().set(xlabel="time from vis stim onset (s)", ylabel="pupil area - baseline (pix)")

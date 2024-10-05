@@ -215,7 +215,7 @@ def get_qc_module_names() -> tuple[str, ...]:
     >>> assert get_qc_module_names()
     """
     # get path to plots directory
-    plots_path = pathlib.Path(__file__).parent.parent / 'plots'
+    plots_path = pathlib.Path(__file__).parent.parent / 'qc_evaluations'
     return tuple(
         path.stem
         for path in plots_path.glob('*.py')
@@ -275,6 +275,36 @@ def write_output_from_single_function(
         return
     store.write_data(key, data)
 
+def write_instructions_for_qc_item(
+    function: Callable[npc_sessions.DynamicRoutingSession, Data],
+    function_name: str,
+    module_name: str,
+    store_path: str | pathlib.Path | upath.UPath = DEFAULT_SESSION_QC_PATH,
+    ) -> None:
+    function_name = normalize_function_name(function_name)
+    store = QCStore(module_name, function_name, root_path=store_path)
+    if (doc := inspect.getdoc(function)):
+        # write general interpretation docs for the function if they exist
+        if (path := store.path.parent / 'docs.json').exists():
+            docs = json.loads(path.read_text())
+        else:
+            docs = {}
+        docs[function_name] = doc
+        logger.debug(f"Writing docs for {module_name}.{function_name} to {path}")
+        path.write_text(json.dumps(docs, indent=4))
+    
+    module = inspect.getmodule(function)
+    if (instructions := getattr(module, 'instructions', {})):
+        # write specific instructions for the function if they exist
+        if (path := store.path.parent / 'instructions.json').exists():
+            instr = json.loads(path.read_text())
+        else:
+            instr = {}
+        instr[function_name] = instructions.get(function, "")
+        logger.debug(f"Writing instructions for {module_name}.{function_name} to {path}")
+        path.write_text(json.dumps(instr, indent=4))
+        
+    
 def write_session_qc(
     session_id: str | npc_session.SessionRecord,
     store_path: str | pathlib.Path | upath.UPath = DEFAULT_SESSION_QC_PATH,
@@ -294,6 +324,12 @@ def write_session_qc(
             skip_existing=skip_existing,
             skip_previously_failed=skip_previously_failed,
             session=session,
+        )
+        write_instructions_for_qc_item(
+            function=function,
+            function_name=normalize_function_name(function_name),
+            module_name=module_name,
+            store_path=store_path,
         )
         
 def copy_current_qc_data(

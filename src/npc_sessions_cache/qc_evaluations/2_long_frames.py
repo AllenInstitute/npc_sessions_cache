@@ -1,5 +1,6 @@
-from npc_sessions_cache.plots.timing import plot_long_vsyncs_distribution_across_trial
+from npc_sessions_cache.plots.timing import plot_long_vsync_occurrences
+
 instructions = {
-    plot_long_vsyncs_distribution_across_trial: """
+    plot_long_vsync_occurrences: """
     """,
 }

@@ -307,7 +307,7 @@ def _plot_reward_times(session) -> matplotlib.figure.Figure:
     return fig
 
 
-def plot_long_vsyncs_distribution_across_trial(
+def plot_long_vsync_occurrences(
     session: npc_sessions.DynamicRoutingSession,
 ) -> matplotlib.figure.Figure:
     all_vsyncs = np.hstack(session.sync_data.vsync_times_in_blocks)
@@ -341,6 +341,7 @@ def plot_long_vsyncs_distribution_across_trial(
             all_long_intervals.extend(long_intervals)
 
         plt.gca().set_title(condition.split("_")[1])
+        plt.gca().axvline(trial["stim_start_time"] - trial.start_time, c="k", ls="--")
         top_ax = plt.gca().secondary_xaxis("top")
         top_ax.set_xticks([trial["stim_start_time"] - trial.start_time])
         top_ax.set_xticklabels(

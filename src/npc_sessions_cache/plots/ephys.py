@@ -707,5 +707,5 @@ def plot_probe_yield(
     )
     ax.set_aspect(1 / 100)
     fig = plt.gcf()
-    fig.set_size_inches(3, 3)
+    fig.set_size_inches(5, 4)
     return fig

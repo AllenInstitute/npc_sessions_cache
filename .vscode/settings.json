@@ -1,5 +1,5 @@
 {
-    "peacock.color": "#e01e1ea8",
+    "peacock.color": "#7e488c",
     "python.linting.mypyEnabled": true,
     "python.linting.enabled": true,
     "python.linting.pylintEnabled": false,
@@ -7,11 +7,11 @@
     "python.analysis.typeCheckingMode": "off",
     "workbench.colorCustomizations": {
         "commandCenter.border": "#e7e7e799",
-        "panel.border": "#e74a4aa8",
-        "sash.hoverBorder": "#e74a4aa8",
-        "titleBar.activeBackground": "#e01e1ea8",
+        "panel.border": "#9b5cab",
+        "sash.hoverBorder": "#9b5cab",
+        "titleBar.activeBackground": "#7e488c",
         "titleBar.activeForeground": "#e7e7e7",
-        "titleBar.inactiveBackground": "#e01e1e99",
+        "titleBar.inactiveBackground": "#7e488c99",
         "titleBar.inactiveForeground": "#e7e7e799"
     }
 }

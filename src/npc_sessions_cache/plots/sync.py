@@ -63,8 +63,8 @@ def plot_barcode_intervals(
         max_deviation = np.max(np.abs(intervals - np.median(intervals)))
 
         device_barcode_dict[info.device.name] = {
-            "barcode_times_raw": list(raw),
-            "barcode_times_corrected": list(corrected),
+            "barcode_times_raw": raw,
+            "barcode_times_corrected": corrected,
             "max_deviation_from_median_interval": max_deviation,
             "max_deviation_from_30s_interval": np.max(np.abs(intervals - 30)),
         }
@@ -115,7 +115,10 @@ def plot_barcode_intervals(
     ax[2].set_title("Probe Barcode Intervals Corrected")
 
     plt.tight_layout()
-    return fig, {k:v for k,v in device_barcode_dict.items() if "barcode_times" not in k}
+    
+    for k, v in device_barcode_dict.items():
+        device_barcode_dict[k] = {k2:v2 for k2,v2 in v.items() if "barcode_times" not in k2}
+    return fig, device_barcode_dict
 
 
 def plot_vsync_intervals(session: npc_sessions.DynamicRoutingSession) -> matplotlib.figure.Figure:

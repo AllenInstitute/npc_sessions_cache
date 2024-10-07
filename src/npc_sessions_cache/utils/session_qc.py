@@ -219,7 +219,8 @@ def get_qc_module_names() -> tuple[str, ...]:
     return tuple(
         path.stem
         for path in plots_path.glob('*.py')
-        if path.stem not in ('__init__', 'utils', 'plot_utils')
+        if 'utils' not in path.stem.split('_')
+        and not path.stem.startswith('_')
     )
 
 def get_qc_functions(module_name: str | None = None) -> dict[tuple[str, str], FunctionType]:
@@ -294,6 +295,7 @@ def write_instructions_for_qc_item(
         path.write_text(json.dumps(docs, indent=4))
     
     module = inspect.getmodule(function)
+    #TODO getting module returns the original module (in plots) not the one in qc_evaluations
     if (instructions := getattr(module, 'instructions', {})):
         # write specific instructions for the function if they exist
         if (path := store.path.parent / 'instructions.json').exists():
@@ -325,12 +327,12 @@ def write_session_qc(
             skip_previously_failed=skip_previously_failed,
             session=session,
         )
-        write_instructions_for_qc_item(
-            function=function,
-            function_name=normalize_function_name(function_name),
-            module_name=module_name,
-            store_path=store_path,
-        )
+        # write_instructions_for_qc_item(
+        #     function=function,
+        #     function_name=normalize_function_name(function_name),
+        #     module_name=module_name,
+        #     store_path=store_path,
+        # )
         
 def copy_current_qc_data(
     session_id: str | npc_session.SessionRecord,

@@ -43,7 +43,7 @@ def plot_performance_by_block(
     )
     ax[0].axhline(0, color="k", linestyle="--", linewidth=0.5)
     max_dprime = max(np.abs(task_performance_by_block_df["signed_cross_modal_dprime"]))
-    ax[0].set_ylim([-2, 2] if max_dprime < 2 else [-max_dprime, max_dprime])
+    ax[0].set_ylim([-2, 2] if max_dprime < 2 else [-max_dprime - 0.2, max_dprime + 0.2])
     ax[0].set_title(
         "cross-modal dprime: "
         + str(n_passing_blocks)
@@ -70,7 +70,7 @@ def plot_performance_by_block(
             )
         )
     )
-    ax[0].set_ylim([-2, 2] if max_dprime < 2 else [-max_dprime, max_dprime])
+    ax[1].set_ylim([0, 2 if max_dprime < 2 else max_dprime + 0.2])
     ax[1].set_title("intra-modal dprime")
     ax[1].legend(["vis", "aud"])
     ax[1].set_xlabel("block index")

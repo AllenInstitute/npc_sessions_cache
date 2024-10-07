@@ -415,12 +415,13 @@ def plot_raw_ephys_segments(
             ax = fig.axes[idx]
             if interval is None:
                 if timeseries.timestamps is not None:
-                    interval = (
-                        timeseries.timestamps[0] + start_time,
-                        timeseries.timestamps[0] + start_time + 0.2,
-                    )
+                    t0 = timeseries.timestamps[0]
                 else:
-                    interval = (start_time * timeseries.rate, (start_time + 0.2) * timeseries.rate)
+                    t0 = timeseries.starting_time
+                interval = (
+                    t0 + start_time,
+                    t0 + start_time + 0.2,
+                )
             _plot_ephys_image(
                 timeseries,
                 ax=ax,

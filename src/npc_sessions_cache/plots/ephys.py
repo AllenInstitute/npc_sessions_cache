@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterable, Literal
+from typing import TYPE_CHECKING, Literal
 
 import matplotlib.axes
 import matplotlib.colors
 import matplotlib.figure
-import matplotlib.pyplot as plt
 import matplotlib.pyplot
-import npc_ephys
+import matplotlib.pyplot as plt
 import numba
 import numpy as np
 import numpy.typing as npt
@@ -42,9 +41,7 @@ def makePSTH_numba(
     for i, start in enumerate(startTimes):
         startInd = np.searchsorted(spikes, start)
         endInd = np.searchsorted(spikes, start + windowDur)
-        counts = (
-            counts + np.histogram(spikes[startInd:endInd] - start, bins)[0]
-        )
+        counts = counts + np.histogram(spikes[startInd:endInd] - start, bins)[0]
 
     counts = counts / startTimes.size
     counts = np.convolve(counts, convkernel) / (binSize * convkernel.size)
@@ -53,7 +50,10 @@ def makePSTH_numba(
         bins[: -convkernel.size - 1],
     )
 
-def plot_unit_metrics(session: npc_sessions.DynamicRoutingSession) -> tuple[matplotlib.figure.Figure, ...]:
+
+def plot_unit_metrics(
+    session: npc_sessions.DynamicRoutingSession,
+) -> tuple[matplotlib.figure.Figure, ...]:
     units: pd.DataFrame = session.units[:].query("default_qc")
 
     metrics = [
@@ -89,29 +89,33 @@ def plot_unit_metrics(session: npc_sessions.DynamicRoutingSession) -> tuple[matp
         figures.append(fig)
     return tuple(figures)
 
+
 def get_sorting_view_links(
     session: npc_sessions.DynamicRoutingSession,
-    key: Literal['sorting_summary', 'timeseries'],
+    key: Literal["sorting_summary", "timeseries"],
 ) -> tuple[upath.UPath, ...]:
     vis = session.sorted_data.visualization_output_json()
     links = []
     for v in vis.values():
-        if (link := v.get(key)):
+        if link := v.get(key):
             components = []
-            for h in link.split('#'):
-                components.extend(h.split('?'))
+            for h in link.split("#"):
+                components.extend(h.split("?"))
             links.append(upath.UPath(*components))
     return tuple(links)
-    
+
+
 def plot_sorting_view_summary_links(
     session: npc_sessions.DynamicRoutingSession,
 ) -> tuple[upath.UPath, ...]:
-    return get_sorting_view_links(session, 'sorting_summary')
+    return get_sorting_view_links(session, "sorting_summary")
+
 
 def plot_sorting_view_timeseries_links(
     session: npc_sessions.DynamicRoutingSession,
 ) -> tuple[upath.UPath, ...]:
-    return get_sorting_view_links(session, 'timeseries')
+    return get_sorting_view_links(session, "timeseries")
+
 
 def plot_all_spike_histograms(
     session: npc_sessions.DynamicRoutingSession,
@@ -404,11 +408,16 @@ def plot_raw_ephys_segments(
         container = session._raw_ap
     figures = []
     for start_time in (10, -10):
-        fig, _ = plt.subplots(1, len(container.electrical_series), sharex=True, sharey=True)
+        fig, _ = plt.subplots(
+            1, len(container.electrical_series), sharex=True, sharey=True
+        )
         for idx, (label, timeseries) in enumerate(container.electrical_series.items()):
             ax = fig.axes[idx]
             if interval is None:
-                interval = (timeseries.timestamps[0] + start_time, timeseries.timestamps[0] + start_time + .2)  
+                interval = (
+                    timeseries.timestamps[0] + start_time,
+                    timeseries.timestamps[0] + start_time + 0.2,
+                )
             _plot_ephys_image(
                 timeseries,
                 ax=ax,
@@ -503,48 +512,46 @@ def _plot_raw_ap_vs_surface(
 
     return tuple(figs)
 
+
 def get_optotagging_params(optotagging_trials: pd.DataFrame) -> dict[str, list]:
     optotagging_params = {
         c: sorted(set(optotagging_trials[c]))
         for c in optotagging_trials.columns
-        if not any(c.endswith(n) for n in ('_time', '_index'))
+        if not any(c.endswith(n) for n in ("_time", "_index"))
     }
-    if any(v for v in optotagging_params.get('location', [])):
-        del optotagging_params['bregma_x']
-        del optotagging_params['bregma_y']
+    if any(v for v in optotagging_params.get("location", [])):
+        del optotagging_params["bregma_x"]
+        del optotagging_params["bregma_y"]
     return optotagging_params
 
 
 # adapted from nwb_validation_optotagging.py
 # https://github.com/AllenInstitute/np_pipeline_qc/blob/main/src/np_pipeline_qc/legacy/nwb_validation_optotagging.py
 
+
 def plot_optotagging(
     session: npc_sessions.DynamicRoutingSession | pynwb.NWBFile,
     combine_locations: bool = True,
-    combine_probes: bool = False
+    combine_probes: bool = False,
 ) -> tuple[matplotlib.figure.Figure, ...] | None:
     try:
-        opto_trials = session.intervals['optotagging_trials'][:]
+        opto_trials = session.intervals["optotagging_trials"][:]
     except KeyError:
         return None
     electrodes = session.electrodes[:]
     units = session.units[:]
     good_unit_filter = (
-        (units['snr'] > 1)
-        & (units['isi_violations_ratio'] < 1)
-        & (units['firing_rate'] > 0.1)
+        (units["snr"] > 1)
+        & (units["isi_violations_ratio"] < 1)
+        & (units["firing_rate"] > 0.1)
     )
     units = units.loc[good_unit_filter]
-    units.drop(columns='group_name', errors='ignore', inplace=True)
-    units_electrodes = (
-        units
-        .merge(
-            electrodes[["rel_x", "rel_y", "channel", "group_name"]],
-            left_on=["electrode_group_name", "peak_channel"],
-            right_on=["group_name", "channel"],
-        )
-        .drop(columns=["channel", "group_name"])
-    )
+    units.drop(columns="group_name", errors="ignore", inplace=True)
+    units_electrodes = units.merge(
+        electrodes[["rel_x", "rel_y", "channel", "group_name"]],
+        left_on=["electrode_group_name", "peak_channel"],
+        right_on=["group_name", "channel"],
+    ).drop(columns=["channel", "group_name"])
 
     durations = sorted(opto_trials.duration.unique())
     powers = sorted(opto_trials.power.unique())
@@ -554,11 +561,15 @@ def plot_optotagging(
     locations_are_probes = all(loc in probes for loc in locations)
 
     figs = []
-    for location in (None,) if (combine_locations or locations_are_probes) else locations:
+    for location in (
+        (None,) if (combine_locations or locations_are_probes) else locations
+    ):
         for probe in probes:
 
             if not combine_probes:
-                filtered_units = units_electrodes.query(f"electrode_group_name == {probe!r}")
+                filtered_units = units_electrodes.query(
+                    f"electrode_group_name == {probe!r}"
+                )
             else:
                 filtered_units = units_electrodes
 
@@ -584,17 +595,18 @@ def plot_optotagging(
                         f"duration == {duration!r} & power == {power!r}"
                     )
                     if not combine_locations:
-                        filtered_trials = filtered_trials.query(f"location == {location if location else probe!r}")
-                    start_times = filtered_trials['start_time'].values
-
+                        filtered_trials = filtered_trials.query(
+                            f"location == {location if location else probe!r}"
+                        )
+                    start_times = filtered_trials["start_time"].values
 
                     bin_size = 0.001
-                    window_dur = 5 * duration * round(np.log10(1/duration))
+                    window_dur = 5 * duration * round(np.log10(1 / duration))
                     baseline_dur = (window_dur - duration) / 2
                     convolution_kernel = max(duration / 10, 2 * bin_size)
                     all_resp = []
-                    for iu, unit in filtered_units.sort_values('rel_y').iterrows():
-                        sts = np.array(unit['spike_times'])
+                    for iu, unit in filtered_units.sort_values("rel_y").iterrows():
+                        sts = np.array(unit["spike_times"])
                         resp = makePSTH_numba(
                             sts,
                             start_times - baseline_dur,
@@ -602,7 +614,7 @@ def plot_optotagging(
                             binSize=bin_size,
                             convolution_kernel=convolution_kernel,
                         )[0]
-                        resp = resp - np.mean(resp[:int(baseline_dur/bin_size) - 1])
+                        resp = resp - np.mean(resp[: int(baseline_dur / bin_size) - 1])
                         all_resp.append(resp)
 
                     t = (np.arange(0, window_dur, bin_size) - baseline_dur) / bin_size
@@ -611,7 +623,7 @@ def plot_optotagging(
                     max_clim_val = 50
                     norm = matplotlib.colors.TwoSlopeNorm(
                         vmin=min_clim_val,
-                        vcenter=(min_clim_val + max_clim_val)/2,
+                        vcenter=(min_clim_val + max_clim_val) / 2,
                         vmax=max_clim_val,
                     )
                     if len(powers) == 1 and len(durations) == 1:
@@ -624,24 +636,31 @@ def plot_optotagging(
                         ax = axes[il][idur]
                     fig.sca(ax)
                     _ = plt.pcolormesh(
-                        t, np.arange(all_resp.shape[0]), all_resp,
-                        cmap='viridis', norm=norm,
+                        t,
+                        np.arange(all_resp.shape[0]),
+                        all_resp,
+                        cmap="viridis",
+                        norm=norm,
                     )
                     ax.set_xmargin(0)
 
-                    ax.set_aspect(.25 * window_dur * 1000 / 300)     # 300 units in Y == 1/3 time in X (remember X is in milliseconds)
-                    ax.set_ylabel(f"units [ch{filtered_units.peak_channel.min()}-{filtered_units.peak_channel.max()}]")
+                    ax.set_aspect(
+                        0.25 * window_dur * 1000 / 300
+                    )  # 300 units in Y == 1/3 time in X (remember X is in milliseconds)
+                    ax.set_ylabel(
+                        f"units [ch{filtered_units.peak_channel.min()}-{filtered_units.peak_channel.max()}]"
+                    )
                     if il != len(powers) - 1:
                         ax.set_xticklabels([])
                     else:
                         ax.set_xlabel("milliseconds")
                     for marker_position in (0, duration / bin_size):
                         ax.annotate(
-                            '',
+                            "",
                             xy=(marker_position, all_resp.shape[0]),
-                            xycoords='data',
+                            xycoords="data",
                             xytext=(marker_position, all_resp.shape[0] + 0.5),
-                            textcoords='data',
+                            textcoords="data",
                             arrowprops=dict(arrowstyle="simple", color="black", lw=0),
                         )
                     ax.set_title(f"{power = :.1f}", y=1.05)
@@ -652,24 +671,41 @@ def plot_optotagging(
             break
     return tuple(figs)
 
-def plot_unit_yield(session: npc_sessions.DynamicRoutingSession) -> matplotlib.figure.Figure:
+
+def plot_probe_yield(
+    session: npc_sessions.DynamicRoutingSession,
+) -> matplotlib.figure.Figure:
     units = session.units[:]
     good_unit_filter = (
-        (units['amplitude_cutoff'] < 0.1)
-        & (units['isi_violations_ratio'] < 0.5)
-        & (units['presence_ratio'] > 0.95)
+        (units["amplitude_cutoff"] < 0.1)
+        & (units["isi_violations_ratio"] < 0.5)
+        & (units["presence_ratio"] > 0.95)
     )
     counts = []
-    for probe in sorted(units['electrode_group_name'].unique()):
-        probe_filter = units['electrode_group_name'] == probe
+    for probe in sorted(units["electrode_group_name"].unique()):
+        probe_filter = units["electrode_group_name"] == probe
         probe_units = units.loc[probe_filter]
         good_units = units.loc[good_unit_filter & probe_filter]
-        counts.append(dict(probe=probe.removeprefix('probe'), good=len(good_units), bad=len(probe_units) - len(good_units)))
+        counts.append(
+            dict(
+                probe=probe.removeprefix("probe"),
+                good=len(good_units),
+                bad=len(probe_units) - len(good_units),
+            )
+        )
 
-    ax = pd.DataFrame.from_records(counts).plot.bar(x='probe', ylabel='units', stacked=True, color={"bad": "orange", "good": "green"}, width=.5, )
-    ax.set_title(f"unit yield (total={len(units)})\namplitude_cutoff < 0.1 | isi_violations_ratio < 0.5 | presence_ratio > 0.95\n{session.id}", fontsize=8)
-    ax.set_aspect(1/100)
+    ax = pd.DataFrame.from_records(counts).plot.bar(
+        x="probe",
+        ylabel="units",
+        stacked=True,
+        color={"bad": "grey", "good": "green"},
+        width=0.5,
+    )
+    ax.set_title(
+        f"unit yield (total={len(units)})\namplitude_cutoff < 0.1 | isi_violations_ratio < 0.5 | presence_ratio > 0.95\n{session.id}",
+        fontsize=8,
+    )
+    ax.set_aspect(1 / 100)
     fig = plt.gcf()
     fig.set_size_inches(3, 3)
     return fig
-

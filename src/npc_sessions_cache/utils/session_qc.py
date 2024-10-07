@@ -232,7 +232,7 @@ def get_qc_functions(module_name: str | None = None) -> dict[tuple[str, str], Fu
         modules = get_qc_module_names()
     functions = {}
     for m in modules:
-        module = importlib.import_module(f"npc_sessions_cache.plots.{m}")
+        module = importlib.import_module(f"npc_sessions_cache.qc_evaluations.{m}")
         for name in dir(module):
             if not name.startswith("plot_"):
                 continue

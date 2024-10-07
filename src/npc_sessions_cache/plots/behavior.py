@@ -42,12 +42,15 @@ def plot_performance_by_block(
         label="failed",
     )
     ax[0].axhline(0, color="k", linestyle="--", linewidth=0.5)
+    max_dprime = max(np.abs(task_performance_by_block_df["signed_cross_modal_dprime"]))
+    ax[0].set_ylim([-2, 2] if max_dprime < 2 else [-max_dprime, max_dprime])
     ax[0].set_title(
         "cross-modal dprime: "
         + str(n_passing_blocks)
         + "/"
         + str(len(task_performance_by_block_df))
         + " blocks passed"
+        + f" (threshold={dprime_threshold})"
     )
     ax[0].set_ylabel("aud <- dprime -> vis")
 
@@ -57,6 +60,17 @@ def plot_performance_by_block(
     ax[1].plot(
         xvect, task_performance_by_block_df["aud_intra_dprime"], "bo-", label="aud"
     )
+    max_dprime = max(
+        np.abs(
+            np.concatenate(
+                [
+                    task_performance_by_block_df["vis_intra_dprime"],
+                    task_performance_by_block_df["aud_intra_dprime"],
+                ]
+            )
+        )
+    )
+    ax[0].set_ylim([-2, 2] if max_dprime < 2 else [-max_dprime, max_dprime])
     ax[1].set_title("intra-modal dprime")
     ax[1].legend(["vis", "aud"])
     ax[1].set_xlabel("block index")

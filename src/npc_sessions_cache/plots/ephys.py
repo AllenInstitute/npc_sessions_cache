@@ -414,10 +414,13 @@ def plot_raw_ephys_segments(
         for idx, (label, timeseries) in enumerate(container.electrical_series.items()):
             ax = fig.axes[idx]
             if interval is None:
-                interval = (
-                    timeseries.timestamps[0] + start_time,
-                    timeseries.timestamps[0] + start_time + 0.2,
-                )
+                if timeseries.timestamps is not None:
+                    interval = (
+                        timeseries.timestamps[0] + start_time,
+                        timeseries.timestamps[0] + start_time + 0.2,
+                    )
+                else:
+                    interval = (start_time * timeseries.rate, (start_time + 0.2) * timeseries.rate)
             _plot_ephys_image(
                 timeseries,
                 ax=ax,

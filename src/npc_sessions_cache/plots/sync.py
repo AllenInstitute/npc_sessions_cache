@@ -63,8 +63,8 @@ def plot_barcode_intervals(
         max_deviation = np.max(np.abs(intervals - np.median(intervals)))
 
         device_barcode_dict[info.device.name] = {
-            "barcode_times_raw": raw,
-            "barcode_times_corrected": corrected,
+            "barcode_times_raw": list(raw),
+            "barcode_times_corrected": list(corrected),
             "max_deviation_from_median_interval": max_deviation,
             "max_deviation_from_30s_interval": np.max(np.abs(intervals - 30)),
         }

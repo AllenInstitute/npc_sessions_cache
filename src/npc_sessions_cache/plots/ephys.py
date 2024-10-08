@@ -763,7 +763,10 @@ def _plot_structure_areas(electrodes_probe: pd.DataFrame, unit_density_values_pl
         structure = electrodes_probe[electrodes_probe['channel'] == i]['structure'].values[0]
         if structure not in structures_seen:
             if structure != 'out of brain':
-                color = STRUCTURE_TREE[STRUCTURE_TREE['acronym'] == structure]['color_hex_triplet'].values[0]
+                if structure == 'undefined':
+                    color = '000000'
+                else:
+                    color = STRUCTURE_TREE[STRUCTURE_TREE['acronym'] == structure]['color_hex_triplet'].values[0]
             
             patch = matplotlib.patches.Patch(color=f'#{color}', label=structure)
             legend.append(patch)

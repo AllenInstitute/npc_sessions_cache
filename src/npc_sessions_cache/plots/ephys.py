@@ -11,6 +11,8 @@ import numba
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+import io
+from PIL import Image
 import upath
 
 if TYPE_CHECKING:
@@ -21,8 +23,16 @@ import npc_sessions
 import npc_sessions_cache.plots.plot_utils as plot_utils
 import npc_sessions_cache.utils as utils
 
+import npc_lims
+import tempfile
+import nrrd
+
 matplotlib.rcParams.update({"font.size": 8})
 
+STRUCTURE_TREE = pd.read_csv(upath.UPath('https://raw.githubusercontent.com/cortex-lab/allenCCF/master/structure_tree_safe_2017.csv'))
+RESOLUTION_UM = 25
+SLICE_IMAGE_OFFSET = 300
+UNIT_DENSITY_OFFSET = 200
 
 @numba.njit
 def makePSTH_numba(
@@ -268,6 +278,7 @@ def _plot_ephys_noise(
     timeseries: pynwb.TimeSeries,
     interval: utils.Interval | None = None,
     median_subtraction: bool = True,
+    y_range: npt.NDArray | None = None,
     ax: matplotlib.axes.Axes | None = None,
     **plot_kwargs,
 ) -> matplotlib.figure.Figure:
@@ -292,21 +303,35 @@ def _plot_ephys_noise(
 
     plot_kwargs.setdefault("lw", 0.5)
     plot_kwargs.setdefault("color", "k")
-    ax.plot(
-        std(data),
-        np.arange(data.shape[1]),
-        **plot_kwargs,
-    )
+    if y_range is None:
+        ax.plot(
+            std(data),
+            np.arange(data.shape[1]),
+            **plot_kwargs,
+        )
+    else:
+        ax.plot(
+            std(data),
+            y_range,
+            **plot_kwargs,
+        )
     if median_subtraction:
         offset_corrected_data = data - np.nanmedian(data, axis=0)
         median_subtracted_data = (
             offset_corrected_data.T - np.nanmedian(offset_corrected_data, axis=1)
         ).T
-        ax.plot(
-            std(median_subtracted_data),
-            np.arange(median_subtracted_data.shape[1]),
-            **plot_kwargs | {"color": "r", "alpha": 0.5},
-        )
+        if y_range is None:
+            ax.plot(
+                std(median_subtracted_data),
+                np.arange(median_subtracted_data.shape[1]),
+                **plot_kwargs | {"color": "r", "alpha": 0.5},
+            )
+        else:
+            ax.plot(
+                std(median_subtracted_data),
+                y_range,
+                **plot_kwargs | {"color": "r", "alpha": 0.5},
+            )
     ax.set_ymargin(0)
     ax.set_xlabel("SD (microvolts)")
     ax.set_ylabel("channel number")
@@ -713,6 +738,171 @@ def plot_probe_yield(
     fig = plt.gcf()
     fig.set_size_inches(5, 4)
     return fig
+
+def _get_unit_denisty_per_channel(unit_channel_counts: npt.NDArray[np.int64], num_channels:int = 384) -> npt.NDArray[np.int64]:
+    unit_channels = unit_channel_counts[:, 0].tolist()
+    unit_denisty_values = []
+
+    for i in range(num_channels):
+        if i in unit_channels:
+            index = unit_channels.index(i)
+            unit_denisty_values.append([i, unit_channel_counts[index, 1]])
+        else:
+            unit_denisty_values.append([i, 0])
+
+    unit_denisty_values_array = np.array(unit_denisty_values)
+    return unit_denisty_values_array
+
+def _plot_structure_areas(electrodes_probe: pd.DataFrame, unit_density_values_plot: npt.NDArray, y_positions: list, ax: matplotlib.axes.Axes,
+                          num_channels:int = 384) -> None:
+    color = '000000'
+    structures_seen = set()
+    legend = []
+
+    for i in range(num_channels - 1, -1, -1):
+        structure = electrodes_probe[electrodes_probe['channel'] == i]['structure'].values[0]
+        if structure not in structures_seen:
+            if structure != 'out of brain':
+                color = STRUCTURE_TREE[STRUCTURE_TREE['acronym'] == structure]['color_hex_triplet'].values[0]
+            
+            patch = matplotlib.patches.Patch(color=f'#{color}', label=structure)
+            legend.append(patch)
+            structures_seen.add(structure)
+
+        rect = matplotlib.patches.Rectangle((np.max(unit_density_values_plot), y_positions[i] - 200), width=0.0005, height=0.0005, color=f'#{color}')
+        ax.add_patch(rect)
+    
+    ax.legend(handles=legend, loc='lower center')
+
+def _plot_ephys_noise_with_unit_density_areas(session: npc_sessions.DynamicRoutingSession, probe: str, 
+                                              units: pd.DataFrame, electrodes: pd.DataFrame, num_channels: int=384) -> matplotlib.figure.Figure:
+    units_probe = units[units['electrode_group_name'] == probe]
+    electrodes_probe = electrodes[electrodes['group_name'] == probe]
+    peak_channel = units_probe['peak_channel']
+
+    unit_channel_counts = peak_channel.value_counts().sort_index().reset_index().to_numpy()
+    unit_denisty_values = _get_unit_denisty_per_channel(unit_channel_counts)
+
+    timeseries_probe = session._raw_ap.electrical_series[probe]
+    unit_density_values_plot = unit_denisty_values[:, 1] / 1000 # scaling
+    image_path = upath.UPath('s3://aind-scratch-data/arjun.sridhar/slice_images') / f'{session.info.subject}' / f'Probe_{probe[-1]}{session.info.experiment_day}_slice.png'
+    anchors_path = upath.UPath('s3://aind-scratch-data/arjun.sridhar/alignment_anchors') / f'{session.info.subject}' / f'Probe_{probe[-1]}{session.info.experiment_day}_anchors.pickle'
+    
+    if not image_path.exists():
+        raise FileNotFoundError(f'No slice images for session {session.id}')
+
+    if not anchors_path.exists():
+        raise FileNotFoundError(f'No alignments for session {session.id} and probe {probe}')
+
+    with io.BytesIO(image_path.read_bytes()) as f:
+        slice_image = np.array(Image.open(f))
+        
+    anchors = pd.read_pickle(anchors_path)
+    unit_density_points = np.array(anchors[0])
+    y_positions = [point[1] for point in unit_density_points]
+
+    fig, ax = plt.subplots(1, 2)
+    
+    anchor_positions = anchors[3]
+    anchor_points = []
+    
+    for anchor in anchors[3]:
+        if anchor in y_positions:
+            anchor_points.append(y_positions.index(anchor))
+
+    ax[1].imshow(slice_image[SLICE_IMAGE_OFFSET:, :])
+    #ax2 = ax.twiny()
+    ax[0].plot(unit_density_values_plot, unit_density_points[:, 1][:num_channels] - UNIT_DENSITY_OFFSET, alpha=0.3)
+    _plot_ephys_noise(timeseries_probe, ax=ax[0], y_range=unit_density_points[:, 1][:num_channels] - UNIT_DENSITY_OFFSET)
+    for position in anchor_positions:
+        ax[0].axhline(y=position - UNIT_DENSITY_OFFSET, c='r')
+        ax[1].axhline(y=position - UNIT_DENSITY_OFFSET, c='r')
+
+    ax[0].set_ylim(max(y_positions), 0)
+    ax[1].set_ylim(max(y_positions), 0)
+    _plot_structure_areas(electrodes_probe, unit_density_values_plot, y_positions, ax[0])
+    
+    ax[0].set_title('')
+    ax[0].set_ylabel('Pixels')
+    ax[0].set_xlabel('')
+    ax[0].set_title(f'Alignments with unit density and raw ephys noise on {probe}')
+    plt.tight_layout()
+
+    return fig
+
+def plot_ephys_noise_with_unit_density_ccf_areas(session: npc_sessions.DynamicRoutingSession, probe: str | None = None) -> tuple[matplotlib.figure.Figure, ...] | None:
+    """
+    Plots the raw ephys noise with the unit density from sorting, along with the channel alignments and slice the probe went through
+    """
+    figures = []
+    
+    electrodes = session.electrodes[:]
+    units = session.units[:]
+
+    if probe is not None:
+        figures.append(_plot_ephys_noise_with_unit_density_areas(session, probe, units, electrodes))
+    else:
+        probes = sorted(electrodes['group_name'].unique())
+        for probe in probes:
+            figures.append(_plot_ephys_noise_with_unit_density_areas(session, probe, units, electrodes))
+    
+    return tuple(figures)
+
+def _get_ccf_volume(ccf_template_path: upath.UPath) -> npt.NDArray:
+    tempdir = tempfile.mkdtemp()
+    temp_path = upath.UPath(tempdir) / ccf_template_path.name
+    temp_path.write_bytes(ccf_template_path.read_bytes())
+    path = temp_path
+
+    return nrrd.read(path)[0]
+
+def _plot_electrodes_implant_hole(session: npc_sessions.DynamicRoutingSession, probe: str, electrodes: pd.DataFrame,
+                       ccf_volume: npt.NDArray) -> matplotlib.figure.Figure:
+    electrodes_probe = electrodes[electrodes['group_name'] == probe]
+    electrode_groups = session.electrode_groups
+    
+    electrode_group_cache_path = npc_lims.get_cache_path('electrode_groups', version="0.0.247")
+    electrodes_cache_path = npc_lims.get_cache_path('electrodes', version="0.0.247")
+
+    electrode_group_cache = pd.read_parquet(electrode_group_cache_path)
+    electrodes_cache = pd.read_parquet(electrodes_cache_path)
+
+    sessions_probe_hole_implant = electrode_group_cache[(electrode_group_cache['name'] == electrode_groups[probe].name) & 
+                                    (electrode_group_cache['location'] == electrode_groups[probe].location)]['session_id'].tolist()
+    
+    electrode_sessions = electrodes_cache[electrodes_cache['session_id'].isin(sessions_probe_hole_implant)]
+    electrode_probe_sessions = electrode_sessions[(electrode_sessions['group_name'] == probe)]
+
+    electrodes_coordinates = electrode_probe_sessions[['x', 'y', 'z']].to_numpy() / RESOLUTION_UM
+    electrode_session_coordinates = electrodes_probe[['x', 'y', 'z']].to_numpy() / RESOLUTION_UM
+
+    fig, ax = plt.subplots()
+    ax.imshow(ccf_volume.sum(axis=1))
+    ax.scatter(electrodes_coordinates[:, 2], electrodes_coordinates[:, 0], c='r', s=2)
+    ax.scatter(electrode_session_coordinates[:, 2], electrode_session_coordinates[:, 0], c='y', s=2)
+    ax.set_title(f'Session {session.id} electrodes for {probe} with implant hole {electrode_groups[probe].location} spread')
+
+    return fig
+
+def plot_ccf_electrodes_implant_hole(session: npc_sessions.DynamicRoutingSession, probe: str | None = None) -> tuple[matplotlib.figure.Figure, ...] | None:
+    """
+    Plots horizontal view of ccf volume with probe for session in yellow, and all other probes that went through same insertion configuration (same probe, hole, and implant) in red
+    """
+    figures = []
+
+    ccf_template_path = upath.UPath('s3://aind-scratch-data/arjun.sridhar/average_template_25.nrrd')
+    ccf_volume = _get_ccf_volume(ccf_template_path)
+
+    electrodes = session.electrodes[:]
+
+    if probe is not None:
+        figures.append(_plot_electrodes_implant_hole(session, probe, electrodes, ccf_volume))
+    else:
+        probes = sorted(electrodes['group_name'].unique())
+        for probe in probes:
+            figures.append(_plot_electrodes_implant_hole(session, probe, electrodes, ccf_volume))
+    
+    return tuple(figures)
 
 
 def plot_sensory_responses(

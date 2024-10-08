@@ -745,8 +745,8 @@ def plot_sensory_responses(
                 for start_stop in catch_stim_start_stop
             ]
             block_resp.append(
-                (catch_stim[1] / len(catch_stim_start_stop)[1].shape[0]) # avg spikes in stim trials
-                - (catch_stim[0] / len(catch_stim_start_stop)[0].shape[0]) # avg spikes in catch trials
+                (catch_stim[1] / catch_stim_start_stop[1].shape[0]) # avg spikes in stim trials
+                - (catch_stim[0] / catch_stim_start_stop[0].shape[0]) # avg spikes in catch trials
             ) 
         records.append({'unit_id': unit_id, 'stim_resp': np.mean(block_resp)})
     stim_resp_df = pd.DataFrame(records)

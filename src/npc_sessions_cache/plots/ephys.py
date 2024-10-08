@@ -26,13 +26,17 @@ import npc_sessions_cache.utils as utils
 import npc_lims
 import tempfile
 import nrrd
+import functools
+import sqlite3
 
 matplotlib.rcParams.update({"font.size": 8})
 
 STRUCTURE_TREE = pd.read_csv(upath.UPath('https://raw.githubusercontent.com/cortex-lab/allenCCF/master/structure_tree_safe_2017.csv'))
-RESOLUTION_UM = 25
 SLICE_IMAGE_OFFSET = 300
 UNIT_DENSITY_OFFSET = 200
+NUM_CHANNELS = 384
+CCF_NUM_COLUMNS = 4 # ap, dv, ml, and region - for insertion db
+RESOLUTION_UM = 25
 
 @numba.njit
 def makePSTH_numba(
@@ -851,6 +855,39 @@ def plot_ephys_noise_with_unit_density_ccf_areas(session: npc_sessions.DynamicRo
     
     return tuple(figures)
 
+
+def _plot_electrodes_implant_hole(session: npc_sessions.DynamicRoutingSession, probe: str, electrodes: pd.DataFrame,
+                       ccf_volume: npt.NDArray, probe_insertion_db_connection: sqlite3.Connection) -> matplotlib.figure.Figure:
+    electrodes_probe = electrodes[electrodes['group_name'] == probe]
+    electrode_groups = session.electrode_groups
+
+    implant = electrode_groups[probe].location.split(' ')[0]
+    hole = electrode_groups[probe].location.split(' ')[1]
+    cursor = probe_insertion_db_connection.execute(
+        f"SELECT * FROM channel_ccf_coords cf WHERE (cf.Probe = '{probe[-1]}') AND (cf.Implant = '{implant}') AND (cf.Hole = '{hole}')"
+    )
+    
+    sessions_probe_hole_implant = pd.DataFrame(cursor.fetchall()).to_numpy()
+    electrode_session_coordinates = electrodes_probe[['x', 'y', 'z']].to_numpy() / RESOLUTION_UM
+    electrodes_coordinates = None
+
+    for row in sessions_probe_hole_implant:
+        if electrodes_coordinates is None:
+            electrodes_coordinates = row[9:].reshape((NUM_CHANNELS, CCF_NUM_COLUMNS))
+        else:
+            electrodes_coordinates = np.concatenate((electrodes_coordinates, row[9:].reshape((NUM_CHANNELS, CCF_NUM_COLUMNS))))
+
+    fig, ax = plt.subplots()
+    ax.imshow(ccf_volume.sum(axis=1))
+    if electrodes_coordinates is not None: # no other insertions for probe implant hole configuration
+        ax.scatter(electrodes_coordinates[:, 2], electrodes_coordinates[:, 0], c='r', s=2)
+
+    ax.scatter(electrode_session_coordinates[:, 2], electrode_session_coordinates[:, 0], c='y', s=2)
+    ax.set_title(f'Session {session.id} electrodes for {probe} with implant hole {electrode_groups[probe].location} spread')
+
+    return fig
+
+@functools.cache
 def _get_ccf_volume(ccf_template_path: upath.UPath) -> npt.NDArray:
     tempdir = tempfile.mkdtemp()
     temp_path = upath.UPath(tempdir) / ccf_template_path.name
@@ -859,51 +896,23 @@ def _get_ccf_volume(ccf_template_path: upath.UPath) -> npt.NDArray:
 
     return nrrd.read(path)[0]
 
-def _plot_electrodes_implant_hole(session: npc_sessions.DynamicRoutingSession, probe: str, electrodes: pd.DataFrame,
-                       ccf_volume: npt.NDArray) -> matplotlib.figure.Figure:
-    electrodes_probe = electrodes[electrodes['group_name'] == probe]
-    electrode_groups = session.electrode_groups
-    
-    electrode_group_cache_path = npc_lims.get_cache_path('electrode_groups', version="0.0.247")
-    electrodes_cache_path = npc_lims.get_cache_path('electrodes', version="0.0.247")
-
-    electrode_group_cache = pd.read_parquet(electrode_group_cache_path)
-    electrodes_cache = pd.read_parquet(electrodes_cache_path)
-
-    sessions_probe_hole_implant = electrode_group_cache[(electrode_group_cache['name'] == electrode_groups[probe].name) & 
-                                    (electrode_group_cache['location'] == electrode_groups[probe].location)]['session_id'].tolist()
-    
-    electrode_sessions = electrodes_cache[electrodes_cache['session_id'].isin(sessions_probe_hole_implant)]
-    electrode_probe_sessions = electrode_sessions[(electrode_sessions['group_name'] == probe)]
-
-    electrodes_coordinates = electrode_probe_sessions[['x', 'y', 'z']].to_numpy() / RESOLUTION_UM
-    electrode_session_coordinates = electrodes_probe[['x', 'y', 'z']].to_numpy() / RESOLUTION_UM
-
-    fig, ax = plt.subplots()
-    ax.imshow(ccf_volume.sum(axis=1))
-    ax.scatter(electrodes_coordinates[:, 2], electrodes_coordinates[:, 0], c='r', s=2)
-    ax.scatter(electrode_session_coordinates[:, 2], electrode_session_coordinates[:, 0], c='y', s=2)
-    ax.set_title(f'Session {session.id} electrodes for {probe} with implant hole {electrode_groups[probe].location} spread')
-
-    return fig
-
 def plot_ccf_electrodes_implant_hole(session: npc_sessions.DynamicRoutingSession, probe: str | None = None) -> tuple[matplotlib.figure.Figure, ...]:
     """
     Plots horizontal view of ccf volume with probe for session in yellow, and all other probes that went through same insertion configuration (same probe, hole, and implant) in red
     """
     figures = []
 
-    ccf_template_path = upath.UPath('s3://aind-scratch-data/arjun.sridhar/average_template_25.nrrd')
+    ccf_template_path = upath.UPath('s3://aind-scratch-data/arjun.sridhar/average_template_25.nrrd') # different volume than ccf.py
     ccf_volume = _get_ccf_volume(ccf_template_path)
-
     electrodes = session.electrodes[:]
-
+    probe_insertion_db_connection = npc_lims.get_probe_target_db()
+    
     if probe is not None:
-        figures.append(_plot_electrodes_implant_hole(session, probe, electrodes, ccf_volume))
+        figures.append(_plot_electrodes_implant_hole(session, probe, electrodes, ccf_volume, probe_insertion_db_connection))
     else:
         probes = sorted(electrodes['group_name'].unique())
         for probe in probes:
-            figures.append(_plot_electrodes_implant_hole(session, probe, electrodes, ccf_volume))
+            figures.append(_plot_electrodes_implant_hole(session, probe, electrodes, ccf_volume, probe_insertion_db_connection))
     
     return tuple(figures)
 

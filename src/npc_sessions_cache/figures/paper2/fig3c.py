@@ -22,6 +22,7 @@ def plot(
     with_instruction_trial_whitespace: bool = False,
     max_psth_spike_rate: float = 60, # Hz
     use_session_obj: bool = False,
+    session_obj = None,
 ) -> plt.Figure:
 
     # in case unit_id is an npc_sessions object
@@ -31,11 +32,17 @@ def plot(
         ).id  # in case unit_id is an npc_sessions object
     except (AttributeError, TypeError):
         session_id = npc_session.SessionRecord(unit_id).id
-    if use_session_obj:
-        import npc_sessions
-        obj = npc_sessions.Session(session_id)
+    if use_session_obj or session_obj is not None:
+        if session_obj is not None:
+            obj = session_obj
+        else:
+            import npc_sessions
+            obj = npc_sessions.Session(session_id)
         trials = pl.DataFrame(obj.trials[:])
-        units = pl.DataFrame(obj.units[:][['spike_times', 'location', 'structure', 'unit_id']])
+        try:
+            units = pl.DataFrame(obj.units[:][['spike_times', 'location', 'structure', 'unit_id']])
+        except KeyError:
+            units = pl.DataFrame(obj.units[:][['spike_times', 'unit_id']])
         unit = units.filter(pl.col("unit_id") == unit_id)
         unit_spike_times = unit['spike_times'].to_numpy()[0]
     else:
@@ -459,7 +466,10 @@ def plot(
     if unit.is_empty():
         location = "not in units df"
     else:
-        location = unit["location"][0]
+        try:
+            location = unit["location"][0]
+        except KeyError:
+            location = "no CCF location (unannotated)"
     fig.suptitle(
         f"{'behavior pass' if is_pass else 'behavior fail'}\n{unit_id}\n{location}"
     )

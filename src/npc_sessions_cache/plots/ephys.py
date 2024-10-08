@@ -940,15 +940,17 @@ def plot_sensory_responses(
                 block_resp[block_name].append(count)
         records.append({
             'unit_id': unit_id, 
-            'vis_resp': np.mean(np.subtract(block_resp['vis'], block_resp['aud'])),
-            'aud_resp': np.mean(np.subtract(block_resp['aud'], block_resp['vis'])),
-            'stim_resp': np.mean(np.subtract(np.add(block_resp['aud'], block_resp['vis']) * .5, block_resp['catch'])),
+            'vis_resp': np.median(np.subtract(block_resp['vis'], block_resp['aud'])),
+            'aud_resp': np.median(np.subtract(block_resp['aud'], block_resp['vis'])),
+            'stim_resp': np.median(np.subtract(np.add(block_resp['aud'], block_resp['vis']) * .5, block_resp['catch'])),
             })
     stim_resp_df = pd.DataFrame(records)
     max_probe_unit_ids = []
     for _, probe_df in units.merge(stim_resp_df, on='unit_id').groupby('electrode_group_name'):
         for col in ['vis_resp', 'aud_resp', 'stim_resp']:
-            max_probe_unit_ids.append(probe_df.sort_values(col, ascending=False).iloc[0]['unit_id'])
+            unit_id = probe_df.sort_values(col, ascending=False).iloc[0]['unit_id']
+            if unit_id not in max_probe_unit_ids:
+                max_probe_unit_ids.append(unit_id)
 
     figs = []
     for unit_id in max_probe_unit_ids:

@@ -1,5 +1,6 @@
 # aligned blocks - standalone
 
+import logging
 import pathlib
 
 import matplotlib.patches as patches
@@ -11,6 +12,7 @@ import polars as pl
 
 import npc_sessions_cache.figures.paper2.utils as utils
 
+logging.getLogger("matplotlib.font_manager").setLevel(logging.ERROR)
 plt.rcParams["font.family"] = "Arial"
 plt.rcParams["font.size"] = 8
 plt.rcParams["pdf.fonttype"] = 42
@@ -473,6 +475,7 @@ def plot(
     fig.suptitle(
         f"{'behavior pass' if is_pass else 'behavior fail'}\n{unit_id}\n{location}"
     )
+    fig.set_dpi(300)
     return fig
 
 def get_unit_ids_shailaja_pkl() -> tuple[str, ...]:

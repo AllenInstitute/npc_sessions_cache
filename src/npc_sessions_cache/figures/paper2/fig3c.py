@@ -20,7 +20,7 @@ plt.rcParams["pdf.fonttype"] = 42
 
 def plot(
     unit_id: str,
-    stim_names=("vis1", "vis2", "sound1", "sound2"),
+    stim_names=("vis1", "sound1", "vis2", "sound2"),
     with_instruction_trial_whitespace: bool = False,
     max_psth_spike_rate: float = 60, # Hz
     use_session_obj: bool = False,

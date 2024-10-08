@@ -713,3 +713,51 @@ def plot_probe_yield(
     fig = plt.gcf()
     fig.set_size_inches(5, 4)
     return fig
+
+def plot_sensory_responses(
+    session: npc_sessions.DynamicRoutingSession,
+) -> tuple[matplotlib.figure.Figure, ...]:
+    from  npc_sessions_cache.figures.paper2 import fig3c
+    trials = session.trials[:]
+    units = session.units[:].query(f'amplitude_cutoff < 0.1 & isi_violations_ratio < 0.5 & presence_ratio > 0.95')
+
+    block_catch_stim_start_stop = [
+        [trials.query(f"block_index == {} & {not_}is_catch")[["start_time", "stop_time"]].values for not_ in ["", "~"]]
+        for block_index in trials["block_index"].unique()
+    ]
+    records = []
+    for _, unit in units.iterrows():
+        unit_id = unit['unit_id']
+        unit_spike_times = unit['spike_times']
+        block_resp = []
+        for catch_stim_start_stop in block_catch_stim_start_stop:
+            catch_stim = [
+                len(
+                    np.concatenate(
+                        [
+                            unit_spike_times[slice(start, stop)] if 0 <= start < stop <= len(unit_spike_times) else []
+                            for start, stop in np.searchsorted(
+                                unit_spike_times, start_stop
+                            )
+                        ]
+                    )
+                )
+                for start_stop in catch_stim_start_stop
+            ]
+            block_resp.append(
+                (catch_stim[1] / len(catch_stim_start_stop)[1].shape[0]) # avg spikes in stim trials
+                - (catch_stim[0] / len(catch_stim_start_stop)[0].shape[0]) # avg spikes in catch trials
+            ) 
+        records.append({'unit_id': unit_id, 'stim_resp': np.mean(block_resp)})
+    stim_resp_df = pd.DataFrame(records)
+    max_probe_unit_ids = []
+    for _, probe_df in units.merge(stim_resp_df, on='unit_id').groupby('electrode_group_name'):
+        max_probe_unit_ids.append(probe_df.sort_values('stim_resp', ascending=False).iloc[0]['unit_id'])
+
+    figs = []
+    for unit_id in max_probe_unit_ids:
+        figs.append(
+            fig3c.plot(unit_id=unit_id, max_psth_spike_rate=200, session_obj=session)
+        )
+    return tuple(figs)
+

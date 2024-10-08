@@ -722,38 +722,43 @@ def plot_sensory_responses(
     trials = session.trials[:]
     units = session.units[:].query(f'amplitude_cutoff < 0.1 & isi_violations_ratio < 0.5 & presence_ratio > 0.95')
 
-    block_catch_stim_start_stop = [
-        [trials.query(f"block_index == {block_index} & {not_}is_catch")[["start_time", "stop_time"]].values for not_ in ["", "~"]]
+    block_catch_vis_aud_startstop = [
+        [trials.query(f"block_index == {block_index} & {stim}")[["start_time", "stop_time"]].values for stim in ["is_catch", "is_vis_stim", "is_aud_stim"]]
         for block_index in trials["block_index"].unique()
     ]
     records = []
     for _, unit in units.iterrows():
         unit_id = unit['unit_id']
         unit_spike_times = unit['spike_times']
-        block_resp = []
-        for catch_stim_start_stop in block_catch_stim_start_stop:
-            catch_stim = [
+        block_resp = {'catch':[], 'vis':[], 'aud':[]}
+        for catch_vis_aud_startstop in block_catch_vis_aud_startstop:
+            catch_vis_aud_counts = [
                 len(
                     np.concatenate(
                         [
-                            unit_spike_times[slice(start, stop)] if 0 <= start < stop <= len(unit_spike_times) else []
+                            unit_spike_times[slice(start, stop)] 
+                            if 0 <= start < stop <= len(unit_spike_times) else []
                             for start, stop in np.searchsorted(
                                 unit_spike_times, start_stop
                             )
                         ]
                     )
-                )
-                for start_stop in catch_stim_start_stop
+                ) / start_stop.shape[0] # divide by number of trials
+                for start_stop in catch_vis_aud_startstop
             ]
-            block_resp.append(
-                (catch_stim[1] / catch_stim_start_stop[1].shape[0]) # avg spikes in stim trials
-                - (catch_stim[0] / catch_stim_start_stop[0].shape[0]) # avg spikes in catch trials
-            ) 
-        records.append({'unit_id': unit_id, 'stim_resp': np.mean(block_resp)})
+            for count, block_name in zip(catch_vis_aud_counts, block_resp):
+                block_resp[block_name].append(count)
+        records.append({
+            'unit_id': unit_id, 
+            'vis_resp': np.mean(np.subtract(block_resp['vis'], block_resp['aud'])),
+            'aud_resp': np.mean(np.subtract(block_resp['aud'], block_resp['vis'])),
+            'stim_resp': np.mean(np.subtract(np.add(block_resp['aud'], block_resp['vis']) * .5, block_resp['catch'])),
+            })
     stim_resp_df = pd.DataFrame(records)
     max_probe_unit_ids = []
     for _, probe_df in units.merge(stim_resp_df, on='unit_id').groupby('electrode_group_name'):
-        max_probe_unit_ids.append(probe_df.sort_values('stim_resp', ascending=False).iloc[0]['unit_id'])
+        for col in ['vis_resp', 'aud_resp', 'stim_resp']:
+            max_probe_unit_ids.append(probe_df.sort_values(col, ascending=False).iloc[0]['unit_id'])
 
     figs = []
     for unit_id in max_probe_unit_ids:

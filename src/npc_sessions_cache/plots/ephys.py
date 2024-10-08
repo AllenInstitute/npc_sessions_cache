@@ -722,7 +722,7 @@ def plot_sensory_responses(
     units = session.units[:].query(f'amplitude_cutoff < 0.1 & isi_violations_ratio < 0.5 & presence_ratio > 0.95')
 
     block_catch_stim_start_stop = [
-        [trials.query(f"block_index == {} & {not_}is_catch")[["start_time", "stop_time"]].values for not_ in ["", "~"]]
+        [trials.query(f"block_index == {block_index} & {not_}is_catch")[["start_time", "stop_time"]].values for not_ in ["", "~"]]
         for block_index in trials["block_index"].unique()
     ]
     records = []

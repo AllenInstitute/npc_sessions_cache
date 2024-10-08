@@ -830,7 +830,7 @@ def _plot_ephys_noise_with_unit_density_areas(session: npc_sessions.DynamicRouti
 
     return fig
 
-def plot_ephys_noise_with_unit_density_ccf_areas(session: npc_sessions.DynamicRoutingSession, probe: str | None = None) -> tuple[matplotlib.figure.Figure, ...] | None:
+def plot_ephys_noise_with_unit_density_ccf_areas(session: npc_sessions.DynamicRoutingSession, probe: str | None = None) -> tuple[matplotlib.figure.Figure, ...]:
     """
     Plots the raw ephys noise with the unit density from sorting, along with the channel alignments and slice the probe went through
     """
@@ -884,7 +884,7 @@ def _plot_electrodes_implant_hole(session: npc_sessions.DynamicRoutingSession, p
 
     return fig
 
-def plot_ccf_electrodes_implant_hole(session: npc_sessions.DynamicRoutingSession, probe: str | None = None) -> tuple[matplotlib.figure.Figure, ...] | None:
+def plot_ccf_electrodes_implant_hole(session: npc_sessions.DynamicRoutingSession, probe: str | None = None) -> tuple[matplotlib.figure.Figure, ...]:
     """
     Plots horizontal view of ccf volume with probe for session in yellow, and all other probes that went through same insertion configuration (same probe, hole, and implant) in red
     """

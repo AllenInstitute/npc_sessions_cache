@@ -45,11 +45,11 @@ def plot(
             units = pl.DataFrame(obj.units[:][['spike_times', 'unit_id']])
         unit = units.filter(pl.col("unit_id") == unit_id)
         unit_spike_times = unit['spike_times'].to_numpy()[0]
+        performance: pl.DataFrame = pl.DataFrame(obj.intervals['performance'][:])
     else:
         units_all_sessions = utils.get_component_df("units")
         spike_times_all_sessions = utils.get_component_zarr("spike_times")
         trials_all_sessions = utils.get_component_df("trials")
-        all_sessions = utils.get_component_df("session")
 
         trials = trials_all_sessions.filter(pl.col("session_id") == session_id)
 
@@ -58,8 +58,8 @@ def plot(
         #! session id is without idx for spike times
         spike_times_session_id = "_".join(unit_id.split("_")[:2])
         unit_spike_times: npt.NDArray = spike_times_all_sessions[spike_times_session_id][unit_id][:]
-    performance_all_sessions = utils.get_component_df("performance")
-    performance = performance_all_sessions.filter(pl.col("session_id") == session_id)
+        performance_all_sessions = utils.get_component_df("performance")
+        performance = performance_all_sessions.filter(pl.col("session_id") == session_id)
     
     if trials.is_empty():
         raise ValueError(f"No trials found for {session_id}")
@@ -485,7 +485,7 @@ def get_unit_ids_shailaja_pkl() -> tuple[str, ...]:
     return tuple(sorted(unit_ids))
 
 def get_unit_ids_shawn_session_list() -> pl.Series:
-    sessions = [f"{i}_0" for i in ('714748_2024-06-24','664851_2023-11-16','666986_2023-08-16',
+    sessions = [f"{i}_0" for i in ('666986_2023-08-16', '714748_2024-06-24','664851_2023-11-16','666986_2023-08-16',
                     '667252_2023-09-28','674562_2023-10-03','681532_2023-10-18',
                     '708016_2024-04-29','714753_2024-07-02','644866_2023-02-10',
 '674562_2023-10-05','712141_2024-06-06')]
@@ -504,7 +504,8 @@ def get_unit_ids_shawn_session_list() -> pl.Series:
 
 def get_specific_unit_ids() -> list[str]:
     return [
-        '667252_2023-09-26_C-233',
+        '666986_2023-08-16_F-213',
+        # '667252_2023-09-26_C-233',
     ]
 
 def get_grouped_baseline_psth_parquet():
@@ -542,9 +543,29 @@ if __name__ == "__main__":
     target_stim_names = ("sound1", "vis1")
     pyfile_path = pathlib.Path(__file__)
     
-    skip_existing = True
+    raise_on_error = True
+    skip_existing = False
+    print(f"{skip_existing=}, {raise_on_error=}")
     get_unit_id_func = get_specific_unit_ids
     for unit_id in get_unit_id_func():
+        
+        figsave_path = pyfile_path.with_name(f"{pyfile_path.stem}_{unit_id}")
+        if get_unit_id_func in (
+            get_unit_ids_shawn_session_list,
+            get_unit_ids_baseline_psth_parquet
+        ):
+            materials_path = pathlib.Path("C:/Users/ben.hardcastle/OneDrive - Allen Institute/Shared Documents - Dynamic Routing/DR Manuscripts/DR Paper 2 - context representations/Figures/Figure 3/materials")
+            if get_unit_id_func is get_unit_ids_shawn_session_list:
+                requested_path = materials_path / "top_context_units_by_session_v0.0.235"
+            elif get_unit_id_func is get_unit_ids_baseline_psth_parquet:
+                area = get_grouped_baseline_psth_parquet().filter(pl.col('unit_id') == unit_id)['structure'][0]
+                requested_path = materials_path / "top_context_units_by_area_v0.0.235" / area
+            requested_path.mkdir(exist_ok=True, parents=True)
+            figsave_path = requested_path / figsave_path.name
+        if skip_existing and figsave_path.with_suffix(".png").exists():
+            print(f"skipping {pyfile_path.stem} for {unit_id} - already exists")
+            continue        
+        
         print(f"plotting {pyfile_path.stem} for {unit_id}")
         try:
             fig = plot(
@@ -558,22 +579,9 @@ if __name__ == "__main__":
                 raise
             print(f"failed: {exc!r}")
             continue
-        figsave_path = pyfile_path.with_name(f"{pyfile_path.stem}_{unit_id}")
-        if get_unit_id_func in (
-            get_unit_ids_shawn_session_list,
-            get_unit_ids_baseline_psth_parquet
-        ):
-            materials_path = pathlib.Path("C:/Users/ben.hardcastle/OneDrive - Allen Institute/Shared Documents - Dynamic Routing/DR Manuscripts/DR Paper 2 - context representations/Figures/Figure 3/materials")
-            if get_unit_id_func is get_unit_ids_shawn_session_list:
-                requested_path = materials_path / "top_context_units_by_session"
-            elif get_unit_id_func is get_unit_ids_baseline_psth_parquet:
-                area = get_grouped_baseline_psth_parquet().filter(pl.col('unit_id') == unit_id)['structure'][0]
-                requested_path = materials_path / "top_context_units_by_area" / area
-            requested_path.mkdir(exist_ok=True, parents=True)
-            figsave_path = requested_path / figsave_path.name
         fig.savefig(f"{figsave_path}.png", dpi=300, bbox_inches="tight")
-
-        # make sure text is editable in illustrator before saving pdf:
         fig.savefig(f"{figsave_path}.pdf", dpi=300, bbox_inches="tight")
         plt.close(fig)
         
+
+# %%

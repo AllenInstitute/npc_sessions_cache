@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import npc_sessions
 import npc_stim
 import numpy as np
+import pandas as pd
 import rich
 
 if TYPE_CHECKING:
@@ -363,3 +364,6 @@ def plot_long_vsync_occurrences(
         f"{session.id} - vsync intervals > {interval_threshold:.3f} s", fontsize=8
     )
     return fig
+
+
+

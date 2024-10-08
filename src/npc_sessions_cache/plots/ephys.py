@@ -714,6 +714,7 @@ def plot_probe_yield(
     fig.set_size_inches(5, 4)
     return fig
 
+
 def plot_sensory_responses(
     session: npc_sessions.DynamicRoutingSession,
 ) -> tuple[matplotlib.figure.Figure, ...]:
@@ -760,4 +761,3 @@ def plot_sensory_responses(
             fig3c.plot(unit_id=unit_id, max_psth_spike_rate=200, session_obj=session)
         )
     return tuple(figs)
-

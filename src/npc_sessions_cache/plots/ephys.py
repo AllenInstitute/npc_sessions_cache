@@ -1079,21 +1079,19 @@ def plot_sensory_responses(
         records.append(
             {
                 "unit_id": unit_id,
-                "vis_resp": np.median(
+                "vis_resp": np.min(
                     (v := np.subtract(block_resp["vis"], block_resp["aud"]))
-                    / (np.nanstd(v))
                 ),
-                "aud_resp": np.median(
+                "aud_resp": np.min(
                     (v := np.subtract(block_resp["aud"], block_resp["vis"]))
-                    / (np.nanstd(v))
                 ),
-                "stim_resp": np.median(
+                "stim_resp": np.min(
                     (
                         v := np.subtract(
                             np.add(block_resp["aud"], block_resp["vis"]) * 0.5,
                             block_resp["catch"],
                         )
-                    ) / (np.nanstd(v))
+                    )
                 ),
             }
         )

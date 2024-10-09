@@ -78,8 +78,8 @@ def plot_pupil_area_with_running(
     valid_running_times = ~np.isnan(session._running_speed.timestamps) & ~np.isnan(session._running_speed.data)
     # for xlim in range(0, round(real_timestamps[-1]), 1000):
     plt.figure()
-    plt.plot(session._running_speed.timestamps[valid_running_times], -2 + session._running_speed.data[valid_running_times]/np.nanmedian(session._running_speed.data), lw=.2)
-    plt.plot(session._eye_tracking.timestamps, session._eye_tracking.pupil_area/np.nanmedian(session._eye_tracking.pupil_area), lw=.2)
+    plt.plot(session._running_speed.timestamps[valid_running_times], -1 + session._running_speed.data[valid_running_times]/np.nanmax(session._running_speed.data), lw=.2)
+    plt.plot(session._eye_tracking.timestamps, session._eye_tracking.pupil_area/np.nanmax(session._eye_tracking.pupil_area), lw=.2)
     plt.gca().legend(['running speed', 'pupil area'])
     plt.gca().set_xlabel('time (s)')
     # plt.gca().set_aspect(100)
@@ -108,7 +108,7 @@ def plot_pupil_response(
         )
     ]
     if median_with_shaded_std:
-        trial_pupil_size = np.array([t for t in trial_pupil_size if t])
+        trial_pupil_size: npt.NDArray = np.array([t for t in trial_pupil_size if t])
         x = np.arange(0, dur, dur/trial_pupil_size.shape[1])
         y = np.nanmedian(trial_pupil_size, 0)
         plt.fill_between(
@@ -123,7 +123,7 @@ def plot_pupil_response(
             y = arr
             plt.plot(x, y, lw=.2, alpha=.5, c='k')
         if np.any(y):
-            plt.plot(x, np.nanmedian([t for t in trial_pupil_size if t], 0), lw=2)
+            plt.plot(x, np.nanmedian([t for t in trial_pupil_size if np.any(t)], 0), lw=2)
             
     plt.gca().set_ylim(-500, 500)
     plt.gca().set(xlabel="time from vis stim onset (s)", ylabel="pupil area - baseline (pix)")

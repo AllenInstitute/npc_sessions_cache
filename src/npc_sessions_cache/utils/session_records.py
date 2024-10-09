@@ -263,7 +263,7 @@ def get_session_record(
     def is_in_epochs(name):
         return any(
             name.strip("_").lower() == epoch.lower()
-            for epoch in epochs_df.stim_name.to_list()
+            for epoch in epochs_df.script_name.to_list()
         )
 
     if session.is_annotated:
@@ -295,7 +295,7 @@ def get_session_record(
         experimenters=session.experimenter,
         notes=session.notes,
         issues=session.info.issues,
-        epochs=epochs_df.stim_name.to_list(),
+        epochs=epochs_df.script_name.to_list(),
         allen_path=session.info.allen_path.as_posix(),
         cloud_path=session.info.cloud_path.as_posix(),
         task_version=session.task_version if session.is_task else None,

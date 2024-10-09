@@ -1080,17 +1080,17 @@ def plot_sensory_responses(
             {
                 "unit_id": unit_id,
                 "vis_resp": np.median(
-                    np.subtract(block_resp["vis"], block_resp["aud"])
-                ),
+                    v := np.subtract(block_resp["vis"], block_resp["aud"])
+                ) / (max(v) - min(v)),
                 "aud_resp": np.median(
-                    np.subtract(block_resp["aud"], block_resp["vis"])
-                ),
+                    v := np.subtract(block_resp["aud"], block_resp["vis"])
+                ) / (max(v) - min(v)),
                 "stim_resp": np.median(
-                    np.subtract(
+                    v := np.subtract(
                         np.add(block_resp["aud"], block_resp["vis"]) * 0.5,
                         block_resp["catch"],
                     )
-                ),
+                ) / (max(v) - min(v)),
             }
         )
     stim_resp_df = pd.DataFrame(records)

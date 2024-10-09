@@ -468,9 +468,9 @@ def plot(
     if unit.is_empty():
         location = "not in units df"
     else:
-        try:
+        if "location" in unit.columns:
             location = unit["location"][0]
-        except KeyError:
+        else:
             location = "no CCF location (unannotated)"
     fig.suptitle(
         f"{'behavior pass' if is_pass else 'behavior fail'}\n{unit_id}\n{location}"

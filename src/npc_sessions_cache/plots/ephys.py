@@ -383,7 +383,7 @@ def _plot_ephys_image(
 
     ax.imshow(
         data.T,
-        aspect=5 / data.shape[1],  # assumes`extent` provided with seconds
+        aspect=1 / data.shape[1],  # assumes`extent` provided with seconds
         extent=(t0, t1, data.shape[1], 0),
         **imshow_kwargs,
     )
@@ -441,12 +441,14 @@ def plot_raw_ephys_segments(
         container = session._raw_lfp
     else:
         container = session._raw_ap
+    start_times =  (1, 10, 100, -10)
     figures = []
-    for start_time in (10, -10):
+    for idx, (label, timeseries) in enumerate(container.electrical_series.items()):
+        
         fig, _ = plt.subplots(
-            1, len(container.electrical_series), sharex=True, sharey=True
+            1, len(start_times), sharex=True, sharey=True
         )
-        for idx, (label, timeseries) in enumerate(container.electrical_series.items()):
+        for start_time in start_times:
             ax = fig.axes[idx]
             if interval is None:
                 if timeseries.timestamps is not None:
@@ -464,14 +466,13 @@ def plot_raw_ephys_segments(
                 median_subtraction=median_subtraction,
                 **imshow_kwargs,
             )
-            ax.set_title(label, fontsize=8)
             if idx > 0:
                 ax.yaxis.set_visible(False)
 
             if idx != round(len(fig.axes) / 2):
                 ax.xaxis.set_visible(False)
         fig.suptitle(
-            f'raw {"LFP" if lfp else "AP"} data | {median_subtraction=}\n{session.session_id}',
+            f'raw {"LFP" if lfp else "AP"} data {label}\n{median_subtraction=}\n{session.session_id}',
             fontsize=10,
         )
         figures.append(fig)

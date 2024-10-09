@@ -443,12 +443,12 @@ def plot_raw_ephys_segments(
         container = session._raw_ap
     start_times =  (1, 10, 100, -10)
     figures = []
-    for idx, (label, timeseries) in enumerate(container.electrical_series.items()):
+    for label, timeseries in container.electrical_series.items():
         
         fig, _ = plt.subplots(
             1, len(start_times), sharex=True, sharey=True
         )
-        for start_time in start_times:
+        for idx, start_time in enumerate(start_times):
             ax = fig.axes[idx]
             if interval is None:
                 if timeseries.timestamps is not None:

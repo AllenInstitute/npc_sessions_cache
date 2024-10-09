@@ -1038,7 +1038,7 @@ def plot_sensory_responses(
 
     trials = session.trials[:]
     units = session.units[:].query(
-        "amplitude_cutoff < 0.1 & isi_violations_ratio < 0.5 & presence_ratio > 0.99"
+        "amplitude_cutoff < 0.1 & isi_violations_ratio < 0.5 & presence_ratio == 1"
     )
 
     block_catch_vis_aud_startstop = [

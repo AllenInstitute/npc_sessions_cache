@@ -877,6 +877,9 @@ def _plot_electrodes_implant_hole(session: npc_sessions.DynamicRoutingSession, p
         else:
             electrodes_coordinates = np.concatenate((electrodes_coordinates, row[9:].reshape((NUM_CHANNELS, CCF_NUM_COLUMNS))))
 
+    if electrodes_coordinates is not None:
+        electrodes_coordinates = electrodes_coordinates[electrodes_coordinates[:, 3] != 'out of brain']
+
     fig, ax = plt.subplots()
     ax.imshow(ccf_volume.sum(axis=1))
     if electrodes_coordinates is not None: # no other insertions for probe implant hole configuration

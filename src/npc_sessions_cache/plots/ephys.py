@@ -1038,7 +1038,7 @@ def plot_sensory_responses(
 
     trials = session.trials[:]
     units = session.units[:].query(
-        "amplitude_cutoff < 0.1 & isi_violations_ratio < 0.5 & presence_ratio > 0.95"
+        "amplitude_cutoff < 0.1 & isi_violations_ratio < 0.5 & presence_ratio > 0.99"
     )
 
     block_catch_vis_aud_startstop = [
@@ -1079,13 +1079,13 @@ def plot_sensory_responses(
         records.append(
             {
                 "unit_id": unit_id,
-                "vis_resp": np.min(
+                "vis_resp": np.median(
                     (v := np.subtract(block_resp["vis"], block_resp["aud"]))
                 ),
-                "aud_resp": np.min(
+                "aud_resp": np.median(
                     (v := np.subtract(block_resp["aud"], block_resp["vis"]))
                 ),
-                "stim_resp": np.min(
+                "stim_resp": np.median(
                     (
                         v := np.subtract(
                             np.add(block_resp["aud"], block_resp["vis"]) * 0.5,

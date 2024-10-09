@@ -8,6 +8,7 @@ import matplotlib.colors
 import matplotlib.figure
 import matplotlib.pyplot
 import matplotlib.pyplot as plt
+import npc_session
 import numba
 import numpy as np
 import numpy.typing as npt
@@ -883,7 +884,11 @@ def _plot_ephys_noise_with_unit_density_areas(
     ax[0].set_title("")
     ax[0].set_ylabel("Pixels")
     ax[0].set_xlabel("")
-    ax[0].set_title(f"Alignments with unit density and raw ephys noise on {probe}")
+    is_deep_insertion = "deep_insertions" in session.keywords
+    if is_deep_insertion:
+        deep_probes = next(kw for kw in session.keywords if "deep_insertion_probes" in kw).split('=')[-1]
+        is_deep_probe = npc_session.ProbeRecord(probe) in deep_probes
+    ax[0].set_title(f"CCF aligned with unit density (blue) and raw ephys noise (black/red)\n{probe} | {'deep' if is_deep_insertion and is_deep_probe else 'regular'} insertion")
     plt.tight_layout()
 
     return fig

@@ -897,10 +897,12 @@ def _plot_ephys_noise_with_unit_density_areas(
 
 def plot_ccf_aligned_ephys(
     session: npc_sessions.DynamicRoutingSession, probe: str | None = None
-) -> tuple[matplotlib.figure.Figure, ...]:
+) -> tuple[matplotlib.figure.Figure, ...] | None:
     """
     Plots the raw ephys noise with the unit density from sorting, along with the channel alignments and slice the probe went through
     """
+    if not session.is_annotated:
+        return None
     figures = []
 
     electrodes = session.electrodes[:]
@@ -992,10 +994,12 @@ def _get_ccf_volume(ccf_template_path: upath.UPath) -> npt.NDArray:
 
 def plot_insertion_history(
     session: npc_sessions.DynamicRoutingSession, probe: str | None = None
-) -> tuple[matplotlib.figure.Figure, ...]:
+) -> tuple[matplotlib.figure.Figure, ...] | None:
     """
     Plots horizontal view of ccf volume with probe for session in yellow, and all other probes that went through same insertion configuration (same probe, hole, and implant) in red
     """
+    if not session.is_annotated:
+        return None
     figures = []
 
     ccf_template_path = upath.UPath(

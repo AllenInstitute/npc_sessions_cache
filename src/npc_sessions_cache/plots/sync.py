@@ -129,13 +129,13 @@ def plot_vsync_intervals(session: npc_sessions.DynamicRoutingSession) -> matplot
         raise ValueError(f"No block with matching stim_frame_times for {session.id} containing {session.task_stim_name}: {session.stim_frame_times.values()}")
 
     fig, ax = plt.figure(figsize=(4,4)), plt.gca()
-    fig.set_size_inches(4,4)
+    fig.set_size_inches(5,4)
     xlim = 1000 * 2/60
     ax.hist(np.diff(vsync_block) * 1000, bins=np.arange(0, xlim, xlim / 200))
     n_outliers = len(np.diff(vsync_block) > xlim)
     ax.set_yscale("log")
     ax.axvline(1 / 60, c="k", ls="dotted")
-    ax.set_title(f"vsync intervals around expected 1/60s ({100 * n_outliers/len(vsync_block)}% ({n_outliers}) intervals > {xlim})\n{session.task_stim_name}\nphotodiode available = {session.is_photodiode}", fontsize=7)
+    ax.set_title(f"vsync intervals around expected 1/60s ({100 * n_outliers/len(vsync_block):.1f}% ({n_outliers}) intervals > {xlim:.2f})\n{session.task_stim_name}\nphotodiode available = {session.is_photodiode}", fontsize=7)
     ax.set_xlabel("interval length (ms)")
     ax.set_ylabel("count")
     return fig

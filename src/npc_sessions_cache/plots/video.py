@@ -78,8 +78,8 @@ def plot_pupil_area_with_running(
     valid_running_times = ~np.isnan(session._running_speed.timestamps) & ~np.isnan(session._running_speed.data)
     # for xlim in range(0, round(real_timestamps[-1]), 1000):
     plt.figure()
-    plt.plot(session._running_speed.timestamps[valid_running_times], -1 + session._running_speed.data[valid_running_times]/np.nanmax(session._running_speed.data), lw=.2)
-    plt.plot(session._eye_tracking.timestamps, session._eye_tracking.pupil_area/np.nanmax(session._eye_tracking.pupil_area), lw=.2)
+    plt.plot(session._running_speed.timestamps[valid_running_times], session._running_speed.data[valid_running_times]/np.nanmax(session._running_speed.data), lw=.2)
+    plt.plot(session._eye_tracking.timestamps, (v := session._eye_tracking.pupil_area/np.nanmax(session._eye_tracking.pupil_area)) - np.nanmedian(v), lw=.2)
     plt.gca().legend(['running speed', 'pupil area'])
     plt.gca().set_xlabel('time (s)')
     # plt.gca().set_aspect(100)
@@ -98,7 +98,6 @@ def plot_pupil_response(
 
     query = 'is_vis_nontarget & ~is_response'
     t0 = session.trials[:].query(query)['stim_start_time'].to_numpy()
-    # t0 = session.intervals['vis_rf_mapping_trials'][:].query('is_vis_nontarget & ~is_response')['stim_start_time'].to_numpy()
     t1 = t0 + dur
     trial_pupil_size = [
         pupil_area[slice(start, stop)] - np.nanmean(pupil_area[slice(baseline_0, start)])
@@ -125,11 +124,12 @@ def plot_pupil_response(
         if np.any(y):
             plt.plot(x, np.nanmedian([t for t in trial_pupil_size if np.any(t)], 0), lw=2)
             
-    plt.gca().set_ylim(-500, 500)
     plt.gca().set(xlabel="time from vis stim onset (s)", ylabel="pupil area - baseline (pix)")
     plt.title(f"pupil response to stim\n{query}\n{session.id}", fontsize=8)
     plt.axhline(y=0, c='k', lw=.5, ls='--')
     plt.axvline(x=0, c='k', lw=.5, ls='--')
+    plt.gca().set_ylim(-500, 500)
+    plt.gca().set_xlim(-0.1, dur + 0.1)
     return plt.gcf()
 
 def plot_camera_frames(

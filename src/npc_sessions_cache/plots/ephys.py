@@ -450,11 +450,13 @@ def plot_raw_ephys_segments(
         )
         for idx, start_time in enumerate(start_times):
             ax = fig.axes[idx]
+            if timeseries.timestamps is not None:
+                t0 = timeseries.timestamps[0 if start_time > 0 else -1]
+            else:
+                t0 = timeseries.starting_time 
+                if start_time < 0:
+                    t0 += timeseries.data.shape[0] / timeseries.rate
             if interval is None:
-                if timeseries.timestamps is not None:
-                    t0 = timeseries.timestamps[0]
-                else:
-                    t0 = timeseries.starting_time
                 interval = (
                     t0 + start_time,
                     t0 + start_time + 0.2,

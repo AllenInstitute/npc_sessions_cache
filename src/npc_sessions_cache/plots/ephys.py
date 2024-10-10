@@ -441,9 +441,9 @@ def plot_raw_ephys_segments(
         container = session._raw_lfp
     else:
         container = session._raw_ap
-    start_times =  (1, 10, 100, -10)
+    start_times =  (1, 100, -10)
     figures = []
-    for label, timeseries in container.electrical_series.items():
+    for device, timeseries in container.electrical_series.items():
         
         fig, _ = plt.subplots(
             1, len(start_times), sharex=True, sharey=True
@@ -451,9 +451,9 @@ def plot_raw_ephys_segments(
         for idx, start_time in enumerate(start_times):
             ax = fig.axes[idx]
             if timeseries.timestamps is not None:
-                t0 = timeseries.timestamps[0 if start_time > 0 else -1]
+                t0 = timeseries.timestamps[0 if start_time > 0 else -1] + start_time
             else:
-                t0 = timeseries.starting_time 
+                t0 = timeseries.starting_time + start_time
                 if start_time < 0:
                     t0 += timeseries.data.shape[0] / timeseries.rate
             if interval is None:
@@ -470,11 +470,8 @@ def plot_raw_ephys_segments(
             )
             if idx > 0:
                 ax.yaxis.set_visible(False)
-
-            if idx != round(len(fig.axes) / 2):
-                ax.xaxis.set_visible(False)
         fig.suptitle(
-            f'raw {"LFP" if lfp else "AP"} data {label}\n{median_subtraction=}\n{session.session_id}',
+            f'raw {"LFP" if lfp else "AP"} data {device}\n{median_subtraction=}\n{session.session_id}',
             fontsize=10,
         )
         figures.append(fig)

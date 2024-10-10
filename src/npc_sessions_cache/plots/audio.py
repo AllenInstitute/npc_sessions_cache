@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime
 import itertools
 from typing import TYPE_CHECKING, Iterable, Literal
+import wave
 
 import matplotlib
 import matplotlib.figure
@@ -75,6 +76,38 @@ def plot_microphone_response(
     fig.suptitle(f"mic response for aud stim trials in task\n{session.id}")
     return fig
 
+def plot_audio_waveforms(
+    session: npc_sessions.DynamicRoutingSession,
+    target_stim: bool = True,
+) -> matplotlib.figure.Figure:
+    """Plot a selection of audio waveforms aligned to stim start times. Default is
+    one per block"""
+    aud_trials = session.trials[:].query(f"is_aud_{'' if target_stim else 'non'}target")
+    start_times = np.array([trials.iloc[0]['stim_start_time'] for _, trials in aud_trials.groupby("block_index")])
+    front_padding = .02 # sec
+    waveforms = get_audio_waveforms(
+        session=session,
+        start_times_on_sync=start_times - front_padding,
+        duration_sec=front_padding + .12,
+        resampling_factor=None,
+    )
+    fig, axes = plt.subplots(len(start_times), 1,  sharex=True)
+    for idx, (ax, waveform) in enumerate(zip(axes, waveforms)):
+        ax: plt.Axes
+        if waveform is not None:
+            ax.axvline(0, c='grey', ls='--')
+            ax.plot(waveform.timestamps - front_padding, waveform.samples, lw=.1, c='k')
+            ax.set_ylabel(f"block {aud_trials['block_index'].unique()[idx]}")
+            ax.set_yticks([])
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            ax.spines['left'].set_visible(False)
+    ax.set_xlabel("time from nominal stim onset in trials table (s)")
+    fig.suptitle(f"aud {'' if target_stim else 'non'}target waveforms in task\n{session.id}")
+    fig.set_figheight(1.2 * len(start_times))
+    return fig
+    
+    
 def get_audio_latencies(
     session: npc_sessions.DynamicRoutingSession, stim_type: Literal["task", "mapping"]
 ):

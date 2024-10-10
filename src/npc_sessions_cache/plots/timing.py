@@ -228,7 +228,156 @@ def plot_diode_flip_intervals(
     fig.set_size_inches(12, 6)
     return fig
 
+def plot_vsync_intervals(
+    session: npc_sessions.DynamicRoutingSession,
+) -> matplotlib.figure.Figure:
+    sync = session.sync_data
+    stim_ons, stim_offs = sync.stim_onsets, sync.stim_offsets
 
+    all_vsyncs = sync.get_falling_edges("vsync_stim", units="seconds")
+
+    frequency = sync.expected_diode_flip_rate
+    expected_period = 1 / frequency
+
+    # get the intervals in parts (one for each stimulus)
+    vsyncs_per_stim = []
+    for son, soff in zip(stim_ons, stim_offs):
+        # get the vsyncs that occur during this stimulus
+        vsyncs = all_vsyncs[np.where((all_vsyncs > son) & (all_vsyncs < soff))]
+        # get the vsyncs that occur during this stimulus
+
+        vsyncs_per_stim.append(sorted(vsyncs))
+
+    num_vsyncs_per_stim = np.array([len(_) for _ in vsyncs_per_stim])
+    # add ` width_ratios=num_vsyncs/min(num_vsyncs)``
+    fig, _ = plt.subplots(
+        1,
+        len(stim_ons),
+        sharey=True,
+        gridspec_kw={
+            "width_ratios": num_vsyncs_per_stim / min(num_vsyncs_per_stim)
+        },
+    )
+    fig.suptitle(
+        f"vsync intervals, {expected_period = } s"
+    )
+    y_deviations_from_expected_period: list[float] = []
+    for idx, (ax, d) in enumerate(zip(fig.axes, vsyncs_per_stim)):
+        # add horizontal line at expected period
+        ax.axhline(expected_period, linewidth=0.5, c="k", linestyle="--", alpha=0.3)
+        plt.sca(ax)
+        intervals = np.diff(d)
+        times = np.diff(d) / 2 + d[:-1]  # plot at mid-point of interval
+        markerline, stemline, baseline = plt.stem(
+            times, intervals, bottom=expected_period
+        )
+        plt.setp(stemline, linewidth=0.5, alpha=0.3)
+        plt.setp(markerline, markersize=0.5, alpha=0.8)
+        plt.setp(baseline, visible=False)
+
+        y_deviations_from_expected_period.append(max(intervals - expected_period))
+        y_deviations_from_expected_period.append(max(expected_period - intervals))
+        if len(fig.axes) > 1:
+            ax.set_title(f"stim {idx}", fontsize=8)
+        ax.set_xlabel("time (s)")
+        if idx == 0:
+            ax.set_ylabel("vsync interval (s)")
+        ax.set_xlim(min(d) - 20, max(d) + 20)
+
+    for ax in fig.axes:
+        # after all ylims are established
+        ax.set_ylim(
+            bottom=max(
+                0,
+                expected_period - np.max(np.abs(y_deviations_from_expected_period)),
+            ),
+        )
+        ticks_with_period = sorted(set(ax.get_yticks()) | {expected_period})
+        ax.set_yticks(ticks_with_period)
+        if idx == 0:
+            ax.set_yticklabels([f"{_:.3f}" for _ in ticks_with_period])
+    fig.set_layout_engine("tight")
+
+    names = tuple(
+        k for k, v in session.stim_frame_times.items() if not isinstance(v, Exception)
+    )
+    for idx, ax in enumerate(fig.axes):
+        if len(names) == len(fig.axes):
+            ax.set_title(names[idx].split("_")[0])
+    fig.set_size_inches(12, 6)
+    return fig
+
+
+def plot_frametime_intervals(
+    session: npc_sessions.DynamicRoutingSession,
+) -> matplotlib.figure.Figure:
+    sync = session.sync_data
+    frequency = sync.expected_diode_flip_rate
+    expected_period = 1 / frequency
+
+    # get the intervals in parts (one for each stimulus)
+    frametimes_per_stim = sync.frame_display_time_blocks
+
+    num_frametimes_per_stim = np.array([len(_) for _ in frametimes_per_stim])
+    fig, _ = plt.subplots(
+        1,
+        len(frametimes_per_stim),
+        sharey=True,
+        gridspec_kw={
+            "width_ratios": num_frametimes_per_stim / min(num_frametimes_per_stim)
+        },
+    )
+    fig.suptitle(
+        f"frametime intervals, {expected_period = } s"
+    )
+    y_deviations_from_expected_period: list[float] = []
+    for idx, (ax, d) in enumerate(zip(fig.axes, frametimes_per_stim)):
+        # add horizontal line at expected period
+        ax.axhline(expected_period, linewidth=0.5, c="k", linestyle="--", alpha=0.3)
+        plt.sca(ax)
+        intervals = np.diff(d)
+        times = np.diff(d) / 2 + d[:-1]  # plot at mid-point of interval
+        markerline, stemline, baseline = plt.stem(
+            times, intervals, bottom=expected_period
+        )
+        plt.setp(stemline, linewidth=0.5, alpha=0.3)
+        plt.setp(markerline, markersize=0.5, alpha=0.8)
+        plt.setp(baseline, visible=False)
+
+        y_deviations_from_expected_period.append(max(intervals - expected_period))
+        y_deviations_from_expected_period.append(max(expected_period - intervals))
+        if len(fig.axes) > 1:
+            ax.set_title(f"stim {idx}", fontsize=8)
+        ax.set_xlabel("time (s)")
+        if idx == 0:
+            ax.set_ylabel("frametime interval (s)")
+        ax.set_xlim(min(d) - 20, max(d) + 20)
+
+    for ax in fig.axes:
+        # after all ylims are established
+        ax.set_ylim(
+            bottom=max(
+                0,
+                expected_period - np.max(np.abs(y_deviations_from_expected_period)),
+            ),
+        )
+        ticks_with_period = sorted(set(ax.get_yticks()) | {expected_period})
+        ax.set_yticks(ticks_with_period)
+        if idx == 0:
+            ax.set_yticklabels([f"{_:.3f}" for _ in ticks_with_period])
+    fig.set_layout_engine("tight")
+
+    names = tuple(
+        k for k, v in session.stim_frame_times.items() if not isinstance(v, Exception)
+    )
+    for idx, ax in enumerate(fig.axes):
+        if len(names) == len(fig.axes):
+            ax.set_title(names[idx].split("_")[0])
+    fig.set_size_inches(12, 6)
+    return fig
+
+
+    
 def _plot_vsyncs_and_diode_flips_at_ends_of_each_stim(
     session: npc_sessions.DynamicRoutingSession,
 ) -> matplotlib.figure.Figure:

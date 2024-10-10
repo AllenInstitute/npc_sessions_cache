@@ -262,7 +262,7 @@ def plot(
                 lineoffsets=ypos,
                 linewidths=0.3,
                 linelengths=0.8,
-                color=[0.6] * 3,
+                color=[0.4] * 3,
                 zorder=99,
             )
             if lick_times.size == 1 and lick_times[0] is None:

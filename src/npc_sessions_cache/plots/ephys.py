@@ -478,7 +478,7 @@ def plot_raw_ephys_segments(
     return tuple(figures)
 
 
-def _plot_raw_ap_vs_surface(
+def plot_raw_ap_vs_surface(
     session: npc_sessions.DynamicRoutingSession | pynwb.NWBFile,
 ) -> tuple[matplotlib.figure.Figure, ...] | None:
     if not session.is_surface_channels:

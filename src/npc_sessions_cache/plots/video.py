@@ -124,12 +124,13 @@ def plot_pupil_response(
         if np.any(y):
             plt.plot(x, np.nanmedian([t for t in trial_pupil_size if np.any(t)], 0), lw=2)
             
-    plt.gca().set(xlabel="time from vis stim onset (s)", ylabel="pupil area - baseline (pix)")
+    plt.gca().set(xlabel="time from vis stim onset (s)", ylabel="pupil area minus baseline (pixels)")
     plt.title(f"pupil response to stim\n{query}\n{session.id}", fontsize=8)
     plt.axhline(y=0, c='k', lw=.5, ls='--')
     plt.axvline(x=0, c='k', lw=.5, ls='--')
     plt.gca().set_ylim(-500, 500)
     plt.gca().set_xlim(-0.1, dur + 0.1)
+    plt.gcf().set_size_inches(3, 4)
     return plt.gcf()
 
 def plot_camera_frames(

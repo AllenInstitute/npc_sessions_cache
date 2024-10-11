@@ -102,8 +102,8 @@ def plot_audio_waveforms(
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
             ax.spines['left'].set_visible(False)
-    ax.set_xlabel("time from nominal stim onset in trials table (s)")
-    fig.suptitle(f"aud {'' if target_stim else 'non'}target waveforms in task\n{session.id}")
+    ax.set_xlabel("time from 'stim start time' in trials table (s)")
+    fig.suptitle(f"mic rec of {'' if target_stim else 'non'}target waveforms in task\n{session.id}")
     fig.set_figheight(1.2 * len(start_times))
     return fig
     

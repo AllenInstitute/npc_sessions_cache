@@ -81,10 +81,10 @@ class QCElement:
             path.write_text(self.data.as_posix(), **kwargs)
         elif isinstance(self.data, matplotlib.figure.Figure):
             if not path.protocol:
-                self.data.savefig(path, **kwargs | {'dpi': 300})
+                self.data.savefig(path, **kwargs | {'dpi': 450})
             else: # savefig not compatible with cloud storage
                 with tempfile.TemporaryDirectory() as tmpdir:
-                    self.data.savefig((f := pathlib.Path(tmpdir) / path.name), **kwargs | {'dpi': 300})
+                    self.data.savefig((f := pathlib.Path(tmpdir) / path.name), **kwargs | {'dpi': 450})
                     path.write_bytes(f.read_bytes())
         elif isinstance(self.data, Mapping):
             path.write_text(json.dumps(self.data))

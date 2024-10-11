@@ -25,6 +25,8 @@ def plot(
     max_psth_spike_rate: float = 60, # Hz
     use_session_obj: bool = False,
     session_obj = None,
+    xlim_0 = -1.0, # seconds before stim onset
+    xlim_1 = 2.0, # seconds after stim onset
 ) -> plt.Figure:
 
     # in case unit_id is an npc_sessions object
@@ -63,13 +65,13 @@ def plot(
         performance_all_sessions = utils.get_component_df("performance")
         performance = performance_all_sessions.filter(pl.col("session_id") == session_id)
     
+    pad_start = -xlim_0 + 0.5,  # seconds before stim onset 
     if trials.is_empty():
         raise ValueError(f"No trials found for {session_id}")
     if not unit_spike_times.size:
         raise ValueError(f"No spike times found for {unit_id}")
     modality_to_rewarded_stim = {"aud": "sound1", "vis": "vis1"}
     # add spikes to trials:
-    pad_start = 1.5  # seconds
     spike_times_by_trial = tuple(
         unit_spike_times[slice(start, stop)] if 0 <= start < stop <= len(unit_spike_times) else []
         for start, stop in np.searchsorted(
@@ -147,7 +149,6 @@ def plot(
     )
     response_window_start_time = 0.1  # np.median(np.diff(trials.select('stim_start_time', 'response_window_start_time')))
     response_window_stop_time = 1  # np.median(np.diff(trials.select('stim_start_time', 'response_window_stop_time')))
-    xlim_0 = -1
     aud_block_color = 'orange'
     add_psth = True
     nominal_rows_per_block = 20
@@ -328,7 +329,6 @@ def plot(
                 continue
         last_ypos.append(ypos)
     # format axes and add PSTH
-    xlim_1 = 2.0
     for ax, stim in zip(axes, stim_names):
         ax: plt.Axes
         if add_psth:

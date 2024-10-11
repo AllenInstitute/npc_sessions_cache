@@ -23,7 +23,7 @@ def plot_surface_images(
 ) -> tuple[matplotlib.figure.Figure, ...]:
     ctime_to_fig = {}
     figs = []
-    for p in session.raw_data_paths if 'surface_image' in p.stem:
+    for p in (p for p in session.raw_data_paths if 'surface_image' in p.stem):
         try:
             ctime = get_file_created_time(p)
         except:

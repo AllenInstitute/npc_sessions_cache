@@ -17,7 +17,10 @@ plt.rcParams["pdf.fonttype"] = 42
 
 
 def plot(
-    session_id: str, stim_names=("vis1", "vis2", "sound1", "sound2")
+    session_id: str,
+    stim_names=("vis1", "sound1", "vis2", "sound2"),
+    use_session_obj: bool = False,
+    session = None,
 ) -> plt.Figure:
     try:
         session_id = npc_session.SessionRecord(
@@ -25,15 +28,25 @@ def plot(
         ).id  # in case session_id is an npc_sessions object
     except (AttributeError, TypeError):
         session_id = npc_session.SessionRecord(session_id).id
+        
+    if use_session_obj or session is not None:
+        if session is not None:
+            obj = session
+        else:
+            import npc_sessions
+            obj = npc_sessions.Session(session_id)
+        trials = pl.DataFrame(obj.trials[:])
+        performance: pl.DataFrame = pl.DataFrame(obj.intervals['performance'][:])
+        lick_times: npt.NDArray = obj._all_licks[0].timestamps
+    
+    else:
+        licks_all_sessions = utils.get_component_zarr("licks")
+        trials_all_sessions = utils.get_component_df("trials")
+        performance_all_sessions = utils.get_component_df("performance")
 
-    licks_all_sessions = utils.get_component_zarr("licks")
-    trials_all_sessions = utils.get_component_df("trials")
-    all_sessions = utils.get_component_df("session")
-    performance_all_sessions = utils.get_component_df("performance")
-
-    performance = performance_all_sessions.filter(pl.col("session_id") == session_id)
-    trials = trials_all_sessions.filter(pl.col("session_id") == session_id)
-    lick_times: npt.NDArray = licks_all_sessions[session_id]["timestamps"][:]
+        performance = performance_all_sessions.filter(pl.col("session_id") == session_id)
+        trials = trials_all_sessions.filter(pl.col("session_id") == session_id)
+        lick_times: npt.NDArray = licks_all_sessions[session_id]["timestamps"][:]
 
     modality_to_rewarded_stim = {"aud": "sound1", "vis": "vis1"}
 

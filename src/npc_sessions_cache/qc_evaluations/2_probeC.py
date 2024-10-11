@@ -1,7 +1,9 @@
 import functools
+import pathlib
 
-import npc_sessions_cache.qc_evaluations._probes
+import npc_session
+from npc_sessions_cache.qc_evaluations._probes import *
 
-for var in npc_sessions_cache.qc_evaluations._probes:
-    if callable(var):
-        globals()[var.__name__] = functools.partial(var, probe_letter="C")
+for name, func in globals().items():
+    if name.startswith('plot_') and callable(func):
+        globals()[name] = functools.partial(func, probe_letter=npc_session.ProbeRecord(pathlib.Path(__file__).stem))

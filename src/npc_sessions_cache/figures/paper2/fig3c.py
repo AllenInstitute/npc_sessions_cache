@@ -24,11 +24,10 @@ def plot(
     with_instruction_trial_whitespace: bool = False,
     max_psth_spike_rate: float = 60, # Hz
     use_session_obj: bool = False,
-    session_obj = None,
+    session = None,
     xlim_0 = -1.0, # seconds before stim onset
     xlim_1 = 2.0, # seconds after stim onset
 ) -> plt.Figure:
-
     # in case unit_id is an npc_sessions object
     try:
         session_id = npc_session.SessionRecord(
@@ -36,6 +35,8 @@ def plot(
         ).id  # in case unit_id is an npc_sessions object
     except (AttributeError, TypeError):
         session_id = npc_session.SessionRecord(unit_id).id
+    
+    session_obj = session
     if use_session_obj or session_obj is not None:
         if session_obj is not None:
             obj = session_obj

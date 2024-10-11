@@ -73,6 +73,7 @@ def makePSTH_numba(
 
 def plot_unit_metrics(
     session: npc_sessions.DynamicRoutingSession,
+    probe_letter: str | npc_session.ProbeRecord | None = None,
 ) -> tuple[matplotlib.figure.Figure, ...]:
     units: pd.DataFrame = session.units[:].query("default_qc")
 
@@ -98,8 +99,9 @@ def plot_unit_metrics(
         probe_index = 0
         fig.suptitle(f"{metric}")
         for probe in probes:
+            is_probe = (probe_letter is None) or (npc_session.ProbeRecord(probe) == npc_session.ProbeRecord(probe_letter))
             units_probe_metric = units[units["electrode_group_name"] == probe][metric]
-            fig.axes[probe_index].hist(units_probe_metric, bins=20, density=True)
+            fig.axes[probe_index].hist(units_probe_metric, bins=20, density=True, color='orange' if is_probe else None)
             fig.axes[probe_index].set_title(f"{probe}")
             fig.axes[probe_index].set_xlabel(x_labels[metric])
             probe_index += 1
@@ -113,11 +115,15 @@ def plot_unit_metrics(
 def get_sorting_view_links(
     session: npc_sessions.DynamicRoutingSession,
     key: Literal["sorting_summary", "timeseries"],
+    probe_letter: str | npc_session.ProbeRecord | None = None,
 ) -> tuple[upath.UPath, ...]:
     vis = session.sorted_data.visualization_output_json()
     links = []
     for v in vis.values():
         if link := v.get(key):
+            if probe_letter is not None:
+                if npc_session.ProbeRecord(probe_letter) != npc_session.ProbeRecord(link):
+                    continue
             components = []
             for h in link.split("#"):
                 components.extend(h.split("?"))
@@ -127,22 +133,27 @@ def get_sorting_view_links(
 
 def plot_sorting_view_summary_links(
     session: npc_sessions.DynamicRoutingSession,
+    probe_letter: str | npc_session.ProbeRecord | None = None,
 ) -> tuple[upath.UPath, ...]:
     return get_sorting_view_links(session, "sorting_summary")
 
 
 def plot_sorting_view_timeseries_links(
     session: npc_sessions.DynamicRoutingSession,
+    probe_letter: str | npc_session.ProbeRecord | None = None,
 ) -> tuple[upath.UPath, ...]:
     return get_sorting_view_links(session, "timeseries")
 
 
 def plot_all_spike_histograms(
     session: npc_sessions.DynamicRoutingSession,
-) -> tuple[matplotlib.figure.Figure, ...]:  # -> tuple:# -> tuple:
+    probe_letter: str | npc_session.ProbeRecord | None = None,
+) -> tuple[matplotlib.figure.Figure, ...]:
     session.units[:].query("default_qc")
     figs: list[matplotlib.figure.Figure] = []
     for obj in session.all_spike_histograms.children:
+        if probe_letter is not None and npc_session.ProbeRecord(obj.name) != npc_session.ProbeRecord(probe_letter):
+            continue
         fig, ax = plt.subplots()
         ax.plot(obj.timestamps, obj.data, linewidth=0.1, alpha=0.8, color="k")
         plot_utils.add_epoch_color_bars(
@@ -435,8 +446,9 @@ def plot_raw_ephys_segments(
     lfp: bool = False,
     interval: utils.Interval = None,
     median_subtraction: bool = True,
+    probe_letter: str | npc_session.ProbeRecord | None = None,
     **imshow_kwargs,
-) -> matplotlib.figure.Figure:
+) -> tuple[matplotlib.figure.Figure, ...]:
     if lfp:
         container = session._raw_lfp
     else:
@@ -444,7 +456,9 @@ def plot_raw_ephys_segments(
     start_times =  (1, 100, -10)
     figures = []
     for device, timeseries in container.electrical_series.items():
-        
+        if probe_letter is not None:
+            if npc_session.ProbeRecord(probe_letter) != npc_session.ProbeRecord(device):
+                continue
         fig, _ = plt.subplots(
             1, len(start_times), sharex=True, sharey=True
         )
@@ -480,6 +494,7 @@ def plot_raw_ephys_segments(
 
 def plot_raw_ap_vs_surface(
     session: npc_sessions.DynamicRoutingSession | pynwb.NWBFile,
+    probe_letter: str | npc_session.ProbeRecord | None = None,
 ) -> tuple[matplotlib.figure.Figure, ...] | None:
     if not session.is_surface_channels:
         return None
@@ -487,6 +502,8 @@ def plot_raw_ap_vs_surface(
 
     figs = []
     for probe in session._raw_ap.electrical_series.keys():
+        if probe_letter is not None and npc_session.ProbeRecord(probe) != npc_session.ProbeRecord(probe_letter):
+            continue
         n_samples = int(time_window * session._raw_ap[probe].rate)
         offset_corrected = session._raw_ap[probe].data[-n_samples:, :] - np.median(
             session._raw_ap[probe].data[-n_samples:, :], axis=0
@@ -713,7 +730,9 @@ def plot_optotagging(
 
 def plot_probe_yield(
     session: npc_sessions.DynamicRoutingSession,
+    probe_letter: str | npc_session.ProbeRecord | None = None,
 ) -> matplotlib.figure.Figure:
+    del probe_letter # unused  - just allows functools.partial application
     units = session.units[:]
     good_unit_filter = (
         (units["amplitude_cutoff"] < 0.1)

@@ -4,6 +4,7 @@ from npc_sessions_cache.plots.ephys import (
     plot_sorting_view_summary_links,
     plot_sorting_view_timeseries_links,
     plot_unit_metrics,
+    plot_raw_ap_vs_surface,
 )
 
 instructions = {
@@ -17,4 +18,6 @@ instructions = {
     """,
     plot_sorting_view_summary_links: """
     """,
+    plot_raw_ap_vs_surface: """
+    """
 }

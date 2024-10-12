@@ -907,6 +907,8 @@ def _plot_ephys_noise_with_unit_density_areas(
     if is_deep_insertion and "deep_insertion_probes" in session.keywords:
         deep_probes = next(kw for kw in session.keywords if "deep_insertion_probes" in kw).split('=')[-1]
         is_deep_probe = npc_session.ProbeRecord(probe) in deep_probes
+    else:
+        is_deep_probe = False
     ax[0].set_title(f"CCF aligned with unit density (blue) and raw ephys noise (black/red)\n{probe} | {'deep' if is_deep_insertion and is_deep_probe else 'regular'} insertion")
     plt.tight_layout()
 

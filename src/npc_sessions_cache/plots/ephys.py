@@ -1126,6 +1126,6 @@ def plot_sensory_responses(
     figs = []
     for unit_id in max_probe_unit_ids:
         figs.append(
-            fig3c.plot(unit_id=unit_id, max_psth_spike_rate=200, session_obj=session)
+            fig3c.plot(unit_id=unit_id, max_psth_spike_rate=200, session_obj=session, xlim_0=-0.25, xlim_1=0.75)
         )
     return tuple(figs)

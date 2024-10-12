@@ -116,29 +116,8 @@ def plot_first_lick_latency_hist(
 def plot_lick_raster(
     session: npc_sessions.DynamicRoutingSession,
 ) -> matplotlib.figure.Figure:
-    timeseries = session.processing["behavior"]["licks"]
-    trials: pd.DataFrame = session.trials[:]
-
-    fig, ax = plt.subplots(1, 1)
-    ax.axvline(0, color="k", linestyle="--", linewidth=0.5)
-    for tt, trial in trials.iterrows():
-        trial_licks = (
-            timeseries.timestamps[
-                (timeseries.timestamps > trial["stim_start_time"] - 1)
-                & (timeseries.timestamps < trial["stim_start_time"] + 2)
-            ]
-            - trial["stim_start_time"]
-        )
-
-        ax.vlines(trial_licks, tt, tt + 1)
-
-    ax.set_xlim([-1, 2])
-    ax.set_xlabel("time rel to stim onset (s)")
-    ax.set_ylabel("trial number")
-    ax.set_title(timeseries.description, fontsize=8)
-    fig.suptitle(session.id, fontsize=10)
-
-    return fig
+    from npc_sessions_cache.figures.paper2.fig1c import plot
+    return plot(session_id=session.id, session=session)
 
 
 def plot_running(

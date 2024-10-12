@@ -1,4 +1,4 @@
-from npc_sessions_cache.plots.video import plot_camera_frames, plot_lick_triggered_frames, plot_pupil_response, plot_pupil_area_with_running
+from npc_sessions_cache.plots.video import plot_lick_triggered_frames, plot_pupil_response, plot_pupil_area_with_running
 
 instructions = {
     plot_lick_triggered_frames: """

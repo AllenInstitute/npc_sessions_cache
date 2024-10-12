@@ -14,4 +14,6 @@ def plot_unsorted_surface_recording_probes(session: npc_sessions.DynamicRoutingS
     return ''.join(sorted(session.surface_recording.probe_letters_skipped_by_sorting))
 
 def plot_probes_skipped_in_config(session: npc_sessions.DynamicRoutingSession) -> str | None:
-    return ''.join(sorted(session.info.session_kwargs.get('probe_letters_to_skip') if session.info.session_kwargs else []))
+    if not session.info:
+        return None
+    return ''.join(sorted(session.info.session_kwargs.get('probe_letters_to_skip', '')))

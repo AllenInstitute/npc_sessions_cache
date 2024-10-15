@@ -99,7 +99,7 @@ def plot_unit_metrics(
         probe_index = 0
         fig.suptitle(f"{metric}")
         for probe in probes:
-            is_probe = (probe_letter is None) or (npc_session.ProbeRecord(probe) == npc_session.ProbeRecord(probe_letter))
+            is_probe = (probe_letter is not None) and (npc_session.ProbeRecord(probe) == npc_session.ProbeRecord(probe_letter))
             units_probe_metric = units[units["electrode_group_name"] == probe][metric]
             fig.axes[probe_index].hist(units_probe_metric, bins=20, density=True, color='orange' if is_probe else None)
             fig.axes[probe_index].set_title(f"{probe}")

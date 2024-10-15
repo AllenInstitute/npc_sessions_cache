@@ -460,25 +460,28 @@ def plot_raw_ephys_segments(
             if npc_session.ProbeRecord(probe_letter) != npc_session.ProbeRecord(device):
                 continue
         fig, _ = plt.subplots(
-            1, len(start_times), sharex=True, sharey=True
+            1, len(start_times), sharey=True
         )
         for idx, start_time in enumerate(start_times):
             ax = fig.axes[idx]
-            if timeseries.timestamps is not None:
-                t0 = timeseries.timestamps[0 if start_time > 0 else -1] + start_time
-            else:
-                t0 = timeseries.starting_time + start_time
-                if start_time < 0:
-                    t0 += timeseries.data.shape[0] / timeseries.rate
+            duration = 0.3
             if interval is None:
-                interval = (
-                    t0 + start_time,
-                    t0 + start_time + 0.2,
-                )
+                if timeseries.timestamps is not None:
+                    if start_time > 0:
+                        t0 = timeseries.timestamps[0] + start_time
+                    else:
+                        t0 = timeseries.timestamps[-1] + start_time
+                else:
+                    if start_time > 0:
+                        t0 = timeseries.starting_time + start_time
+                    else:
+                        t0 = timeseries.starting_time + (timeseries.data.shape[0] / timeseries.rate) + start_time
+                temp_interval = (t0, t0 + duration)
+            print(temp_interval)
             _plot_ephys_image(
                 timeseries,
                 ax=ax,
-                interval=interval,
+                interval=temp_interval,
                 median_subtraction=median_subtraction,
                 **imshow_kwargs,
             )
@@ -1100,18 +1103,18 @@ def plot_sensory_responses(
             {
                 "unit_id": unit_id,
                 "vis_resp": np.median(
-                    (v := np.subtract(block_resp["vis"], block_resp["aud"]))
+                    v := np.subtract(block_resp["vis"], block_resp["aud"])
                 ),
                 "aud_resp": np.median(
-                    (v := np.subtract(block_resp["aud"], block_resp["vis"]))
+                    v := np.subtract(block_resp["aud"], block_resp["vis"])
                 ),
                 "stim_resp": np.median(
-                    (
+
                         v := np.subtract(
                             np.add(block_resp["aud"], block_resp["vis"]) * 0.5,
                             block_resp["catch"],
                         )
-                    )
+
                 ),
             }
         )

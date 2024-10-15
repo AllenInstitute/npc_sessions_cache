@@ -28,6 +28,7 @@ def plot_surface_images(
             ctime = get_file_created_time(p)
         except:
             ctime = None
+        plt.figure()
         plt.imshow(plt.imread(io.BytesIO(p.read_bytes())))
         plt.title(f"{p.stem}\n{ctime or 'time unknown'}")
         plt.gca().axis('off')

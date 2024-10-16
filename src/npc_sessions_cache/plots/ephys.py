@@ -847,12 +847,12 @@ def _plot_ephys_noise_with_unit_density_areas(
     timeseries_probe = session._raw_ap.electrical_series[probe]
     unit_density_values_plot = unit_denisty_values[:, 1] / 1000  # scaling
     image_path = (
-        upath.UPath("s3://aind-scratch-data/arjun.sridhar/slice_images")
+        upath.UPath("s3://aind-scratch-data/arjun.sridhar/tissuecyte_cloud_processed/slice_images")
         / f"{session.info.subject}"
         / f"Probe_{probe[-1]}{session.info.experiment_day}_slice.png"
     )
     anchors_path = (
-        upath.UPath("s3://aind-scratch-data/arjun.sridhar/alignment_anchors")
+        upath.UPath("s3://aind-scratch-data/arjun.sridhar/tissuecyte_cloud_processed/alignment_anchors")
         / f"{session.info.subject}"
         / f"Probe_{probe[-1]}{session.info.experiment_day}_anchors.pickle"
     )

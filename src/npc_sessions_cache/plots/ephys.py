@@ -135,14 +135,14 @@ def plot_sorting_view_summary_links(
     session: npc_sessions.DynamicRoutingSession,
     probe_letter: str | npc_session.ProbeRecord | None = None,
 ) -> tuple[upath.UPath, ...]:
-    return get_sorting_view_links(session, "sorting_summary")
+    return get_sorting_view_links(session, "sorting_summary", probe_letter=probe_letter)
 
 
 def plot_sorting_view_timeseries_links(
     session: npc_sessions.DynamicRoutingSession,
     probe_letter: str | npc_session.ProbeRecord | None = None,
 ) -> tuple[upath.UPath, ...]:
-    return get_sorting_view_links(session, "timeseries")
+    return get_sorting_view_links(session, "timeseries", probe_letter=probe_letter)
 
 
 def plot_all_spike_histograms(

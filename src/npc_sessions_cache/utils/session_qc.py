@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import collections.abc
 import dataclasses
+import functools
 import importlib
 import importlib.metadata
 import inspect
@@ -240,7 +241,7 @@ def get_qc_functions(module_name: str | None = None) -> dict[tuple[str, str], Fu
             if "utils" in name.split("_"):
                 continue
             callable_obj = getattr(module, name)
-            if not inspect.isfunction(callable_obj):
+            if not (inspect.isfunction(callable_obj) or isinstance(callable_obj, functools.partial)):
                 continue
             functions[(m, normalize_function_name(name))] = callable_obj
     return functions

@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = []
 lock_version = "4.5.0"
-content_hash = "sha256:73ff122fb08912834bfa6d7600249727a79c27b491d122e4ad6b663398757841"
+content_hash = "sha256:597d9584ee3afec8171f741609ca6bf3e15c4df8969cff9fb49fc8e5621c1175"
 
 [[metadata.targets]]
 requires_python = ">=3.9"
@@ -77,18 +77,18 @@ files = [
 
 [[package]]
 name = "aind-session"
-version = "0.2.1"
+version = "0.3.5"
 requires_python = ">=3.9"
 summary = "User-friendly tools for accessing paths, metadata and assets related to AIND sessions."
 dependencies = [
     "aind-data-access-api[docdb]>=0.14.0",
     "codeocean>=0.1.5",
-    "npc-io>=0.1.29",
+    "npc-io>=0.1.30",
     "npc-session>=0.1.39",
 ]
 files = [
-    {file = "aind_session-0.2.1-py3-none-any.whl", hash = "sha256:d51f13c5d1ee800de7e41e0524ae5f404510c6ca5683b509cb54d973e2ad0980"},
-    {file = "aind_session-0.2.1.tar.gz", hash = "sha256:e020ece71825fc200b2f7282adb33759cb64a631486fe41d43bd3eae00cd3926"},
+    {file = "aind_session-0.3.5-py3-none-any.whl", hash = "sha256:2c5b552e04da288e376bfc45e26214bfedb24734b666f8393edf1085393d14cd"},
+    {file = "aind_session-0.3.5.tar.gz", hash = "sha256:c28f7013a09b8780c9e9369fd7ded9f4476787b8a4312651036190f59671ec67"},
 ]
 
 [[package]]
@@ -2850,7 +2850,7 @@ files = [
 
 [[package]]
 name = "npc-ephys"
-version = "0.1.25"
+version = "0.1.31"
 requires_python = ">=3.9"
 summary = "Tools for accessing and processing raw ephys data, compatible with data in the cloud."
 dependencies = [
@@ -2867,8 +2867,8 @@ dependencies = [
     "zarr<2.18.1",
 ]
 files = [
-    {file = "npc_ephys-0.1.25-py3-none-any.whl", hash = "sha256:506e1881e907a6b3e1133607cd87f84feee7d4cb924169e700d937e042e559a9"},
-    {file = "npc_ephys-0.1.25.tar.gz", hash = "sha256:e2c3926b7c104dc6202591b0d59f84e20b52d69ab7cc23303d1283674ccdc7e5"},
+    {file = "npc_ephys-0.1.31-py3-none-any.whl", hash = "sha256:31876b56451374126514edcbbd025a221a094d6c282a104f0fc4b11993a250f0"},
+    {file = "npc_ephys-0.1.31.tar.gz", hash = "sha256:541d72df9e75e1477b12091ae2e6585390a4c05fedefb82d0d6a230a6e4b3c3e"},
 ]
 
 [[package]]
@@ -2891,10 +2891,11 @@ files = [
 
 [[package]]
 name = "npc-lims"
-version = "0.1.175"
+version = "0.1.179"
 requires_python = ">=3.9"
 summary = "Tools to fetch and update paths, metadata and state for Mindscope Neuropixels sessions, in the cloud."
 dependencies = [
+    "aind-session>=0.3.4",
     "codeocean>=0.1.5",
     "npc-io>=0.1.24",
     "npc-session>=0.1.36",
@@ -2908,13 +2909,13 @@ dependencies = [
     "types-requests>=2.31.0.6",
 ]
 files = [
-    {file = "npc_lims-0.1.175-py3-none-any.whl", hash = "sha256:288dd69fbd59c2ca56e4e0d2610da17e3171831b58097da82892ac1e9c361cab"},
-    {file = "npc_lims-0.1.175.tar.gz", hash = "sha256:340b5097fff67b58bdbc8c8e794ceb4e6f797c925d94021533319e21843db8a3"},
+    {file = "npc_lims-0.1.179-py3-none-any.whl", hash = "sha256:d1a6411c4d08e3c431ccde8fd11f5f126df450402869cdf2969dff8105b683d1"},
+    {file = "npc_lims-0.1.179.tar.gz", hash = "sha256:0408701de4444def0779a821bbf4a588611e9cefc85910cdaab198d377bb4842"},
 ]
 
 [[package]]
 name = "npc-mvr"
-version = "0.1.7"
+version = "0.1.8"
 requires_python = ">=3.9"
 summary = "Tools for reading raw video data from MindScope Neuropixels experiments, compatible with data in the cloud."
 dependencies = [
@@ -2924,8 +2925,8 @@ dependencies = [
     "typing-extensions>=4.9.0",
 ]
 files = [
-    {file = "npc_mvr-0.1.7-py3-none-any.whl", hash = "sha256:eea132c80f63938a2334e7023316aa1cda0c9e336d85c96a0a8a5ca12ca1e434"},
-    {file = "npc_mvr-0.1.7.tar.gz", hash = "sha256:efc40041853ee11a3265e392036d800ab449ceece9705fde509be2e6859554bf"},
+    {file = "npc_mvr-0.1.8-py3-none-any.whl", hash = "sha256:06931722a1328ee0562f9ab996d0c9aa9b93c541b14ff5d3c0f2094584118de2"},
+    {file = "npc_mvr-0.1.8.tar.gz", hash = "sha256:7efa21036193286b779495bbfebbb8b95effbca0f8bbee9238a5bfe3525e42f2"},
 ]
 
 [[package]]
@@ -2960,7 +2961,7 @@ files = [
 
 [[package]]
 name = "npc-sessions"
-version = "0.0.242"
+version = "0.0.250"
 requires_python = ">=3.9"
 summary = "NWB-conversion for behavior and epyhys sessions from the Mindscope Neuropixels team, in the cloud."
 dependencies = [
@@ -2970,14 +2971,14 @@ dependencies = [
     "matplotlib>=3.7.2",
     "ndx-events>=0.2.0",
     "ndx-pose>=0.1.1",
-    "npc-ephys>=0.1.25",
+    "npc-ephys>=0.1.30",
     "npc-io>=0.1.30",
-    "npc-lims>=0.1.175",
-    "npc-mvr>=0.1.7",
+    "npc-lims>=0.1.176",
+    "npc-mvr>=0.1.8",
     "npc-samstim>=0.1.4",
     "npc-session>=0.1.39",
-    "npc-stim>=0.1.8",
-    "npc-sync>=0.1.18",
+    "npc-stim>=0.1.9",
+    "npc-sync>=0.1.19",
     "numba>=0.57.1",
     "pandas>=2.0",
     "pydantic>=2.6.4",
@@ -2989,8 +2990,8 @@ dependencies = [
     "zarr<2.18.1",
 ]
 files = [
-    {file = "npc_sessions-0.0.242-py3-none-any.whl", hash = "sha256:e6488eb46368dbb5c41e830f2f2c08216c2a8c0ff433974b173783da999b75e4"},
-    {file = "npc_sessions-0.0.242.tar.gz", hash = "sha256:c154763e5002ae35398f9a98b322c7f6148753a466c726d057220641347a9ae5"},
+    {file = "npc_sessions-0.0.250-py3-none-any.whl", hash = "sha256:1772704d2d9e62452824fa7099c6aec490d7433b175f8d3081891b19eb26d120"},
+    {file = "npc_sessions-0.0.250.tar.gz", hash = "sha256:e8f1345923a6af5ea5a07ddf87eed09687cedcf8626b6e88d55c90f4dc7f9072"},
 ]
 
 [[package]]
@@ -3549,16 +3550,16 @@ files = [
 
 [[package]]
 name = "polars"
-version = "1.7.1"
-requires_python = ">=3.8"
+version = "1.9.0"
+requires_python = ">=3.9"
 summary = "Blazingly fast DataFrame library"
 files = [
-    {file = "polars-1.7.1-cp38-abi3-macosx_10_12_x86_64.whl", hash = "sha256:589c1b5a9b5167f3c49713212cbeccc39e3a0e12577e21331c50dbf7178e32ed"},
-    {file = "polars-1.7.1-cp38-abi3-macosx_11_0_arm64.whl", hash = "sha256:c955cca9d109ed5d79f4498915ec80590aa2e4619bc40bafbbeb5a160fcb166e"},
-    {file = "polars-1.7.1-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:5cd675e4a306b2da57a1b688e65382aaa9e992dd7156b485fbd7f39892a3d784"},
-    {file = "polars-1.7.1-cp38-abi3-manylinux_2_24_aarch64.whl", hash = "sha256:45c255749b49bee244d10baeb69057580a0a397125b014bc8854b73ba5bdf45e"},
-    {file = "polars-1.7.1-cp38-abi3-win_amd64.whl", hash = "sha256:a9004a907fc8e923dda27879f7e6eea8e06a753e160d08e606c8b9b5f914f911"},
-    {file = "polars-1.7.1.tar.gz", hash = "sha256:3323bf6b3f1cf55212ddd35f044af8a1aa02033bca17d06f3852325e0da93a80"},
+    {file = "polars-1.9.0-cp38-abi3-macosx_10_12_x86_64.whl", hash = "sha256:a471d2ce96f6fa5dd0ef16bcdb227f3dbe3af8acb776ca52f9e64ef40c7489a0"},
+    {file = "polars-1.9.0-cp38-abi3-macosx_11_0_arm64.whl", hash = "sha256:94b12d731cd200d2c50b13fc070d6353f708e632bca6529c5a72aa6a69e5285d"},
+    {file = "polars-1.9.0-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f85f132732aa63c6f3b502b0fdfc3ba9f0b78cc6330059b5a2d6f9fd78508acb"},
+    {file = "polars-1.9.0-cp38-abi3-manylinux_2_24_aarch64.whl", hash = "sha256:f753c8941a3b3249d59262d68a856714a96a7d4e16977aefbb196be0c192e151"},
+    {file = "polars-1.9.0-cp38-abi3-win_amd64.whl", hash = "sha256:95de07066cd797dd940fa2783708a7bef93c827a57be0f4dfad3575a6144212b"},
+    {file = "polars-1.9.0.tar.gz", hash = "sha256:8e1206ef876f61c1d50a81e102611ea92ee34631cb135b46ad314bfefd3cb122"},
 ]
 
 [[package]]

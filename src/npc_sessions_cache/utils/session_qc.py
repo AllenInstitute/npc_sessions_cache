@@ -313,11 +313,14 @@ def write_session_qc(
     store_path: str | pathlib.Path | upath.UPath = DEFAULT_SESSION_QC_PATH,
     skip_existing: bool = True,
     skip_previously_failed: bool = True,
+    specific_function_name: str | None = None,
     session: npc_sessions.DynamicRoutingSession | None = None,
 ) -> None:
     if session is None:
         session = npc_sessions.DynamicRoutingSession(session_id)
     for (module_name, function_name), function in get_qc_functions().items():
+        if specific_function_name and function_name != function_name:
+            continue
         write_output_from_single_function(
             session_id,
             function=function,

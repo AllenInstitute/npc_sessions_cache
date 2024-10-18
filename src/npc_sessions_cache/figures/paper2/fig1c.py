@@ -81,7 +81,7 @@ def plot(
     )
 
     # select VIStarget / AUDtarget trials
-    trials_ = trials_.filter(
+    trials_: pl.LazyFrame = trials_.filter(
         #! filter out autoreward trials triggered by 10 misses:
         # (pl.col('is_reward_scheduled').eq(True) & (pl.col('trial_index_in_block') < 5)) | pl.col('is_reward_scheduled').eq(False),
         pl.col("stim_name").is_in(stim_names),
@@ -89,7 +89,7 @@ def plot(
 
     # create dummy instruction trials for the non-rewarded stimuli for easier
     # alignment of blocks:
-    trials_ = trials_.collect()
+    trials_: pl.DataFrame = trials_.collect()
     for block_index in trials_["block_index"].unique():
         context_name = trials_.filter(pl.col("block_index") == block_index)[
             "context_name"
@@ -98,7 +98,9 @@ def plot(
         for stim_name in stim_names:
             if autorewarded_stim == stim_name:
                 continue
-            extra_df = trials.filter( # filter original trials, not modified ones with dummy instruction trials
+            extra_df = trials.filter(
+                # filter original trials, not modified ones with dummy instruction trials
+                # need to make sure same set of columns for both though                      
                 pl.col("block_index") == block_index,
                 pl.col("is_reward_scheduled"),
                 pl.col("trial_index_in_block")
@@ -110,7 +112,9 @@ def plot(
                 is_response=pl.lit(False),
                 is_rewarded=pl.lit(False),
                 stim_centered_lick_times=pl.lit([]),
+                lick_times=pl.lit([]),
             )
+            assert (diff := set(trials_.columns) ^ set(extra_df.columns)), f"difference in columns: {diff}"
             trials_ = pl.concat([trials_, extra_df])
 
     # add columns for easier parsing of block structure:

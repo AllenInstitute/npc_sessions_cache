@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Iterable, Literal
 import wave
 
 import matplotlib
+import matplotlib.axes
 import matplotlib.figure
 import npc_samstim
 import npc_sync
@@ -92,6 +93,8 @@ def plot_audio_waveforms(
         resampling_factor=None,
     )
     fig, axes = plt.subplots(len(start_times), 1,  sharex=True)
+    if isinstance(axes, matplotlib.axes.Axes):
+        axes = [axes]
     for idx, (ax, waveform) in enumerate(zip(axes, waveforms)):
         ax: plt.Axes
         if waveform is not None:

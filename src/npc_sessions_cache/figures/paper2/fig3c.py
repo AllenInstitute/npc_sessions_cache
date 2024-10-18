@@ -66,7 +66,7 @@ def plot(
         performance_all_sessions = utils.get_component_df("performance")
         performance = performance_all_sessions.filter(pl.col("session_id") == session_id)
     
-    pad_start = -xlim_0 + 0.5,  # seconds before stim onset 
+    pad_start = -xlim_0 + 0.5  # seconds before stim onset 
     if trials.is_empty():
         raise ValueError(f"No trials found for {session_id}")
     if not unit_spike_times.size:

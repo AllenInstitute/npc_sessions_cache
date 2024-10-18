@@ -35,7 +35,7 @@ def plot(
         else:
             import npc_sessions
             obj = npc_sessions.Session(session_id)
-        trials = pl.DataFrame(obj.trials[:])
+        trials = pl.DataFrame(obj.trials[:]).drop('index', strict=False)
         performance: pl.DataFrame = pl.DataFrame(obj.intervals['performance'][:])
         lick_times: npt.NDArray = obj._all_licks[0].timestamps
     
@@ -115,7 +115,7 @@ def plot(
                 lick_times=pl.lit([]),
             )
             assert not (diff := set(trials_.columns) ^ set(extra_df.columns)), f"difference in columns: {diff}"
-            trials_ = pl.concat([trials_, extra_df])
+            trials_ = pl.concat([trials_.drop('index', strict=False), extra_df.drop('index', strict=False)])
 
     # add columns for easier parsing of block structure:
     trials_ = trials_.sort("start_time").with_columns(

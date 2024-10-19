@@ -185,7 +185,7 @@ def plot_vsync_intervals(
     # add ` width_ratios=num_vsyncs/min(num_vsyncs)``
     fig, _ = plt.subplots(
         1,
-        len(stim_ons),
+        len(vsyncs_per_stim),
         sharey=True,
         gridspec_kw={
             "width_ratios": num_vsyncs_per_stim / min(num_vsyncs_per_stim)

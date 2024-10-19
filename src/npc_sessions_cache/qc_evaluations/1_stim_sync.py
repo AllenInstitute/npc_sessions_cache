@@ -1,8 +1,10 @@
-from npc_sessions_cache.plots.sync import plot_vsync_interval_dist
-from npc_sessions_cache.plots.timing import (
+from npc_sessions_cache.plots.sync import (
+    plot_vsync_interval_dist,
     plot_vsync_intervals,
     plot_frametime_intervals,
     plot_diode_flip_intervals,
+)
+from npc_sessions_cache.plots.timing import (
     plot_long_vsync_occurrences,
 )
 

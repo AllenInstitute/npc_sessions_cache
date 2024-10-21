@@ -444,7 +444,7 @@ def plot(
             )
         ax.set_xlabel("Time after\nstimulus onset (s)")
         ax.invert_yaxis()
-        ax.set_aspect(0.1)
+        ax.set_aspect(0.1 * (xlim_1 - xlim_0) / 3)
         stim_to_label = {
             "vis1": "VIS+",
             "vis2": "VIS-",

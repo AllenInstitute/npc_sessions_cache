@@ -114,8 +114,10 @@ def plot(
                 stim_centered_lick_times=pl.lit([]),
                 lick_times=pl.lit([]),
             )
+            trials_ = trials_.drop('index', strict=False)
+            extra_df = extra_df.drop('index', strict=False)
             assert not (diff := set(trials_.columns) ^ set(extra_df.columns)), f"difference in columns: {diff}"
-            trials_ = pl.concat([trials_.drop('index', strict=False), extra_df.drop('index', strict=False)])
+            trials_ = pl.concat([trials_, extra_df])
 
     # add columns for easier parsing of block structure:
     trials_ = trials_.sort("start_time").with_columns(

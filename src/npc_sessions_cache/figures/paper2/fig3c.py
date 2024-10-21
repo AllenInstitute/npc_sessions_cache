@@ -428,6 +428,7 @@ def plot(
         ax.set_ylim(-0.5, max(ypos, *last_ypos) + 0.5)
         ax.set_xticks(sorted(set([min(xlim_0, 0), 0, xlim_1])))
         # ax.set_xticklabels("" if v % 2 else str(v) for v in ax.get_xticks())
+        ax.xaxis.set_tick_params(labelsize=7)
         ax.set_yticks([])
         if ax is axes[0]:
             ax.set_ylabel("← Trials")

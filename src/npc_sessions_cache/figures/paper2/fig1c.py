@@ -78,6 +78,7 @@ def plot(
             maintain_order=True,
         )
         .all()
+        .drop('lick_times')
     )
 
     # select VIStarget / AUDtarget trials
@@ -112,7 +113,6 @@ def plot(
                 is_response=pl.lit(False),
                 is_rewarded=pl.lit(False),
                 stim_centered_lick_times=pl.lit([]),
-                lick_times=pl.lit([]),
             )
             trials_ = trials_.drop('index', strict=False)
             extra_df = extra_df.drop('index', strict=False)

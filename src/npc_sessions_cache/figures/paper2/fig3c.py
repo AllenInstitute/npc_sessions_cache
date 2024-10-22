@@ -373,6 +373,8 @@ def plot(
                         # hist, bin_edges = hist_(a)
                         hist_results.append(hist)
                         add_psth_plot(hist, bin_edges, lw=.3, c=color, alpha=.3)
+                    if not hist_results:
+                        continue
                     add_psth_plot(np.mean(hist_results, axis=0), bin_edges, lw=.75, c=color)
                 else:
                     df = (

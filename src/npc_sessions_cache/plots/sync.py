@@ -37,12 +37,13 @@ def _plot_barcode_times(
 
 def plot_barcode_intervals(
     session: npc_sessions.DynamicRoutingSession,
-) -> tuple[matplotlib.figure.Figure, dict]:
+) -> tuple[matplotlib.figure.Figure, dict] | None:
     """
     Plot barcode intervals for sync and for each probe after sample rate
     correction
     """
-
+    if not session.is_sync:
+        return None
     device_barcode_dict = {}
     nominal_AP_rate = 30000
     for info in session.ephys_timing_data:  # skips unused probes
@@ -126,7 +127,9 @@ def plot_barcode_intervals(
 
 def plot_vsync_interval_dist(
     session: npc_sessions.DynamicRoutingSession,
-) -> matplotlib.figure.Figure:
+) -> matplotlib.figure.Figure | None:
+    if not session.is_sync:
+        return None
     for vsync_block in session.sync_data.vsync_times_in_blocks:
         if len(vsync_block) == len(
             next(
@@ -159,7 +162,9 @@ def plot_vsync_interval_dist(
 
 def plot_diode_flip_intervals(
     session: npc_sessions.DynamicRoutingSession,
-) -> matplotlib.figure.Figure:
+) -> matplotlib.figure.Figure | None:
+    if not session.is_sync:
+        return None
     fig = session.sync_data.plot_diode_measured_sync_square_flips()
     names = tuple(
         k for k, v in session.stim_frame_times.items() if not isinstance(v, Exception)
@@ -172,7 +177,9 @@ def plot_diode_flip_intervals(
 
 def plot_vsync_intervals(
     session: npc_sessions.DynamicRoutingSession,
-) -> matplotlib.figure.Figure:
+) -> matplotlib.figure.Figure | None:
+    if not session.is_sync:
+        return None
     sync = session.sync_data
     stim_ons, stim_offs = sync.stim_onsets, sync.stim_offsets
 
@@ -243,7 +250,9 @@ def plot_vsync_intervals(
 
 def plot_frametime_intervals(
     session: npc_sessions.DynamicRoutingSession,
-) -> matplotlib.figure.Figure:
+) -> matplotlib.figure.Figure | None:
+    if not session.is_sync:
+        return None
     sync = session.sync_data
     frequency = sync.expected_diode_flip_rate
     expected_period = 1 / frequency
@@ -313,7 +322,9 @@ def plot_frametime_intervals(
     
 def _plot_vsyncs_and_diode_flips_at_ends_of_each_stim(
     session: npc_sessions.DynamicRoutingSession,
-) -> matplotlib.figure.Figure:
+) -> matplotlib.figure.Figure | None:
+    if not session.is_sync:
+        return None
     rich.print("[bold] Fraction long frames [/bold]")
     for stim_name, stim_times in session.stim_frame_times.items():
         if isinstance(stim_times, Exception):

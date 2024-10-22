@@ -42,10 +42,12 @@ def plot_barcode_intervals(
     Plot barcode intervals for sync and for each probe after sample rate
     correction
     """
-    if not session.is_sync:
+    if not session.is_sync or not session.is_ephys:
         return None
     device_barcode_dict = {}
     nominal_AP_rate = 30000
+    if not device_barcode_dict: 
+        raise ValueError(f"No ephys timing data available for {session.id}")
     for info in session.ephys_timing_data:  # skips unused probes
         if "NI-DAQmx" in info.device.name or "LFP" in info.device.name:
             continue

@@ -103,6 +103,9 @@ class Record:
 
     # issues dependant - may be none if the session has issues --------- #
     probe_letters_available: str | None = None
+    probe_letters_to_skip: str | None = None
+    probe_letters_annotated: str | None = None
+    deep_probe_letters_to_skip: str | None = None
     perturbation_areas: list[str] | None = None
     areas_hit: list[str] | None = None
 
@@ -325,6 +328,9 @@ def get_session_record(
         is_naive="is_naive" in session.keywords,
         is_context_naive=session.is_context_naive,
         probe_letters_available="".join(session.probe_letters_to_use),
+        probe_letters_to_skip="".join(session.info.session_kwargs.get('probe_letters_to_skip', '')),
+        probe_letters_annotated="".join(session.probe_letters_annotated),
+        deep_probe_letters_to_skip="".join(session.info.session_kwargs.get('surface_recording_probe_letters_to_skip', '')),
         perturbation_areas=sorted(trials.opto_label.unique()) if is_opto_task else None,
         areas_hit=(
             sorted(units.structure.unique()) if session.is_annotated else None

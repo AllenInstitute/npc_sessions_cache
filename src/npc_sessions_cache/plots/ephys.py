@@ -831,10 +831,10 @@ def _plot_structure_areas(
 def _plot_ephys_noise_with_unit_density_areas(
     session: npc_sessions.DynamicRoutingSession,
     probe: str,
-    units: pd.DataFrame,
-    electrodes: pd.DataFrame,
     num_channels: int = 384,
 ) -> matplotlib.figure.Figure:
+    electrodes = session.electrodes[:]
+    units = session.units[:]
     units_probe = units[units["electrode_group_name"] == probe]
     electrodes_probe = electrodes[electrodes["group_name"] == probe]
     peak_channel = units_probe["peak_channel"]
@@ -928,19 +928,16 @@ def plot_ccf_aligned_ephys(
         return None
     figures = []
 
-    electrodes = session.electrodes[:]
-    units = session.units[:]
-
     if probe is not None:
         figures.append(
-            _plot_ephys_noise_with_unit_density_areas(session, probe, units, electrodes)
+            _plot_ephys_noise_with_unit_density_areas(session, probe)
         )
     else:
-        probes = sorted(electrodes["group_name"].unique())
+        probes = sorted(session.electrodes["group_name"].unique())
         for probe in probes:
             figures.append(
                 _plot_ephys_noise_with_unit_density_areas(
-                    session, probe, units, electrodes
+                    session, probe
                 )
             )
 
@@ -1079,24 +1076,24 @@ def plot_sensory_responses(
         unit_spike_times = unit["spike_times"]
         block_resp = {"catch": [], "vis": [], "aud": []}
         for catch_vis_aud_startstop in block_catch_vis_aud_startstop:
-            catch_vis_aud_counts = [
-                len(
-                    np.concatenate(
-                        [
-                            (
-                                unit_spike_times[slice(start, stop)]
-                                if 0 <= start < stop <= len(unit_spike_times)
-                                else []
-                            )
-                            for start, stop in np.searchsorted(
-                                unit_spike_times, start_stop
-                            )
-                        ]
+            catch_vis_aud_counts: list[int] = []
+            for start_stop in catch_vis_aud_startstop:
+                times = [
+                    (
+                        unit_spike_times[slice(start, stop)]
+                        if 0 <= start < stop <= len(unit_spike_times)
+                        else []
                     )
-                )
-                / start_stop.shape[0]  # divide by number of trials
-                for start_stop in catch_vis_aud_startstop
-            ]
+                    for start, stop in np.searchsorted(
+                        unit_spike_times, start_stop
+                    )
+                ]
+                if not times or not any(times):
+                    catch_vis_aud_counts.append(0)
+                else:
+                    catch_vis_aud_counts.append(len(np.concatenate(times)) / start_stop.shape[0])  # divide by number of trials
+            for count, block_name in zip(catch_vis_aud_counts, block_resp):
+                block_resp[block_name].append(count)
             for count, block_name in zip(catch_vis_aud_counts, block_resp):
                 block_resp[block_name].append(count)
         records.append(
@@ -1109,12 +1106,10 @@ def plot_sensory_responses(
                     v := np.subtract(block_resp["aud"], block_resp["vis"])
                 ),
                 "stim_resp": np.median(
-
                         v := np.subtract(
                             np.add(block_resp["aud"], block_resp["vis"]) * 0.5,
                             block_resp["catch"],
                         )
-
                 ),
             }
         )
@@ -1124,6 +1119,8 @@ def plot_sensory_responses(
         "electrode_group_name"
     ):
         for col in ["vis_resp", "aud_resp", "stim_resp"]:
+            if probe_df[col].std() == 0:
+                continue # all values are the same (not applicable, lack of trials)
             unit_id = probe_df.sort_values(col, ascending=False).iloc[0]["unit_id"]
             if unit_id not in max_probe_unit_ids:
                 max_probe_unit_ids.append(unit_id)

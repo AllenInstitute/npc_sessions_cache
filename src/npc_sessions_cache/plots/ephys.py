@@ -1165,7 +1165,9 @@ def plot_sensory_responses(
 def plot_drift_maps(
     session: npc_sessions.DynamicRoutingSession,
     probe_letter: str | npc_session.ProbeRecord | None = None,
-) -> tuple[matplotlib.figure.Figure, ...]:
+) -> tuple[matplotlib.figure.Figure, ...] | None:
+    if not session.is_sorted:
+        return None
     if probe_letter:
         probes = (probe_letter,)
     else:

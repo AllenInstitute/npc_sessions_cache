@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+from multiprocessing import Value
 import time
 from typing import TYPE_CHECKING, Literal
 
@@ -1182,7 +1183,10 @@ def plot_drift_maps(
         print(
             f"Drift maps not found for {session.id}: running drift map generation in codeocean (takes ~1 minute)"
         )
-        computation = run_drift_map_capsule(session.id)
+        try:
+            computation = run_drift_map_capsule(session.id)
+        except ValueError:
+            return None
         t0 = time.time()
 
         while aind_session.get_codeocean_model(
@@ -1216,7 +1220,10 @@ def run_drift_map_capsule(session_id: str) -> codeocean.computation.Computation:
         subject_id=record.subject, date=record.date
     )[0]
     raw_asset = session.raw_data_asset
-    sorted_asset = session.ecephys.latest_ks25_sorted_data_asset
+    sorted_assets = session.ecephys.sorter.kilosort2_5.sorted_data_assets
+    if not sorted_assets:
+        raise ValueError(f"{session} has not sorted assets")
+    sorted_asset = sorted_assets[-1]
     return aind_session.get_codeocean_client().computations.run_capsule(
         codeocean.computation.RunParams(
             capsule_id="556afd63-a439-4fd5-8e37-705ff059ea93",

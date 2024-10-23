@@ -933,7 +933,7 @@ def plot_ccf_aligned_ephys(
             _plot_ephys_noise_with_unit_density_areas(session, probe)
         )
     else:
-        probes = sorted(session.electrodes["group_name"].unique())
+        probes = sorted(session.electrodes[:]["group_name"].unique())
         for probe in probes:
             figures.append(
                 _plot_ephys_noise_with_unit_density_areas(

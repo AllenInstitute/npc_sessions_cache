@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import io
+import time
 from typing import TYPE_CHECKING, Literal
 
+import aind_session
+import codeocean
+import codeocean.computation
 import matplotlib.axes
 import matplotlib.colors
 import matplotlib.figure
@@ -99,9 +103,16 @@ def plot_unit_metrics(
         probe_index = 0
         fig.suptitle(f"{metric}")
         for probe in probes:
-            is_probe = (probe_letter is not None) and (npc_session.ProbeRecord(probe) == npc_session.ProbeRecord(probe_letter))
+            is_probe = (probe_letter is not None) and (
+                npc_session.ProbeRecord(probe) == npc_session.ProbeRecord(probe_letter)
+            )
             units_probe_metric = units[units["electrode_group_name"] == probe][metric]
-            fig.axes[probe_index].hist(units_probe_metric, bins=20, density=True, color='orange' if is_probe else None)
+            fig.axes[probe_index].hist(
+                units_probe_metric,
+                bins=20,
+                density=True,
+                color="orange" if is_probe else None,
+            )
             fig.axes[probe_index].set_title(f"{probe}")
             fig.axes[probe_index].set_xlabel(x_labels[metric])
             probe_index += 1
@@ -122,7 +133,9 @@ def get_sorting_view_links(
     for v in vis.values():
         if link := v.get(key):
             if probe_letter is not None:
-                if npc_session.ProbeRecord(probe_letter) != npc_session.ProbeRecord(link):
+                if npc_session.ProbeRecord(probe_letter) != npc_session.ProbeRecord(
+                    link
+                ):
                     continue
             components = []
             for h in link.split("#"):
@@ -152,7 +165,9 @@ def plot_all_spike_histograms(
     session.units[:].query("default_qc")
     figs: list[matplotlib.figure.Figure] = []
     for obj in session.all_spike_histograms.children:
-        if probe_letter is not None and npc_session.ProbeRecord(obj.name) != npc_session.ProbeRecord(probe_letter):
+        if probe_letter is not None and npc_session.ProbeRecord(
+            obj.name
+        ) != npc_session.ProbeRecord(probe_letter):
             continue
         fig, ax = plt.subplots()
         ax.plot(obj.timestamps, obj.data, linewidth=0.1, alpha=0.8, color="k")
@@ -453,15 +468,13 @@ def plot_raw_ephys_segments(
         container = session._raw_lfp
     else:
         container = session._raw_ap
-    start_times =  (1, 100, -10)
+    start_times = (1, 100, -10)
     figures = []
     for device, timeseries in container.electrical_series.items():
         if probe_letter is not None:
             if npc_session.ProbeRecord(probe_letter) != npc_session.ProbeRecord(device):
                 continue
-        fig, _ = plt.subplots(
-            1, len(start_times), sharey=True
-        )
+        fig, _ = plt.subplots(1, len(start_times), sharey=True)
         for idx, start_time in enumerate(start_times):
             ax = fig.axes[idx]
             duration = 0.3
@@ -475,7 +488,11 @@ def plot_raw_ephys_segments(
                     if start_time > 0:
                         t0 = timeseries.starting_time + start_time
                     else:
-                        t0 = timeseries.starting_time + (timeseries.data.shape[0] / timeseries.rate) + start_time
+                        t0 = (
+                            timeseries.starting_time
+                            + (timeseries.data.shape[0] / timeseries.rate)
+                            + start_time
+                        )
                 temp_interval = (t0, t0 + duration)
             print(temp_interval)
             _plot_ephys_image(
@@ -505,7 +522,9 @@ def plot_raw_ap_vs_surface(
 
     figs = []
     for probe in session._raw_ap.electrical_series.keys():
-        if probe_letter is not None and npc_session.ProbeRecord(probe) != npc_session.ProbeRecord(probe_letter):
+        if probe_letter is not None and npc_session.ProbeRecord(
+            probe
+        ) != npc_session.ProbeRecord(probe_letter):
             continue
         n_samples = int(time_window * session._raw_ap[probe].rate)
         offset_corrected = session._raw_ap[probe].data[-n_samples:, :] - np.median(
@@ -735,7 +754,7 @@ def plot_probe_yield(
     session: npc_sessions.DynamicRoutingSession,
     probe_letter: str | npc_session.ProbeRecord | None = None,
 ) -> matplotlib.figure.Figure:
-    del probe_letter # unused  - just allows functools.partial application
+    del probe_letter  # unused  - just allows functools.partial application
     units = session.units[:]
     good_unit_filter = (
         (units["amplitude_cutoff"] < 0.1)
@@ -847,12 +866,16 @@ def _plot_ephys_noise_with_unit_density_areas(
     timeseries_probe = session._raw_ap.electrical_series[probe]
     unit_density_values_plot = unit_denisty_values[:, 1] / 1000  # scaling
     image_path = (
-        upath.UPath("s3://aind-scratch-data/arjun.sridhar/tissuecyte_cloud_processed/slice_images")
+        upath.UPath(
+            "s3://aind-scratch-data/arjun.sridhar/tissuecyte_cloud_processed/slice_images"
+        )
         / f"{session.info.subject}"
         / f"Probe_{probe[-1]}{session.info.experiment_day}_slice.png"
     )
     anchors_path = (
-        upath.UPath("s3://aind-scratch-data/arjun.sridhar/tissuecyte_cloud_processed/alignment_anchors")
+        upath.UPath(
+            "s3://aind-scratch-data/arjun.sridhar/tissuecyte_cloud_processed/alignment_anchors"
+        )
         / f"{session.info.subject}"
         / f"Probe_{probe[-1]}{session.info.experiment_day}_anchors.pickle"
     )
@@ -908,11 +931,15 @@ def _plot_ephys_noise_with_unit_density_areas(
     ax[0].set_xlabel("")
     is_deep_insertion = "deep_insertions" in session.keywords
     if is_deep_insertion and "deep_insertion_probes" in session.keywords:
-        deep_probes = next(kw for kw in session.keywords if "deep_insertion_probes" in kw).split('=')[-1]
+        deep_probes = next(
+            kw for kw in session.keywords if "deep_insertion_probes" in kw
+        ).split("=")[-1]
         is_deep_probe = npc_session.ProbeRecord(probe) in deep_probes
     else:
         is_deep_probe = False
-    ax[0].set_title(f"CCF aligned with unit density (blue) and raw ephys noise (black/red)\n{probe} | {'deep' if is_deep_insertion and is_deep_probe else 'regular'} insertion")
+    ax[0].set_title(
+        f"CCF aligned with unit density (blue) and raw ephys noise (black/red)\n{probe} | {'deep' if is_deep_insertion and is_deep_probe else 'regular'} insertion"
+    )
     plt.tight_layout()
 
     return fig
@@ -929,17 +956,11 @@ def plot_ccf_aligned_ephys(
     figures = []
 
     if probe is not None:
-        figures.append(
-            _plot_ephys_noise_with_unit_density_areas(session, probe)
-        )
+        figures.append(_plot_ephys_noise_with_unit_density_areas(session, probe))
     else:
         probes = sorted(session.electrodes[:]["group_name"].unique())
         for probe in probes:
-            figures.append(
-                _plot_ephys_noise_with_unit_density_areas(
-                    session, probe
-                )
-            )
+            figures.append(_plot_ephys_noise_with_unit_density_areas(session, probe))
 
     return tuple(figures)
 
@@ -978,7 +999,9 @@ def _plot_electrodes_implant_hole(
             )
 
     if electrodes_coordinates is not None:
-        electrodes_coordinates = electrodes_coordinates[electrodes_coordinates[:, 3] != 'out of brain']
+        electrodes_coordinates = electrodes_coordinates[
+            electrodes_coordinates[:, 3] != "out of brain"
+        ]
 
     fig, ax = plt.subplots()
     ax.imshow(ccf_volume.sum(axis=1))
@@ -1084,14 +1107,14 @@ def plot_sensory_responses(
                         if 0 <= start < stop <= len(unit_spike_times)
                         else []
                     )
-                    for start, stop in np.searchsorted(
-                        unit_spike_times, start_stop
-                    )
+                    for start, stop in np.searchsorted(unit_spike_times, start_stop)
                 ]
                 if not times or not any(times):
                     catch_vis_aud_counts.append(0)
                 else:
-                    catch_vis_aud_counts.append(len(np.concatenate(times)) / start_stop.shape[0])  # divide by number of trials
+                    catch_vis_aud_counts.append(
+                        len(np.concatenate(times)) / start_stop.shape[0]
+                    )  # divide by number of trials
             for count, block_name in zip(catch_vis_aud_counts, block_resp):
                 block_resp[block_name].append(count)
             for count, block_name in zip(catch_vis_aud_counts, block_resp):
@@ -1106,10 +1129,10 @@ def plot_sensory_responses(
                     v := np.subtract(block_resp["aud"], block_resp["vis"])
                 ),
                 "stim_resp": np.median(
-                        v := np.subtract(
-                            np.add(block_resp["aud"], block_resp["vis"]) * 0.5,
-                            block_resp["catch"],
-                        )
+                    v := np.subtract(
+                        np.add(block_resp["aud"], block_resp["vis"]) * 0.5,
+                        block_resp["catch"],
+                    )
                 ),
             }
         )
@@ -1120,7 +1143,7 @@ def plot_sensory_responses(
     ):
         for col in ["vis_resp", "aud_resp", "stim_resp"]:
             if probe_df[col].std() == 0:
-                continue # all values are the same (not applicable, lack of trials)
+                continue  # all values are the same (not applicable, lack of trials)
             unit_id = probe_df.sort_values(col, ascending=False).iloc[0]["unit_id"]
             if unit_id not in max_probe_unit_ids:
                 max_probe_unit_ids.append(unit_id)
@@ -1128,6 +1151,76 @@ def plot_sensory_responses(
     figs = []
     for unit_id in max_probe_unit_ids:
         figs.append(
-            fig3c.plot(unit_id=unit_id, max_psth_spike_rate=200, session=session, xlim_0=-0.25, xlim_1=0.75)
+            fig3c.plot(
+                unit_id=unit_id,
+                max_psth_spike_rate=200,
+                session=session,
+                xlim_0=-0.25,
+                xlim_1=0.75,
+            )
         )
     return tuple(figs)
+
+
+def plot_drift_maps(
+    session: npc_sessions.DynamicRoutingSession,
+    probe_letter: str | npc_session.ProbeRecord | None = None,
+) -> tuple[matplotlib.figure.Figure, ...]:
+    if probe_letter:
+        probes = (probe_letter,)
+    else:
+        probes = session.probe_letters_to_use
+    paths = [
+        upath.UPath(
+            f"s3://aind-scratch-data/dynamic-routing/drift_maps/{session.session_id}_{probe}.png"
+        )
+        for probe in probes
+    ]
+    if not any(path.exists() for path in paths):
+        print(
+            f"Drift maps not found for {session.id}: running drift map generation in codeocean (takes ~1 minute)"
+        )
+        computation = run_drift_map_capsule(session.id)
+        t0 = time.time()
+
+        while aind_session.get_codeocean_model(
+            computation.id, is_computation=True
+        ).state not in [
+            codeocean.computation.ComputationState.Completed,
+            codeocean.computation.ComputationState.Failed,
+        ]:
+            if time.time() - t0 > 20 * 60:
+                raise TimeoutError(
+                    f"Drift map computation took >20 mins to complete: {computation.id}"
+                )
+            time.sleep(10)
+
+    figs = []
+    for path in sorted(paths):
+        if not path.exists():
+            continue
+        fig = plt.figure()
+        plt.imshow(plt.imread(io.BytesIO(path.read_bytes())))
+        plt.gca().axis('off')
+        plt.suptitle(path.stem, fontsize=8)
+        fig.set_layout_engine('tight')
+        figs.append(fig)
+    return tuple(figs)
+
+
+def run_drift_map_capsule(session_id: str) -> codeocean.computation.Computation:
+    record = npc_session.SessionRecord(session_id)
+    session: aind_session.Session = aind_session.get_sessions(
+        subject_id=record.subject, date=record.date
+    )[0]
+    raw_asset = session.raw_data_asset
+    sorted_asset = session.ecephys.latest_ks25_sorted_data_asset
+    return aind_session.get_codeocean_client().computations.run_capsule(
+        codeocean.computation.RunParams(
+            capsule_id="556afd63-a439-4fd5-8e37-705ff059ea93",
+            data_assets=[
+                codeocean.computation.DataAssetsRunParam(id=asset.id, mount=asset.name)
+                for asset in [raw_asset, sorted_asset]
+            ],
+        )
+    )

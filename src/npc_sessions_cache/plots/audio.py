@@ -67,7 +67,7 @@ def plot_microphone_response(
     fig, axes = plt.subplots(1,2, figsize=(6,3), sharey=True)
     ax = axes[0]
     ax.scatter(stim_start_times, volume_deltas * BIT_VOLTS * 1000, s=.8, c=['r' if abs(v) < 10 else 'k' for v in volume_deltas])
-    if np.all(volume_deltas > 0):
+    if np.all(volume_deltas[~np.isnan(volume_deltas)] >= 0):
         ax.set_ylim(0)
     ax.set(xlabel="experiment time (s)", ylabel="stim - quiescent (mV)")
     ax = axes[1]

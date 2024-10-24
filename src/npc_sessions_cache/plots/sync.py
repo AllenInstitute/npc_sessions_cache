@@ -46,8 +46,6 @@ def plot_barcode_intervals(
         return None
     device_barcode_dict = {}
     nominal_AP_rate = 30000
-    if not device_barcode_dict: 
-        raise ValueError(f"No ephys timing data available for {session.id}")
     for info in session.ephys_timing_data:  # skips unused probes
         if "NI-DAQmx" in info.device.name or "LFP" in info.device.name:
             continue
@@ -72,6 +70,8 @@ def plot_barcode_intervals(
             "max_deviation_from_median_interval": max_deviation,
             "max_deviation_from_30s_interval": np.max(np.abs(intervals - 30)),
         }
+    if not device_barcode_dict: 
+        raise ValueError(f"No ephys timing data available for {session.id}")
     barcode_rising = session.sync_data.get_rising_edges(0, "seconds")
     barcode_falling = session.sync_data.get_falling_edges(0, "seconds")
     t0 = min([min(v["barcode_times_corrected"]) for v in device_barcode_dict.values()])

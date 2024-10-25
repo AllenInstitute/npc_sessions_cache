@@ -106,11 +106,10 @@ def plot_audio_waveforms(
         ax.spines['left'].set_visible(False)
         if waveform is not None:
             ax.plot(waveform.timestamps - front_padding, (waveform.samples - np.nanmedian(waveform.samples)) * MIC_BIT_VOLTS * 1000, lw=.1, c='k')
-            if idx ==0:
+            if idx == 0 :
                 ax.set_ylabel('median-subtracted voltage (mV)')
         else:
             ax.text(0, 0, "no mic data in requested range", fontsize=8)
-            ax.set_yticks([])
     ax.set_xlabel("time from 'stim start time' in trials table (s)")
     fig.suptitle(f"mic rec of {'' if target_stim else 'non'}target waveforms in task\n{session.id}")
     fig.set_figheight(1.2 * len(start_times))

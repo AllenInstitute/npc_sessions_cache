@@ -16,6 +16,8 @@ from matplotlib import pyplot as plt
 
 import npc_sessions
 
+MIC_BIT_VOLTS = 0.0003052 # from structure.oebin
+
 def get_audio_waveforms(
     session: npc_sessions.DynamicRoutingSession,
     start_times_on_sync: Iterable[float],
@@ -36,6 +38,7 @@ def get_audio_waveforms(
         resampling_factor=resampling_factor,
     )
 
+
 def plot_microphone_response(
     session: npc_sessions.DynamicRoutingSession,
 ) -> matplotlib.figure.Figure:
@@ -50,7 +53,6 @@ def plot_microphone_response(
     - only for task trials with aud stim 
     - plot on time course of entire task to make it easier to debug
     """
-    BIT_VOLTS = 0.0003052 # from structure.oebin
     aud_trials = session.trials[:].query("is_aud_stim")
     baseline_start_times = aud_trials["quiescent_start_time"].to_numpy()
     stim_start_times = aud_trials["stim_start_time"].to_numpy()
@@ -66,12 +68,12 @@ def plot_microphone_response(
     volume_deltas = np.array([(stim - baseline if stim is not None and baseline is not None else np.nan) for stim, baseline in zip(stim_volumes, baseline_volumes)])
     fig, axes = plt.subplots(1,2, figsize=(6,3), sharey=True)
     ax = axes[0]
-    ax.scatter(stim_start_times, volume_deltas * BIT_VOLTS * 1000, s=.8, c=['r' if abs(v) < 10 else 'k' for v in volume_deltas])
+    ax.scatter(stim_start_times, volume_deltas * MIC_BIT_VOLTS * 1000, s=.8, c=['r' if abs(v) < 10 else 'k' for v in volume_deltas])
     if np.all(volume_deltas[~np.isnan(volume_deltas)] >= 0):
         ax.set_ylim(0)
     ax.set(xlabel="experiment time (s)", ylabel="stim - quiescent (mV)")
     ax = axes[1]
-    ax.hist(volume_deltas * BIT_VOLTS * 1000, bins=10, orientation='horizontal', color='k')
+    ax.hist(volume_deltas * MIC_BIT_VOLTS * 1000, bins=10, orientation='horizontal', color='k')
     # ax = plt.gca()
     ax.set(xlabel="trials")
     fig.suptitle(f"mic response for aud stim trials in task\n{session.id}")
@@ -103,9 +105,12 @@ def plot_audio_waveforms(
         ax.spines['right'].set_visible(False)
         ax.spines['left'].set_visible(False)
         if waveform is not None:
-            ax.plot(waveform.timestamps - front_padding, waveform.samples - np.nanmean(waveform.samples), lw=.1, c='k')
+            ax.plot(waveform.timestamps - front_padding, (waveform.samples - np.nanmedian(waveform.samples)) * MIC_BIT_VOLTS * 1000, lw=.1, c='k')
+            if idx ==0:
+                ax.set_ylabel('median-subtracted voltage (mV)')
         else:
             ax.text(0, 0, "no mic data in requested range", fontsize=8)
+            ax.set_yticks([])
     ax.set_xlabel("time from 'stim start time' in trials table (s)")
     fig.suptitle(f"mic rec of {'' if target_stim else 'non'}target waveforms in task\n{session.id}")
     fig.set_figheight(1.2 * len(start_times))

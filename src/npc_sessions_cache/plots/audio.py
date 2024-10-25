@@ -92,19 +92,20 @@ def plot_audio_waveforms(
         duration_sec=front_padding + .12,
         resampling_factor=None,
     )
-    fig, axes = plt.subplots(len(start_times), 1,  sharex=True)
+    fig, axes = plt.subplots(len(start_times), 1,  sharex=True, sharey=True)
     if isinstance(axes, matplotlib.axes.Axes):
         axes = [axes]
     for idx, (ax, waveform) in enumerate(zip(axes, waveforms)):
         ax: plt.Axes
+        ax.axvline(0, c='grey', ls='--')
+        ax.set_ylabel(f"block {aud_trials['block_index'].unique()[idx]}")
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['left'].set_visible(False)
         if waveform is not None:
-            ax.axvline(0, c='grey', ls='--')
-            ax.plot(waveform.timestamps - front_padding, waveform.samples, lw=.1, c='k')
-            ax.set_ylabel(f"block {aud_trials['block_index'].unique()[idx]}")
-            ax.set_yticks([])
-            ax.spines['top'].set_visible(False)
-            ax.spines['right'].set_visible(False)
-            ax.spines['left'].set_visible(False)
+            ax.plot(waveform.timestamps - front_padding, waveform.samples - np.nanmean(waveform.samples), lw=.1, c='k')
+        else:
+            ax.text(0, 0, "no mic data in requested range", fontsize=8)
     ax.set_xlabel("time from 'stim start time' in trials table (s)")
     fig.suptitle(f"mic rec of {'' if target_stim else 'non'}target waveforms in task\n{session.id}")
     fig.set_figheight(1.2 * len(start_times))

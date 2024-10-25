@@ -114,9 +114,11 @@ def plot_barcode_intervals(
 
     ax[2].plot(sync_intervals, "k")
     ax[2].legend(legend + ["sync"])
-    ax[0].set_title("Sync Barcode Intervals")
-    ax[1].set_title("Probe Barcode Intervals")
-    ax[2].set_title("Probe Barcode Intervals Corrected")
+    ax[0].set_title("sync")
+    ax[1].set_title("probe")
+    ax[2].set_title("probe corrected")
+    ax[1].set_xlabel("barcode number")
+    ax[0].set_ylabel("barcode interval (s)")
 
     plt.tight_layout()
 

@@ -377,7 +377,7 @@ def write_session_record(
     skip_existing: bool = True,
     skip_previously_failed: bool = True,
     session: npc_sessions.Session | None = None,
-) -> None:
+) -> Record:
     store = RecordStore(store_path)
     error_path = store.path / "errors"
     error_path.mkdir(parents=True, exist_ok=True)
@@ -405,7 +405,7 @@ def write_session_record(
     else:
         error.unlink(missing_ok=True)
         logger.info(f"Removed {error.as_posix()} after successful record write")
-
+    return store[key]
 
 def write_session_table_from_records(
     store_path: str | pathlib.Path | upath.UPath = DEFAULT_SESSION_METADATA_PATH

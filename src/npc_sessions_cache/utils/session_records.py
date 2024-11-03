@@ -395,7 +395,7 @@ def write_session_record(
         return
     if key in store:
         logger.info(
-            f"Clearing exsiting record for {key} before fetching new record (in case it errors)"
+            f"Clearing existing record for {key} before fetching new record (in case it errors)"
         )
         del store[key]
     try:

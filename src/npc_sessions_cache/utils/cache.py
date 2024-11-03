@@ -193,6 +193,7 @@ def write_and_upload_session_nwb(
     version: str | None = None,
     zarr: bool = False,
     metadata_only: bool = False,  # for testing
+    local_path: str | npc_io.PathLike | None = None,
 ) -> None:
     """
     >>> import npc_sessions
@@ -211,6 +212,8 @@ def write_and_upload_session_nwb(
         )
         return
     if zarr:
+        if local_path is not None:
+            logger.warning("local_path is ignored when zarr=True: writing directly to S3")
         if path.exists():
             # clear up existing zarr file before we accidentally add to it
             for p in path.rglob('*'):
@@ -218,14 +221,17 @@ def write_and_upload_session_nwb(
         path = session.write_nwb(path=path, metadata_only=metadata_only, zarr=zarr)
     else:
         with tempfile.TemporaryDirectory() as tmpdir:
-            tmpfile = npc_io.from_pathlike(tmpdir) / "temp.nwb"
-            tmpfile = session.write_nwb(path=tmpfile, metadata_only=metadata_only, zarr=zarr)
+            if local_path is None:
+                local_path = npc_io.from_pathlike(tmpdir) / "temp.nwb"
+            else:
+                local_path = npc_io.from_pathlike(local_path)
+            local_path = session.write_nwb(path=local_path, metadata_only=metadata_only, zarr=zarr)
             bucket = path.fs._parent(path).split("/")[0]
             path = path.with_name(
                 f"{path.name.replace('.zarr', '').replace('.nwb', '')}.nwb"
             )
             key = path.as_posix().split(f"{bucket}/", 1)[1]
-            boto3.client("s3").upload_file(tmpfile, bucket, key)
+            boto3.client("s3").upload_file(local_path, bucket, key)
     logger.info(f"Uploaded {session.session_id} NWB to {path}")
 
 

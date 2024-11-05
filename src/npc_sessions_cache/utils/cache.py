@@ -220,18 +220,17 @@ def write_and_upload_session_nwb(
                 p.unlink(missing_ok=True)
         path = session.write_nwb(path=path, metadata_only=metadata_only, zarr=zarr)
     else:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            if local_path is None:
-                local_path = npc_io.from_pathlike(tmpdir) / "temp.nwb"
-            else:
-                local_path = npc_io.from_pathlike(local_path)
-            local_path = session.write_nwb(path=local_path, metadata_only=metadata_only, zarr=zarr)
-            bucket = path.fs._parent(path).split("/")[0]
-            path = path.with_name(
-                f"{path.name.replace('.zarr', '').replace('.nwb', '')}.nwb"
-            )
-            key = path.as_posix().split(f"{bucket}/", 1)[1]
-            boto3.client("s3").upload_file(local_path, bucket, key)
+        if local_path is None:
+            local_path = npc_io.from_pathlike(tempfile.TemporaryDirectory()) / "temp.nwb"
+        else:
+            local_path = npc_io.from_pathlike(local_path)
+        local_path = session.write_nwb(path=local_path, metadata_only=metadata_only, zarr=zarr)
+        bucket = path.fs._parent(path).split("/")[0]
+        path = path.with_name(
+            f"{path.name.replace('.zarr', '').replace('.nwb', '')}.nwb"
+        )
+        key = path.as_posix().split(f"{bucket}/", 1)[1]
+        boto3.client("s3").upload_file(local_path, bucket, key)
     logger.info(f"Uploaded {session.session_id} NWB to {path}")
 
 

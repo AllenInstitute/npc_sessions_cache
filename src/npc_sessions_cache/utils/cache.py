@@ -231,8 +231,9 @@ def write_and_upload_session_nwb(
         )
         key = path.as_posix().split(f"{bucket}/", 1)[1]
         boto3.client("s3").upload_file(local_path, bucket, key)
-    if local_path.stem == "_temp":
-        local_path.unlink()
+        local_path: npc_io.PathLike
+        if local_path.stem == "_temp":
+            local_path.unlink()
     logger.info(f"Uploaded {session.session_id} NWB to {path}")
 
 

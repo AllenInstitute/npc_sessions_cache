@@ -403,6 +403,7 @@ def write_session_record(
     except:
         error.write_text(traceback.format_exc())
         logger.info(f"Failed to write record for {key}: error stored in {error.as_posix()}")
+        return
     else:
         error.unlink(missing_ok=True)
         logger.info(f"Removed {error.as_posix()} after successful record write")
@@ -445,6 +446,7 @@ def get_session_table(
 
 
 if __name__ == "__main__":
+    RecordStore()['686740_2023-10-26']
     import doctest
 
     import dotenv

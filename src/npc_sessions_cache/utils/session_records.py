@@ -402,6 +402,7 @@ def write_session_record(
         store[key] = get_session_record(session_id, session=session)
     except:
         error.write_text(traceback.format_exc())
+        logger.info(f"Failed to write record for {key}: error stored in {error.as_posix()}")
     else:
         error.unlink(missing_ok=True)
         logger.info(f"Removed {error.as_posix()} after successful record write")

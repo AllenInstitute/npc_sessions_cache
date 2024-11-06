@@ -400,8 +400,9 @@ def write_session_record(
         del store[key]
     try:
         store[key] = get_session_record(session_id, session=session)
-    except:
+    except BaseException as e:
         error.write_text(traceback.format_exc())
+        logger.error(repr(e))
         logger.info(f"Failed to write record for {key}: error stored in {error.as_posix()}")
         return
     else:

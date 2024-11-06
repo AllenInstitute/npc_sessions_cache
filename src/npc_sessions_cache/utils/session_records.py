@@ -400,7 +400,7 @@ def write_session_record(
         del store[key]
     try:
         store[key] = get_session_record(session_id, session=session)
-    except Exception:
+    except:
         error.write_text(traceback.format_exc())
     else:
         error.unlink(missing_ok=True)

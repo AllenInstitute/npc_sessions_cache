@@ -222,8 +222,6 @@ def write_and_upload_session_nwb(
     else:
         if local_path is None:
             local_path = npc_io.from_pathlike(tempfile.mkdtemp()) / "_temp.nwb"
-        else:
-            local_path = npc_io.from_pathlike(local_path)
         local_path = session.write_nwb(path=local_path, metadata_only=metadata_only, zarr=zarr)
         bucket = path.fs._parent(path).split("/")[0]
         path = path.with_name(

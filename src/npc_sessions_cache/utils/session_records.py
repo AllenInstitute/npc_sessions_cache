@@ -111,15 +111,19 @@ class Record:
 
     # behavior stuff --------------------------------------------------- #
     task_duration: float | None = None
-    mean_intramodal_dprime_vis: float | None = None
-    mean_intramodal_dprime_aud: float | None = None
+    mean_intra_modal_dprime_vis: float | None = None
+    mean_intra_modal_dprime_aud: float | None = None
     n_passing_blocks: int | None = None
-    intermodal_dprime_vis_blocks: list[float | None] | None = None
-    intermodal_dprime_aud_blocks: list[float | None] | None = None
+    cross_modal_dprime_vis_blocks: list[float | None] | None = None
+    cross_modal_dprime_aud_blocks: list[float | None] | None = None
     n_hits: list[float | None] | None = None
     n_contingent_rewards: list[float | None] | None = None
     n_responses: list[float | None] | None = None
     n_trials: list[float | None] | None = None
+    is_first_block_aud: bool | None = None
+    is_engaged: bool | None = None
+    is_good_behavior: bool | None = None
+    is_bad_behavior: bool | None = None
 
     def to_json(self) -> str:
         return json.dumps(
@@ -272,7 +276,7 @@ def get_session_record(
     if session.is_annotated:
         units = session.units[:]
 
-    def get_intermodal_dprime(modality: str) -> list[float | None]:
+    def get_cross_modal_dprime(modality: str) -> list[float | None]:
         return [
             float(v) if not np.isnan(v) else None
             for v in performance.query(
@@ -340,33 +344,37 @@ def get_session_record(
             if session.is_task
             else None
         ),
-        n_passing_blocks=(
+        n_passing_blocks=(n_passing_blocks := (
             len(
                 performance.query(
-                    f"cross_modal_dprime >= {1.5 if session.is_training else 1.0}"
+                    f"cross_modal_dprime >= 1.0"
                 )
             )
             if session.is_task
             else None
-        ),
+        )),
         n_hits=performance.n_hits.to_list() if session.is_task else None,
         n_trials=performance.n_trials.to_list() if session.is_task else None,
         n_responses=performance.n_responses.to_list() if session.is_task else None,
-        n_contingent_rewards=(
+        n_contingent_rewards=(n_contingent_rewards := (
             performance.n_contingent_rewards.to_list() if session.is_task else None
-        ),
-        mean_intramodal_dprime_vis=(
+        )),
+        mean_intra_modal_dprime_vis=(
             performance.vis_intra_dprime.mean() if session.is_task else None
         ),
-        mean_intramodal_dprime_aud=(
+        mean_intra_modal_dprime_aud=(
             performance.aud_intra_dprime.mean() if session.is_task else None
         ),
-        intermodal_dprime_vis_blocks=(
-            get_intermodal_dprime("vis") if session.is_task else None
+        cross_modal_dprime_vis_blocks=(
+            get_cross_modal_dprime("vis") if session.is_task else None
         ),
-        intermodal_dprime_aud_blocks=(
-            get_intermodal_dprime("aud") if session.is_task else None
+        cross_modal_dprime_aud_blocks=(
+            get_cross_modal_dprime("aud") if session.is_task else None
         ),
+        is_first_block_aud=performance.sort_values('block_index').iloc[0].rewarded_modality,
+        is_engaged=(is_engaged := (n_contingent_rewards is not None and len([r for r in n_contingent_rewards if r > 10]) > 4)),
+        is_good_behavior=(is_good_behavior := (is_engaged and n_passing_blocks > 4)),
+        is_bad_behavior=(is_engaged and not is_good_behavior),
     )
 
 

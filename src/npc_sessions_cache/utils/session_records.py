@@ -371,7 +371,7 @@ def get_session_record(
         cross_modal_dprime_aud_blocks=(
             get_cross_modal_dprime("aud") if session.is_task else None
         ),
-        is_first_block_aud=performance.sort_values('block_index').iloc[0].rewarded_modality,
+        is_first_block_aud="aud" in performance.sort_values('block_index').iloc[0].rewarded_modality,
         is_engaged=(is_engaged := (n_contingent_rewards is not None and len([r for r in n_contingent_rewards if r > 10]) > 4)),
         is_good_behavior=(is_good_behavior := (is_engaged and n_passing_blocks > 4)),
         is_bad_behavior=(is_engaged and not is_good_behavior),

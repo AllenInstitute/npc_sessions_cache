@@ -101,7 +101,7 @@ class Record:
     # virus_name: str | None = None
     # virus_area: str | None = None
 
-    # issues dependant - may be none if the session has issues --------- #
+    # issues dependent - may be none if the session has issues --------- #
     probe_letters_available: str | None = None
     probe_letters_to_skip: str | None = None
     probe_letters_annotated: str | None = None
@@ -124,7 +124,8 @@ class Record:
     is_engaged: bool | None = None
     is_good_behavior: bool | None = None
     is_bad_behavior: bool | None = None
-
+    is_stage_5_passed: bool | None = None
+    
     def to_json(self) -> str:
         return json.dumps(
             dataclasses.asdict(self),
@@ -367,14 +368,16 @@ def get_session_record(
         ),
         cross_modal_dprime_vis_blocks=(
             get_cross_modal_dprime("vis") if session.is_task else None
-        ),
+        ),  
         cross_modal_dprime_aud_blocks=(
             get_cross_modal_dprime("aud") if session.is_task else None
         ),
         is_first_block_aud="aud" in performance.sort_values('block_index').iloc[0].rewarded_modality,
+        is_first_block_vis="vis" in performance.sort_values('block_index').iloc[0].rewarded_modality,
         is_engaged=(is_engaged := (n_contingent_rewards is not None and len([r for r in n_contingent_rewards if r > 10]) > 4)),
         is_good_behavior=(is_good_behavior := (is_engaged and n_passing_blocks > 4)),
         is_bad_behavior=(is_engaged and not is_good_behavior),
+        is_stage_5_passed="stage_5_passed" in session.keywords,
     )
 
 

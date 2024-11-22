@@ -92,11 +92,8 @@ def _get_nwb_component(
         in session.processing["behavior"].fields["data_interfaces"].keys()
     ):
         return session.processing["behavior"].get(component_name)
-    elif component_name == "performance":
-        if session.analysis:
-            return session.analysis.get("performance", None)
-        else:
-            return None
+    elif component_name in session.intervals:
+        return session.intervals.get(component_name)
 
     c = getattr(session, component_name, None)
     if c is None:

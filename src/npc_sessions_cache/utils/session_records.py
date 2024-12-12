@@ -1,6 +1,6 @@
 """
 >>> import tempfile
->>> dummy_record = Record(project='DynamicRouting', session_id='668755_2023-08-29', date='2023-08-29', time='13:11:16', subject=668755, subject_age='P203D', subject_sex='M', subject_genotype='wt/wt', implant='2002', rig='NP3', experimenters=['Corbett Bennett'], notes=None, issues=[], epochs=['RFMapping', 'OptoTagging', 'Spontaneous', 'SpontaneousRewards', 'DynamicRouting1', 'SpontaneousRewards', 'OptoTagging'], allen_path='//allen/programs/mindscope/workgroups/dynamicrouting/PilotEphys/Task 2 pilot/DRpilot_668755_20230829', cloud_path='s3://aind-ephys-data/ecephys_668755_2023-08-29_13-11-16', task_version='stage 5 ori AMN moving', ephys_day=2, behavior_day=2, is_ephys=True, is_sync=True, is_video=True, is_templeton=False, is_annotated=True, is_hab=False, is_task=True, is_spontaneous=True, is_spontaneous_rewards=True, is_rf_mapping=True, is_optotagging=False, is_optotagging_control=True, is_opto_perturbation=False, is_opto_perturbation_control=False, is_injection_perturbation=False, is_timing_issues=False, is_invalid_times=False, is_production=True, is_naive=False, is_context_naive=False, probe_letters_available='ABCDEF', perturbation_areas=None, areas_hit=['ACAd', 'AMv', 'CP', 'EPd', 'HY', 'LHA', 'LSc', 'LSr', 'MOp', 'MOs', 'MS', 'NDB', 'OLF', 'ORBl', 'ORBvl', 'PAL', 'PR', 'PVH', 'PVHd', 'RT', 'SF', 'SI', 'STR', 'TH', 'VAL', 'VM', 'VPL'], n_passing_blocks=3, task_duration=3633.41261, mean_intramodal_dprime_vis=2.4083675609776805, intramodal_dprime_aud=2.2121366948636805, intermodal_dprime_vis_blocks=[1.9145058250555569, 0.04842155051939967, 1.1183427509671398], intermodal_dprime_aud_blocks=[2.025975796915895, 1.1099094446952567, 1.9805176374313975]mean_)
+>>> dummy_record = Record(project='DynamicRouting', session_id='668755_2023-08-29', date='2023-08-29', time='13:11:16', subject_id=668755, subject_age='P203D', subject_sex='M', subject_genotype='wt/wt', implant='2002', rig='NP3', experimenters=['Corbett Bennett'], notes=None, issues=[], epochs=['RFMapping', 'OptoTagging', 'Spontaneous', 'SpontaneousRewards', 'DynamicRouting1', 'SpontaneousRewards', 'OptoTagging'], allen_path='//allen/programs/mindscope/workgroups/dynamicrouting/PilotEphys/Task 2 pilot/DRpilot_668755_20230829', cloud_path='s3://aind-ephys-data/ecephys_668755_2023-08-29_13-11-16', task_version='stage 5 ori AMN moving', ephys_day=2, behavior_day=2, is_ephys=True, is_sync=True, is_video=True, is_templeton=False, is_annotated=True, is_hab=False, is_task=True, is_spontaneous=True, is_spontaneous_rewards=True, is_rf_mapping=True, is_optotagging=False, is_optotagging_control=True, is_opto_perturbation=False, is_opto_perturbation_control=False, is_injection_perturbation=False, is_timing_issues=False, is_invalid_times=False, is_production=True, is_naive=False, is_context_naive=False, probe_letters_available='ABCDEF', perturbation_areas=None, areas_hit=['ACAd', 'AMv', 'CP', 'EPd', 'HY', 'LHA', 'LSc', 'LSr', 'MOp', 'MOs', 'MS', 'NDB', 'OLF', 'ORBl', 'ORBvl', 'PAL', 'PR', 'PVH', 'PVHd', 'RT', 'SF', 'SI', 'STR', 'TH', 'VAL', 'VM', 'VPL'], n_passing_blocks=3, task_duration=3633.41261, mean_intramodal_dprime_vis=2.4083675609776805, intramodal_dprime_aud=2.2121366948636805, intermodal_dprime_vis_blocks=[1.9145058250555569, 0.04842155051939967, 1.1183427509671398], intermodal_dprime_aud_blocks=[2.025975796915895, 1.1099094446952567, 1.9805176374313975]mean_)
 
 >>> test_path = pathlib.Path(tempfile.TemporaryDirectory().name)
 >>> test_store = RecordStore(test_path)
@@ -52,7 +52,7 @@ class Record:
     project: str
     date: str | npc_session.DateRecord
     time: str | npc_session.TimeRecord
-    subject: int | npc_session.SubjectRecord
+    subject_id: int | npc_session.SubjectRecord
     subject_age_days: int
     subject_sex: str
     subject_genotype: str
@@ -290,7 +290,7 @@ def get_session_record(
         session_id=session.id,
         date=session.id.date,
         time=npc_session.TimeRecord(session.session_start_time.time()),
-        subject=session.id.subject,
+        subject_id=session.id.subject,
         subject_age_days=int(session.subject.age.strip("PD")),
         subject_sex=session.subject.sex,
         subject_genotype=session.subject.genotype,

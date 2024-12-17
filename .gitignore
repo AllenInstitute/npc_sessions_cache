@@ -172,3 +172,5 @@ dynamic_routing_qc.ipynb
 
 *.png
 *.pdf
+
+.scratch/

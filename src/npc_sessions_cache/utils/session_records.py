@@ -52,7 +52,7 @@ class Record:
     project: str
     date: str | npc_session.DateRecord
     time: str | npc_session.TimeRecord
-    subject_id: int | npc_session.SubjectRecord
+    subject_id: int | npc_session.SubjectRecord = pydantic.Field(validation_alias=pydantic.AliasChoices('subject_id', 'subject'))
     subject_age_days: int
     subject_sex: str
     subject_genotype: str

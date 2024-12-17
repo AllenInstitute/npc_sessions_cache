@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = []
 lock_version = "4.5.0"
-content_hash = "sha256:597d9584ee3afec8171f741609ca6bf3e15c4df8969cff9fb49fc8e5621c1175"
+content_hash = "sha256:1d3d1998d4b984621a0b6974518ad50558c7eb4c8c442e9e51dfce4354029148"
 
 [[metadata.targets]]
 requires_python = ">=3.9"
@@ -2891,7 +2891,7 @@ files = [
 
 [[package]]
 name = "npc-lims"
-version = "0.1.179"
+version = "0.1.180"
 requires_python = ">=3.9"
 summary = "Tools to fetch and update paths, metadata and state for Mindscope Neuropixels sessions, in the cloud."
 dependencies = [
@@ -2909,8 +2909,8 @@ dependencies = [
     "types-requests>=2.31.0.6",
 ]
 files = [
-    {file = "npc_lims-0.1.179-py3-none-any.whl", hash = "sha256:d1a6411c4d08e3c431ccde8fd11f5f126df450402869cdf2969dff8105b683d1"},
-    {file = "npc_lims-0.1.179.tar.gz", hash = "sha256:0408701de4444def0779a821bbf4a588611e9cefc85910cdaab198d377bb4842"},
+    {file = "npc_lims-0.1.180-py3-none-any.whl", hash = "sha256:01339724de58ad11759578f04a0a095c1f91d933aeade128510263d6cbfa4a48"},
+    {file = "npc_lims-0.1.180.tar.gz", hash = "sha256:3e7673e151b561ba7d35ca2c939877492af1e16ab5d9bf1383b9f9916ef7e7f4"},
 ]
 
 [[package]]
@@ -2931,7 +2931,7 @@ files = [
 
 [[package]]
 name = "npc-samstim"
-version = "0.1.5"
+version = "0.1.8"
 requires_python = ">=3.9"
 summary = "Tools for processing stim data from Sam's DynamicRoutingTask, compatible with data in the cloud."
 dependencies = [
@@ -2942,8 +2942,8 @@ dependencies = [
     "numba>=0.59.0",
 ]
 files = [
-    {file = "npc_samstim-0.1.5-py3-none-any.whl", hash = "sha256:a5a848044c82240479878b8d61ef855bafcc2ed9533572fb7c07cc0568d7a775"},
-    {file = "npc_samstim-0.1.5.tar.gz", hash = "sha256:adad93d8534b9bbf0b3acf34e3af5083c133cbefb34e21b2f95233458e25c3c8"},
+    {file = "npc_samstim-0.1.8-py3-none-any.whl", hash = "sha256:bc555e8aca8d52d598cd71fd5018c6e570df6f6e7997afecc1ae2296beada026"},
+    {file = "npc_samstim-0.1.8.tar.gz", hash = "sha256:d5b181a3655c763af736411431554eaa7e79dcddf7d0994084bef3245be17543"},
 ]
 
 [[package]]
@@ -2961,7 +2961,7 @@ files = [
 
 [[package]]
 name = "npc-sessions"
-version = "0.0.250"
+version = "0.0.251"
 requires_python = ">=3.9"
 summary = "NWB-conversion for behavior and epyhys sessions from the Mindscope Neuropixels team, in the cloud."
 dependencies = [
@@ -2973,7 +2973,7 @@ dependencies = [
     "ndx-pose>=0.1.1",
     "npc-ephys>=0.1.30",
     "npc-io>=0.1.30",
-    "npc-lims>=0.1.176",
+    "npc-lims>=0.1.180",
     "npc-mvr>=0.1.8",
     "npc-samstim>=0.1.4",
     "npc-session>=0.1.39",
@@ -2990,8 +2990,8 @@ dependencies = [
     "zarr<2.18.1",
 ]
 files = [
-    {file = "npc_sessions-0.0.250-py3-none-any.whl", hash = "sha256:1772704d2d9e62452824fa7099c6aec490d7433b175f8d3081891b19eb26d120"},
-    {file = "npc_sessions-0.0.250.tar.gz", hash = "sha256:e8f1345923a6af5ea5a07ddf87eed09687cedcf8626b6e88d55c90f4dc7f9072"},
+    {file = "npc_sessions-0.0.251-py3-none-any.whl", hash = "sha256:6563e50e866110baacdf8adf9df47bd8306d599d0849213f8a33a93220987cc2"},
+    {file = "npc_sessions-0.0.251.tar.gz", hash = "sha256:a84f98bed4d7fb8b117164c5bd430742d205f7c2cadaaa54d0f65399e55d796d"},
 ]
 
 [[package]]

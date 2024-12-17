@@ -32,7 +32,7 @@ import npc_sessions
 import numpy as np
 import pandas as pd
 import pydantic
-import upath
+import upath    
 from typing_extensions import Self
 
 logger = logging.getLogger(__name__)
@@ -47,51 +47,51 @@ class Record:
     """A row in the sessions table"""
 
     # required - should be available for all sessions ------------------ #
-    session_id: str | npc_session.SessionRecord
-    is_production: bool
-    project: str
-    date: str | npc_session.DateRecord
-    time: str | npc_session.TimeRecord
+    session_id: str | npc_session.SessionRecord = pydantic.Field(...)
+    is_production: bool = pydantic.Field(...)
+    project: str = pydantic.Field(...)
+    date: str | npc_session.DateRecord = pydantic.Field(...)
+    time: str | npc_session.TimeRecord = pydantic.Field(...)
     subject_id: int | npc_session.SubjectRecord = pydantic.Field(validation_alias=pydantic.AliasChoices('subject_id', 'subject'))
-    subject_age_days: int
-    subject_sex: str
-    subject_genotype: str
-    implant: str | None
+    subject_age_days: int = pydantic.Field(...)
+    subject_sex: str = pydantic.Field(...)
+    subject_genotype: str = pydantic.Field(...)
+    implant: str | None = pydantic.Field(...)
     # dye: str | None
-    rig: str
-    experimenters: list[str]
-    notes: str | None
-    issues: list[str]
+    rig: str = pydantic.Field(...)
+    experimenters: list[str] = pydantic.Field(...)
+    notes: str | None = pydantic.Field(...)
+    issues: list[str] = pydantic.Field(...)
 
-    allen_path: str
-    cloud_path: str | None
+    allen_path: str = pydantic.Field(...)
+    cloud_path: str | None = pydantic.Field(...)
 
-    task_version: str | None
-    ephys_day: int | None
-    behavior_day: int | None
+    task_version: str | None = pydantic.Field(...)
+    ephys_day: int | None = pydantic.Field(...)
+    behavior_day: int | None = pydantic.Field(...)
 
-    epochs: list[str]
+    epochs: list[str] = pydantic.Field(...)
 
-    is_ephys: bool
-    is_deep_insertions: bool
-    is_sync: bool
-    is_video: bool
-    is_templeton: bool
-    is_annotated: bool
-    is_hab: bool
-    is_task: bool
+    is_ephys: bool = pydantic.Field(...)
+    is_deep_insertions: bool = pydantic.Field(...)
+    is_sync: bool = pydantic.Field(...)
+    is_video: bool = pydantic.Field(...)
+    is_templeton: bool = pydantic.Field(...)
+    is_annotated: bool = pydantic.Field(...)
+    is_hab: bool = pydantic.Field(...)
+    is_task: bool = pydantic.Field(...)
     # is_timing_issues: bool # cut as it's not clear what this means
-    is_invalid_times: bool
-    is_naive: bool
+    is_invalid_times: bool = pydantic.Field(...)
+    is_naive: bool = pydantic.Field(...)
     is_context_naive: bool  # better would be `days_of_context_training`
-    is_late_autorewards: bool
-    is_spontaneous: bool
-    is_spontaneous_rewards: bool
-    is_rf_mapping: bool
-    is_optotagging: bool
-    is_optotagging_control: bool
-    is_opto_perturbation: bool
-    is_injection_perturbation: bool
+    is_late_autorewards: bool = pydantic.Field(...)
+    is_spontaneous: bool = pydantic.Field(...)
+    is_spontaneous_rewards: bool = pydantic.Field(...)
+    is_rf_mapping: bool = pydantic.Field(...)
+    is_optotagging: bool = pydantic.Field(...)
+    is_optotagging_control: bool = pydantic.Field(...)
+    is_opto_perturbation: bool = pydantic.Field(...)
+    is_injection_perturbation: bool = pydantic.Field(...)
     is_opto_control: bool = False
     is_injection_control: bool = False
 

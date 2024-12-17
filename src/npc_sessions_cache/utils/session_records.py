@@ -80,10 +80,9 @@ class Record:
     is_annotated: bool = pydantic.Field(...)
     is_hab: bool = pydantic.Field(...)
     is_task: bool = pydantic.Field(...)
-    # is_timing_issues: bool # cut as it's not clear what this means
     is_invalid_times: bool = pydantic.Field(...)
     is_naive: bool = pydantic.Field(...)
-    is_context_naive: bool  # better would be `days_of_context_training`
+    is_context_naive: bool = pydantic.Field(...) # better would be `days_of_context_training`
     is_late_autorewards: bool = pydantic.Field(...)
     is_spontaneous: bool = pydantic.Field(...)
     is_spontaneous_rewards: bool = pydantic.Field(...)

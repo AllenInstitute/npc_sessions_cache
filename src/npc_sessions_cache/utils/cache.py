@@ -329,7 +329,7 @@ def add_session_metadata(
     df["session_idx"] = session_id.idx
     df["date"] = session_id.date.dt
     df["subject_id"] = session_id.subject
-    df["session_id"] = session_id.id
+    df["session_id"] = "_".join(str(session_id.id).split("_")[:2]) # remove idx if present
     return df
 
 

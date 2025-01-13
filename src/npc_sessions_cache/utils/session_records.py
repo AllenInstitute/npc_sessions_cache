@@ -23,6 +23,7 @@ import collections.abc
 import dataclasses
 import json
 import logging
+from math import e
 import pathlib
 import traceback
 from collections.abc import Iterator, Mapping
@@ -120,6 +121,7 @@ class Record:
     n_responses: list[float | None] | None = None
     n_trials: list[float | None] | None = None
     is_first_block_aud: bool | None = None
+    is_first_block_vis: bool | None = None
     is_engaged: bool | None = None
     is_good_behavior: bool | None = None
     is_bad_behavior: bool | None = None
@@ -265,6 +267,9 @@ def get_session_record(
     if session.is_task:
         trials = session.trials[:]
         performance = session.performance[:]
+    else:
+        trials = pd.DataFrame()
+        performance = pd.DataFrame()
     epochs_df = session.epochs[:]
 
     def is_in_epochs(name):
@@ -371,10 +376,10 @@ def get_session_record(
         cross_modal_dprime_aud_blocks=(
             get_cross_modal_dprime("aud") if session.is_task else None
         ),
-        is_first_block_aud="aud" in performance.sort_values('block_index').iloc[0].rewarded_modality,
-        is_first_block_vis="vis" in performance.sort_values('block_index').iloc[0].rewarded_modality,
+        is_first_block_aud="aud" in performance.sort_values('block_index').iloc[0].rewarded_modality if session.is_task else None,
+        is_first_block_vis="vis" in performance.sort_values('block_index').iloc[0].rewarded_modality if session.is_task else None,
         is_engaged=(is_engaged := (n_contingent_rewards is not None and len([r for r in n_contingent_rewards if r > 10]) > 4)),
-        is_good_behavior=(is_good_behavior := (is_engaged and n_passing_blocks > 4)),
+        is_good_behavior=(is_good_behavior := (is_engaged and n_passing_blocks is not None and n_passing_blocks > 4)),
         is_bad_behavior=(is_engaged and not is_good_behavior),
         is_stage_5_passed="stage_5_passed" in session.keywords,
     )

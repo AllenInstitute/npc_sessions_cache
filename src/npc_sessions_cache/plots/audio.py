@@ -100,13 +100,13 @@ def plot_audio_waveforms(
     for idx, (ax, waveform) in enumerate(zip(axes, waveforms)):
         ax: plt.Axes
         ax.axvline(0, c='grey', ls='--')
-        ax.set_ylabel(f"block {aud_trials['block_index'].unique()[idx]}")
+        ax.set_title(f"block {aud_trials['block_index'].unique()[idx]}")
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
         ax.spines['left'].set_visible(False)
         if waveform is not None:
             ax.plot(waveform.timestamps - front_padding, (waveform.samples - np.nanmedian(waveform.samples)) * MIC_BIT_VOLTS * 1000, lw=.1, c='k')
-            if idx == 0 :
+            if idx == len(axes) // 2:
                 ax.set_ylabel('median-subtracted voltage (mV)')
         else:
             ax.text(0, 0, "no mic data in requested range", fontsize=8)

@@ -26,6 +26,7 @@ dependencies = [
     "eval-type-backport>=0.2.0",
     "npc-samstim>=0.1.8",
     "polars>=1.9.0",
+    "hdmf<4.0",
 ]
 requires-python = ">=3.9"
 readme = "README.md"

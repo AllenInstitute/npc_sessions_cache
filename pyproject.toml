@@ -26,6 +26,7 @@ dependencies = [
     "eval-type-backport>=0.2.0",
     "polars>=1.9.0",
     "hdmf<4.0",
+    "shapely<2.0.7", # wheels not building
 ]
 requires-python = ">=3.9"
 readme = "README.md"

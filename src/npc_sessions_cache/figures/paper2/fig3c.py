@@ -17,6 +17,8 @@ plt.rcParams["font.family"] = "Arial"
 plt.rcParams["font.size"] = 8
 plt.rcParams["pdf.fonttype"] = 42
 
+class NoSpikesInTrialsError(ValueError):
+    pass
 
 def plot(
     unit_id: str,
@@ -70,7 +72,7 @@ def plot(
     if trials.is_empty():
         raise ValueError(f"No trials found for {session_id}")
     if not unit_spike_times.size:
-        raise ValueError(f"No spike times found for {unit_id}")
+        raise NoSpikesInTrialsError(f"No spike times found for {unit_id}")
     modality_to_rewarded_stim = {"aud": "sound1", "vis": "vis1"}
     # add spikes to trials:
     spike_times_by_trial = tuple(
@@ -80,7 +82,7 @@ def plot(
         )
     )
     if not spike_times_by_trial or not any(np.array(a).any() for a in spike_times_by_trial):
-        raise ValueError(f"No spike times found matching trial times {unit} - either no task presented or major timing issue")
+        raise NoSpikesInTrialsError(f"No spike times found matching trial times {unit} - either no task presented or major timing issue")
     trials = (
         trials
         .with_columns(

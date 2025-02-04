@@ -37,7 +37,10 @@ def plot(
         ).id  # in case unit_id is an npc_sessions object
     except (AttributeError, TypeError):
         session_id = npc_session.SessionRecord(unit_id).id
-    
+
+    if len(session_id.split("_")) == 3:
+        session_id = "_".join(session_id.split("_")[:2])
+        
     session_obj = session
     if use_session_obj or session_obj is not None:
         if session_obj is not None:

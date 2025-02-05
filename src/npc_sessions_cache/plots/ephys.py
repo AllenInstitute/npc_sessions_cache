@@ -19,7 +19,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import upath
-from PIL import Image
+from PIL import Image, ImageEnhance
 
 if TYPE_CHECKING:
     import pynwb
@@ -47,7 +47,8 @@ UNIT_DENSITY_OFFSET = 200
 NUM_CHANNELS = 384
 CCF_NUM_COLUMNS = 4  # ap, dv, ml, and region - for insertion db
 RESOLUTION_UM = 25
-
+MICRONS_PER_PIXEL = 10
+BRIGHTNESS_FACTOR = 1.5
 
 @numba.njit
 def makePSTH_numba(
@@ -815,9 +816,10 @@ def _plot_structure_areas(
     y_positions: list,
     ax: matplotlib.axes.Axes,
     num_channels: int = 384,
-) -> None:
+) -> tuple[str, ...]:
     color = "000000"
-    structures_seen = set()
+    structures_seen = {}
+    structure_positions = {}
     legend = []
 
     for i in range(num_channels - 1, -1, -1):
@@ -834,18 +836,28 @@ def _plot_structure_areas(
                     ].values[0]
 
             patch = matplotlib.patches.Patch(color=f"#{color}", label=structure)
-            legend.append(patch)
-            structures_seen.add(structure)
+            #legend.append(patch)
+            structures_seen[structure] = color
+            structure_positions[structure] = [(ax.get_xlim()[1] - 0.0007, (y_positions[i] - 200) * MICRONS_PER_PIXEL)]
+        else:
+            color = structures_seen[structure]
+            structure_positions[structure].append((ax.get_xlim()[1] - 0.0007, (y_positions[i] - 200) * MICRONS_PER_PIXEL))
 
         rect = matplotlib.patches.Rectangle(
-            (np.max(unit_density_values_plot), y_positions[i] - 200),
+            (ax.get_xlim()[1] - 0.0007, (y_positions[i] - 200) * MICRONS_PER_PIXEL),
             width=0.0005,
             height=0.0005,
             color=f"#{color}",
         )
         ax.add_patch(rect)
 
-    ax.legend(handles=legend, loc="lower center")
+    #ax.legend(handles=legend, loc="center left", bbox_to_anchor=(1, 0.5))
+    for structure in structure_positions:
+        y_structure_position = np.array([pos[1] for pos in structure_positions[structure]])
+        ax.text(ax.get_xlim()[1], np.median(y_structure_position), s=structure, color=f'#{structures_seen[structure]}',
+                fontweight='bold')
+    
+    return tuple(structure_positions.keys())
 
 
 def _plot_ephys_noise_with_unit_density_areas(
@@ -865,7 +877,11 @@ def _plot_ephys_noise_with_unit_density_areas(
     unit_denisty_values = _get_unit_denisty_per_channel(unit_channel_counts)
 
     timeseries_probe = session._raw_ap.electrical_series[probe]
-    unit_density_values_plot = unit_denisty_values[:, 1] / 1000  # scaling
+    kernel_size = 10
+    conv = np.ones(kernel_size) / kernel_size
+
+    smoothed = np.convolve(unit_denisty_values[:, 1], conv, mode='same') / 1000
+
     image_path = (
         upath.UPath(
             "s3://aind-scratch-data/arjun.sridhar/tissuecyte_cloud_processed/slice_images"
@@ -890,10 +906,14 @@ def _plot_ephys_noise_with_unit_density_areas(
         )
 
     with io.BytesIO(image_path.read_bytes()) as f:
-        slice_image = np.array(Image.open(f))
+        image = Image.open(f)
+        enhancer = ImageEnhance.Brightness(image)
+        brightened_image = enhancer.enhance(BRIGHTNESS_FACTOR)
+        slice_image = np.array(brightened_image)
 
     anchors = pd.read_pickle(anchors_path)
     unit_density_points = np.array(anchors[0])
+
     y_positions = [point[1] for point in unit_density_points]
 
     fig, ax = plt.subplots(1, 2)
@@ -908,32 +928,33 @@ def _plot_ephys_noise_with_unit_density_areas(
     ax[1].imshow(slice_image[SLICE_IMAGE_OFFSET:, :])
     # ax2 = ax.twiny()
     ax[0].plot(
-        unit_density_values_plot,
-        unit_density_points[:, 1][:num_channels] - UNIT_DENSITY_OFFSET,
+        smoothed,
+        (unit_density_points[:, 1][:num_channels] - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL,
         alpha=0.3,
     )
     _plot_ephys_noise(
         timeseries_probe,
         ax=ax[0],
-        y_range=unit_density_points[:, 1][:num_channels] - UNIT_DENSITY_OFFSET,
+        y_range=(unit_density_points[:, 1][:num_channels] - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL,
     )
     for position in anchor_positions:
-        ax[0].axhline(y=position - UNIT_DENSITY_OFFSET, c="r")
+        ax[0].axhline(y=(position - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL, c="r")
         ax[1].axhline(y=position - UNIT_DENSITY_OFFSET, c="r")
 
-    ax[0].set_ylim(max(y_positions), 0)
+    ax[0].set_ylim(max(y_positions) * MICRONS_PER_PIXEL, 0)
     ax[1].set_ylim(max(y_positions), 0)
+    ax[1].yaxis.tick_right()
     _plot_structure_areas(
-        electrodes_probe, unit_density_values_plot, y_positions, ax[0]
+        electrodes_probe, timeseries_probe, y_positions, ax[0]
     )
 
     ax[0].set_title("")
-    ax[0].set_ylabel("Pixels")
+    ax[0].set_ylabel("Microns")
     ax[0].set_xlabel("")
     is_deep_insertion = "deep_insertions" in session.keywords
-    if is_deep_insertion and "deep_insertion_probes" in session.keywords:
+    if is_deep_insertion:
         deep_probes = next(
-            kw for kw in session.keywords if "deep_insertion_probes" in kw
+            kw for kw in session.keywords if "deep_insertion_probe_letters" in kw
         ).split("=")[-1]
         is_deep_probe = npc_session.ProbeRecord(probe) in deep_probes
     else:

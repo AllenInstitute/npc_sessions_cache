@@ -2,6 +2,7 @@
 
 import logging
 import pathlib
+from typing import Sequence
 
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
@@ -22,6 +23,7 @@ class NoSpikesInTrialsError(ValueError):
 
 def plot(
     unit_id: str,
+    unit_spike_times: npt.NDArray[np.floating] | None = None,
     stim_names=("vis1", "sound1", "vis2", "sound2"),
     with_instruction_trial_whitespace: bool = False,
     max_psth_spike_rate: float = 60, # Hz
@@ -54,7 +56,8 @@ def plot(
         except KeyError:
             units = pl.DataFrame(obj.units[:][['spike_times', 'unit_id']])
         unit = units.filter(pl.col("unit_id") == unit_id)
-        unit_spike_times = unit['spike_times'].to_numpy()[0]
+        if unit_spike_times is None:
+            unit_spike_times = unit['spike_times'].to_numpy()[0]
         performance: pl.DataFrame = pl.DataFrame(obj.intervals['performance'][:])
     else:
         units_all_sessions = utils.get_component_df("units")
@@ -67,7 +70,8 @@ def plot(
 
         #! session id is without idx for spike times
         spike_times_session_id = "_".join(unit_id.split("_")[:2])
-        unit_spike_times: npt.NDArray = spike_times_all_sessions[spike_times_session_id][unit_id][:]
+        if unit_spike_times is None:
+            unit_spike_times: npt.NDArray = spike_times_all_sessions[spike_times_session_id][unit_id][:]
         performance_all_sessions = utils.get_component_df("performance")
         performance = performance_all_sessions.filter(pl.col("session_id") == session_id)
     
@@ -516,7 +520,7 @@ def get_unit_ids_shawn_session_list() -> pl.Series:
 
 def get_specific_unit_ids() -> list[str]:
     return [
-        '666986_2023-08-16_F-213',
+        '644866_2023-02-07_D-510',
         # '667252_2023-09-26_C-233',
     ]
 
@@ -551,6 +555,12 @@ def get_unit_ids_baseline_psth_parquet():
 
 if __name__ == "__main__":
 
+    plot(
+        unit_id='742903_2024-10-21_E-179',
+        unit_spike_times=np.load(r"C:\Users\ben.hardcastle\Downloads\05392fb2-557a-4185-990b-8b94026d7eae.npy"),
+    ).savefig('ks4_742903_2024-10-21_E-179.png')
+    exit()
+    
     all_stim_names = ("sound1", "vis1", "sound2", "vis2")
     target_stim_names = ("sound1", "vis1")
     pyfile_path = pathlib.Path(__file__)

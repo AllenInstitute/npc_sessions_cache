@@ -304,7 +304,7 @@ def consolidate_cache(
                 columns=[
                     c
                     for c in dataset.schema.names
-                    if c not in ("spike_times", "waveform_mean", "waveform_sd")
+                    if c not in ("spike_times", "waveform_mean", "waveform_sd", "spike_amplitudes")
                 ]
             )
         else:
@@ -384,11 +384,12 @@ def _write_df_to_cache(
         # most common access will be units from the same areas, so make sure
         # these rows are stored together
         df = df.sort_values("location")
-    if component_name == "spike_times":
-        _write_spike_times_to_zarr_cache(
+    if component_name in ("spike_times", "spike_amplitudes"):
+        _write_spike_array_to_zarr_cache(
             session_id,
             df,
             version=version,
+            array_column_name=component_name,
         )
     elif cache_path.suffix == ".parquet":
         pyarrow.parquet.write_table(
@@ -414,13 +415,14 @@ def _write_df_to_cache(
     logger.info(f"Wrote {cache_path}")
 
 
-def _write_spike_times_to_zarr_cache(
+def _write_spike_array_to_zarr_cache(
     session_id: str | npc_session.SessionRecord,
     units: pd.DataFrame,
     version: str | None = None,
+    array_column_name: typing.Literal['spike_times', 'spike_amplitudes'] = 'spike_times',
 ) -> None:
     zarr_path = npc_lims.get_cache_path(
-        "spike_times", consolidated=True, version=version or npc_sessions.get_package_version()
+        array_column_name, consolidated=True, version=version or npc_sessions.get_package_version()
     )
     z = zarr.open(zarr_path, mode="a")
     for delay_sec in (0, 10 * random.sample(range(10), 1), 60 * random.sample(range(10), 1)):
@@ -438,7 +440,7 @@ def _write_spike_times_to_zarr_cache(
         else:
             break
     for _, row in units.iterrows():
-        z[session_id][row["unit_id"]] = row["spike_times"]
+        z[session_id][row["unit_id"]] = row[array_column_name]
 
 
 def get_dataset(

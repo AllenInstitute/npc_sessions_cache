@@ -461,16 +461,20 @@ def get_dataset(
     )
 
 
-def _flatten_units(units: pynwb.misc.Units | pd.DataFrame) -> pd.DataFrame:
+def _flatten_units(units: pynwb.misc.Units | pd.DataFrame, keep_waveform_columns: bool = False) -> pd.DataFrame:
     units = units[:].copy()
     # deal with links to other NWBContainers
     units["device_name"] = units["electrode_group"].apply(lambda eg: eg.device.name)
     units["electrode_group_name"] = units["electrode_group"].apply(lambda eg: eg.name)
 
     # deal with waveform_mean and waveform_sd
-    for k in ("waveform_mean", "waveform_sd"):
-        if k in units:
-            units[k] = units[k].apply(lambda v: list(v))
+    waveform_columns = ("waveform_mean", "waveform_sd")
+    if keep_waveform_columns:
+        for k in waveform_columns:
+            if k in units and keep_waveform_columns:
+                units[k] = units[k].apply(lambda v: list(v))
+    else:
+        units = units.drop(waveform_columns)
     return _remove_pynwb_containers_from_table(units)
 
 

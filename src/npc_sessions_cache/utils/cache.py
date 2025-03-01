@@ -474,7 +474,7 @@ def _flatten_units(units: pynwb.misc.Units | pd.DataFrame, keep_waveform_columns
             if k in units and keep_waveform_columns:
                 units[k] = units[k].apply(lambda v: list(v))
     else:
-        units = units.drop(waveform_columns)
+        units = units.drop(columns=list(waveform_columns))
     return _remove_pynwb_containers_from_table(units)
 
 

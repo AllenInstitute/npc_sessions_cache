@@ -11,7 +11,7 @@
 >>> # test getting values from cache + disk by adding a record on disk
 >>> _ = (path := test_store.get_record_path(key)).with_stem(nkey := key.replace('-29', '-30')).write_bytes(path.read_bytes())
 >>> assert len(test_store) == 2
->>> assert test_store[nkey] == test_store[key] 
+>>> assert test_store[nkey] == test_store[key]
 >>> df = test_store.to_pandas()
 >>> del test_store[dummy_record.session_id]
 >>> assert len(test_store) == 1
@@ -23,7 +23,6 @@ import collections.abc
 import dataclasses
 import json
 import logging
-from math import e
 import pathlib
 import traceback
 from collections.abc import Iterator, Mapping
@@ -33,7 +32,7 @@ import npc_sessions
 import numpy as np
 import pandas as pd
 import pydantic
-import upath    
+import upath
 from typing_extensions import Self
 
 logger = logging.getLogger(__name__)
@@ -43,7 +42,7 @@ DEFAULT_SESSION_METADATA_PATH = upath.UPath(
 )
 
 
-@pydantic.dataclasses.dataclass(config=dict(arbitrary_types_allowed=True)) 
+@pydantic.dataclasses.dataclass(config={"arbitrary_types_allowed": True})
 class Record:
     """A row in the sessions table"""
 
@@ -53,7 +52,9 @@ class Record:
     project: str = pydantic.Field(...)
     date: str | npc_session.DateRecord = pydantic.Field(...)
     time: str | npc_session.TimeRecord = pydantic.Field(...)
-    subject_id: int | npc_session.SubjectRecord = pydantic.Field(validation_alias=pydantic.AliasChoices('subject_id', 'subject'))
+    subject_id: int | npc_session.SubjectRecord = pydantic.Field(
+        validation_alias=pydantic.AliasChoices("subject_id", "subject")
+    )
     subject_age_days: int = pydantic.Field(...)
     subject_sex: str = pydantic.Field(...)
     subject_genotype: str = pydantic.Field(...)
@@ -83,7 +84,9 @@ class Record:
     is_task: bool = pydantic.Field(...)
     is_invalid_times: bool = pydantic.Field(...)
     is_naive: bool = pydantic.Field(...)
-    is_context_naive: bool = pydantic.Field(...) # better would be `days_of_context_training`
+    is_context_naive: bool = pydantic.Field(
+        ...
+    )  # better would be `days_of_context_training`
     is_late_autorewards: bool = pydantic.Field(...)
     is_spontaneous: bool = pydantic.Field(...)
     is_spontaneous_rewards: bool = pydantic.Field(...)
@@ -111,11 +114,11 @@ class Record:
 
     # behavior stuff --------------------------------------------------- #
     task_duration: float | None = None
-    mean_intra_modal_dprime_vis: float | None = None
-    mean_intra_modal_dprime_aud: float | None = None
+    mean_vis_dprime: float | None = None
+    mean_aud_dprime: float | None = None
     n_passing_blocks: int | None = None
-    cross_modal_dprime_vis_blocks: list[float | None] | None = None
-    cross_modal_dprime_aud_blocks: list[float | None] | None = None
+    cross_modality_dprime_vis_blocks: list[float | None] | None = None
+    cross_modality_dprime_aud_blocks: list[float | None] | None = None
     n_hits: list[float | None] | None = None
     n_contingent_rewards: list[float | None] | None = None
     n_responses: list[float | None] | None = None
@@ -126,7 +129,7 @@ class Record:
     is_good_behavior: bool | None = None
     is_bad_behavior: bool | None = None
     is_stage_5_passed: bool | None = None
-    
+
     def to_json(self) -> str:
         return json.dumps(
             dataclasses.asdict(self),
@@ -210,9 +213,7 @@ class RecordStore(collections.abc.MutableMapping):
             )
             raise KeyError(f"{key} not in RecordStore")
         except TypeError:
-            logger.debug(
-                f"Record for {key} does not match current model: deleting"
-            )
+            logger.debug(f"Record for {key} does not match current model: deleting")
             del self[key]
             raise KeyError(f"{key} not in RecordStore")
         else:
@@ -245,7 +246,7 @@ class RecordStore(collections.abc.MutableMapping):
             if self._normalize_key(path.stem) not in self._cache
         )
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(tuple(iter(self)))
 
     def to_pandas(self) -> pd.DataFrame:
@@ -286,7 +287,7 @@ def get_session_record(
             float(v) if not np.isnan(v) else None
             for v in performance.query(
                 f"rewarded_modality == '{modality}'"
-            ).cross_modal_dprime.to_numpy()
+            ).cross_modality_dprime.to_numpy()
         ]
 
     return Record(
@@ -337,9 +338,15 @@ def get_session_record(
         is_naive="is_naive" in session.keywords,
         is_context_naive=session.is_context_naive,
         probe_letters_available="".join(session.probe_letters_to_use),
-        probe_letters_to_skip="".join(session.info.session_kwargs.get('probe_letters_to_skip', '')),
+        probe_letters_to_skip="".join(
+            session.info.session_kwargs.get("probe_letters_to_skip", "")
+        ),
         probe_letters_annotated="".join(session.probe_letters_annotated),
-        deep_probe_letters_to_skip="".join(session.info.session_kwargs.get('surface_recording_probe_letters_to_skip', '')),
+        deep_probe_letters_to_skip="".join(
+            session.info.session_kwargs.get(
+                "surface_recording_probe_letters_to_skip", ""
+            )
+        ),
         perturbation_areas=sorted(trials.opto_label.unique()) if is_opto_task else None,
         areas_hit=(
             sorted(units.structure.unique()) if session.is_annotated else None
@@ -349,37 +356,50 @@ def get_session_record(
             if session.is_task
             else None
         ),
-        n_passing_blocks=(n_passing_blocks := (
-            len(
-                performance.query(
-                    f"cross_modal_dprime >= 1.0"
-                )
+        n_passing_blocks=(
+            n_passing_blocks := (
+                len(performance.query("cross_modality_dprime >= 1.0"))
+                if session.is_task
+                else None
             )
-            if session.is_task
-            else None
-        )),
+        ),
         n_hits=performance.n_hits.to_list() if session.is_task else None,
         n_trials=performance.n_trials.to_list() if session.is_task else None,
         n_responses=performance.n_responses.to_list() if session.is_task else None,
-        n_contingent_rewards=(n_contingent_rewards := (
-            performance.n_contingent_rewards.to_list() if session.is_task else None
-        )),
-        mean_intra_modal_dprime_vis=(
-            performance.vis_intra_dprime.mean() if session.is_task else None
+        n_contingent_rewards=(
+            n_contingent_rewards := (
+                performance.n_contingent_rewards.to_list() if session.is_task else None
+            )
         ),
-        mean_intra_modal_dprime_aud=(
-            performance.aud_intra_dprime.mean() if session.is_task else None
-        ),
-        cross_modal_dprime_vis_blocks=(
+        mean_vis_dprime=(performance.vis_dprime.mean() if session.is_task else None),
+        mean_aud_dprime=(performance.aud_dprime.mean() if session.is_task else None),
+        cross_modality_dprime_vis_blocks=(
             get_cross_modal_dprime("vis") if session.is_task else None
-        ),  
-        cross_modal_dprime_aud_blocks=(
+        ),
+        cross_modality_dprime_aud_blocks=(
             get_cross_modal_dprime("aud") if session.is_task else None
         ),
-        is_first_block_aud="aud" in performance.sort_values('block_index').iloc[0].rewarded_modality if session.is_task else None,
-        is_first_block_vis="vis" in performance.sort_values('block_index').iloc[0].rewarded_modality if session.is_task else None,
-        is_engaged=(is_engaged := (n_contingent_rewards is not None and len([r for r in n_contingent_rewards if r > 10]) > 4)),
-        is_good_behavior=(is_good_behavior := (is_engaged and n_passing_blocks is not None and n_passing_blocks > 4)),
+        is_first_block_aud=(
+            "aud" in performance.sort_values("block_index").iloc[0].rewarded_modality
+            if session.is_task
+            else None
+        ),
+        is_first_block_vis=(
+            "vis" in performance.sort_values("block_index").iloc[0].rewarded_modality
+            if session.is_task
+            else None
+        ),
+        is_engaged=(
+            is_engaged := (
+                n_contingent_rewards is not None
+                and len([r for r in n_contingent_rewards if r > 10]) > 4
+            )
+        ),
+        is_good_behavior=(
+            is_good_behavior := (
+                is_engaged and n_passing_blocks is not None and n_passing_blocks > 4
+            )
+        ),
         is_bad_behavior=(is_engaged and not is_good_behavior),
         is_stage_5_passed="stage_5_passed" in session.keywords,
     )
@@ -418,12 +438,15 @@ def write_session_record(
     except BaseException as e:
         error.write_text(traceback.format_exc())
         logger.error(repr(e))
-        logger.info(f"Failed to write record for {key}: error stored in {error.as_posix()}")
+        logger.info(
+            f"Failed to write record for {key}: error stored in {error.as_posix()}"
+        )
         return
     else:
         error.unlink(missing_ok=True)
         logger.info(f"Removed {error.as_posix()} after successful record write")
     return store[key]
+
 
 def write_session_table_from_records(
     store_path: str | pathlib.Path | upath.UPath = DEFAULT_SESSION_METADATA_PATH
@@ -462,7 +485,7 @@ def get_session_table(
 
 
 if __name__ == "__main__":
-    RecordStore()['686740_2023-10-26']
+    RecordStore()["686740_2023-10-26"]
     import doctest
 
     import dotenv

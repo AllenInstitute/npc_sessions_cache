@@ -2,7 +2,6 @@
 
 import logging
 import pathlib
-from typing import Sequence
 
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
@@ -18,19 +17,21 @@ plt.rcParams["font.family"] = "Arial"
 plt.rcParams["font.size"] = 8
 plt.rcParams["pdf.fonttype"] = 42
 
+
 class NoSpikesInTrialsError(ValueError):
     pass
+
 
 def plot(
     unit_id: str,
     unit_spike_times: npt.NDArray[np.floating] | None = None,
     stim_names=("vis1", "sound1", "vis2", "sound2"),
     with_instruction_trial_whitespace: bool = False,
-    max_psth_spike_rate: float = 60, # Hz
+    max_psth_spike_rate: float = 60,  # Hz
     use_session_obj: bool = False,
-    session = None,
-    xlim_0 = -1.0, # seconds before stim onset
-    xlim_1 = 2.0, # seconds after stim onset
+    session=None,
+    xlim_0=-1.0,  # seconds before stim onset
+    xlim_1=2.0,  # seconds after stim onset
 ) -> plt.Figure:
     # in case unit_id is an npc_sessions object
     try:
@@ -42,23 +43,26 @@ def plot(
 
     if len(session_id.split("_")) == 3:
         session_id = "_".join(session_id.split("_")[:2])
-        
+
     session_obj = session
     if use_session_obj or session_obj is not None:
         if session_obj is not None:
             obj = session_obj
         else:
             import npc_sessions
+
             obj = npc_sessions.Session(session_id)
         trials = pl.DataFrame(obj.trials[:])
         try:
-            units = pl.DataFrame(obj.units[:][['spike_times', 'location', 'structure', 'unit_id']])
+            units = pl.DataFrame(
+                obj.units[:][["spike_times", "location", "structure", "unit_id"]]
+            )
         except KeyError:
-            units = pl.DataFrame(obj.units[:][['spike_times', 'unit_id']])
+            units = pl.DataFrame(obj.units[:][["spike_times", "unit_id"]])
         unit = units.filter(pl.col("unit_id") == unit_id)
         if unit_spike_times is None:
-            unit_spike_times = unit['spike_times'].to_numpy()[0]
-        performance: pl.DataFrame = pl.DataFrame(obj.intervals['performance'][:])
+            unit_spike_times = unit["spike_times"].to_numpy()[0]
+        performance: pl.DataFrame = pl.DataFrame(obj.intervals["performance"][:])
     else:
         units_all_sessions = utils.get_component_df("units")
         spike_times_all_sessions = utils.get_component_zarr("spike_times")
@@ -71,11 +75,15 @@ def plot(
         #! session id is without idx for spike times
         spike_times_session_id = "_".join(unit_id.split("_")[:2])
         if unit_spike_times is None:
-            unit_spike_times: npt.NDArray = spike_times_all_sessions[spike_times_session_id][unit_id][:]
+            unit_spike_times: npt.NDArray = spike_times_all_sessions[
+                spike_times_session_id
+            ][unit_id][:]
         performance_all_sessions = utils.get_component_df("performance")
-        performance = performance_all_sessions.filter(pl.col("session_id") == session_id)
-    
-    pad_start = -xlim_0 + 0.5  # seconds before stim onset 
+        performance = performance_all_sessions.filter(
+            pl.col("session_id") == session_id
+        )
+
+    pad_start = -xlim_0 + 0.5  # seconds before stim onset
     if trials.is_empty():
         raise ValueError(f"No trials found for {session_id}")
     if not unit_spike_times.size:
@@ -83,17 +91,29 @@ def plot(
     modality_to_rewarded_stim = {"aud": "sound1", "vis": "vis1"}
     # add spikes to trials:
     spike_times_by_trial = tuple(
-        unit_spike_times[slice(start, stop)] if 0 <= start < stop <= len(unit_spike_times) else []
+        (
+            unit_spike_times[slice(start, stop)]
+            if 0 <= start < stop <= len(unit_spike_times)
+            else []
+        )
         for start, stop in np.searchsorted(
-            unit_spike_times, trials.select(pl.col("start_time") - pad_start, "stop_time")
+            unit_spike_times,
+            trials.select(pl.col("start_time") - pad_start, "stop_time"),
         )
     )
-    if not spike_times_by_trial or not any(np.array(a).any() for a in spike_times_by_trial):
-        raise NoSpikesInTrialsError(f"No spike times found matching trial times {unit} - either no task presented or major timing issue")
+    if not spike_times_by_trial or not any(
+        np.array(a).any() for a in spike_times_by_trial
+    ):
+        raise NoSpikesInTrialsError(
+            f"No spike times found matching trial times {unit} - either no task presented or major timing issue"
+        )
     trials = (
-        trials
-        .with_columns(
-            pl.Series(name="spike_times", values=spike_times_by_trial, dtype=pl.List(pl.Float64)), # doesn't handle empty entries well without explicit dtype
+        trials.with_columns(
+            pl.Series(
+                name="spike_times",
+                values=spike_times_by_trial,
+                dtype=pl.List(pl.Float64),
+            ),  # doesn't handle empty entries well without explicit dtype
         )
         .with_row_index()
         .explode("spike_times")
@@ -120,14 +140,14 @@ def plot(
     trials_: pl.DataFrame = trials
     if with_instruction_trial_whitespace:
         for block_index in trials_["block_index"].unique():
-            context_name = trials_.filter(pl.col("block_index") == block_index)[
-                "context_name"
+            rewarded_modality = trials_.filter(pl.col("block_index") == block_index)[
+                "rewarded_modality"
             ][0]
-            autorewarded_stim = modality_to_rewarded_stim[context_name]
+            autorewarded_stim = modality_to_rewarded_stim[rewarded_modality]
             for stim_name in stim_names:
                 if autorewarded_stim == stim_name:
                     continue
-                extra_df = trials.filter( # filter original trials, not modified ones with dummy instruction trials
+                extra_df = trials.filter(  # filter original trials, not modified ones with dummy instruction trials
                     pl.col("block_index") == block_index,
                     pl.col("is_reward_scheduled"),
                     pl.col("trial_index_in_block")
@@ -153,13 +173,13 @@ def plot(
         .over("stim_name", "block_index"),
     )
 
-    line_params = dict(
-        color="grey",
-        lw=0.3,
-    )
+    line_params = {
+        "color": "grey",
+        "lw": 0.3,
+    }
     response_window_start_time = 0.1  # np.median(np.diff(trials.select('stim_start_time', 'response_window_start_time')))
     response_window_stop_time = 1  # np.median(np.diff(trials.select('stim_start_time', 'response_window_stop_time')))
-    aud_block_color = 'orange'
+    aud_block_color = "orange"
     add_psth = True
     nominal_rows_per_block = 20
     block_height_on_page = (
@@ -174,7 +194,7 @@ def plot(
 
         stim_trials = trials_.filter(pl.col("stim_name") == stim)
         idx_in_block = 0
-        for idx, trial in enumerate(stim_trials.iter_rows(named=True)):
+        for _idx, trial in enumerate(stim_trials.iter_rows(named=True)):
 
             num_instructed_trials = max(
                 len(
@@ -188,7 +208,7 @@ def plot(
                 for c in ("aud", "vis")
             )
 
-            is_vis_block: bool = "vis" in trial["context_name"]
+            is_vis_block: bool = "vis" in trial["rewarded_modality"]
             is_vis_target: bool = "vis1" in trial["stim_name"]
             is_aud_target: bool = "sound1" in trial["stim_name"]
             is_rewarded_stim: bool = (is_vis_target and is_vis_block) or (
@@ -244,14 +264,18 @@ def plot(
 
                 if is_rewarded_stim:
                     # autoreward trials green patch
-                    green_patch_params = dict(color=[0.9, 0.95, 0.9], lw=0, zorder=-1)
+                    green_patch_params = {
+                        "color": [0.9, 0.95, 0.9],
+                        "lw": 0,
+                        "zorder": -1,
+                    }
                     ax.axhspan(
                         ymin=max(ypos, 0) - halfline,
                         ymax=ypositions[num_instructed_trials - 1] + halfline,
                         **green_patch_params,
                     )
 
-                if trial["is_vis_context"] and len(block_df) > num_instructed_trials:
+                if trial["is_vis_rewarded"] and len(block_df) > num_instructed_trials:
                     # vis block grey patch
                     ax.axhspan(
                         ymin=(
@@ -271,13 +295,12 @@ def plot(
                         response_window_start_time,
                         (
                             y0 := (
-                                (
-                                    ypos
-                                    if is_rewarded_stim or not with_instruction_trial_whitespace
-                                    else ypositions[
-                                        min(num_instructed_trials, len(block_df) - 1)
-                                    ]
-                                )
+                                ypos
+                                if is_rewarded_stim
+                                or not with_instruction_trial_whitespace
+                                else ypositions[
+                                    min(num_instructed_trials, len(block_df) - 1)
+                                ]
                             )
                             - halfline
                         ),
@@ -297,26 +320,26 @@ def plot(
 
             # spikes
             trial_spike_times = np.array(trial["stim_centered_spike_times"])
-            eventplot_params = dict(
-                lineoffsets=ypos,
-                linewidths=0.3,
-                linelengths=0.8,
-                color=[0.6] * 3,
-                zorder=99,
-            )
+            eventplot_params = {
+                "lineoffsets": ypos,
+                "linewidths": 0.3,
+                "linelengths": 0.8,
+                "color": [0.6] * 3,
+                "zorder": 99,
+            }
             if trial_spike_times.size == 1 and trial_spike_times[0] is None:
                 pass
             else:
                 ax.eventplot(positions=trial_spike_times, **eventplot_params)
 
             # times of interest
-            override_params = dict(alpha=1)
+            override_params = {"alpha": 1}
             if trial["is_rewarded"]:
                 time_of_interest = trial["reward_time"] - trial["stim_start_time"]
-                override_params |= dict(marker=".", color="c", edgecolor="none")
+                override_params |= {"marker": ".", "color": "c", "edgecolor": "none"}
                 ax.eventplot(
                     positions=[time_of_interest],
-                    **eventplot_params | dict(color="c"),
+                    **eventplot_params | {"color": "c"},
                 )
                 continue
             elif trial["is_false_alarm"]:
@@ -330,11 +353,15 @@ def plot(
                 if false_alarm_line:
                     ax.eventplot(
                         positions=[time_of_interest],
-                        **eventplot_params | dict(color="r"),
+                        **eventplot_params | {"color": "r"},
                     )
                     continue
                 else:
-                    override_params |= dict(marker=".", color="r", edgecolor="none")
+                    override_params |= {
+                        "marker": ".",
+                        "color": "r",
+                        "edgecolor": "none",
+                    }
             else:
                 continue
         last_ypos.append(ypos)
@@ -342,14 +369,16 @@ def plot(
     for ax, stim in zip(axes, stim_names):
         ax: plt.Axes
         if add_psth:
-            average_block_psth = True # plot PSTHs for individual blocks, and their average
+            average_block_psth = (
+                True  # plot PSTHs for individual blocks, and their average
+            )
             bin_size_s = 25 / 1000
-            scale_bar_len = max(1, int(max_psth_spike_rate / 4)) # Hz
+            scale_bar_len = max(1, int(max_psth_spike_rate / 4))  # Hz
             ypad = 5
             ymin = max(last_ypos) + ypad
             ymax = ymin + nominal_rows_per_block
             ypos = ymax + 0.5
-            
+
             def add_psth_plot(hist, bin_edges, **plot_kwargs):
                 # need to plot upside down, scaled
                 norm_spike_rate = (hist / max_psth_spike_rate) * (ymax - ymin)
@@ -358,17 +387,15 @@ def plot(
                     ymax - norm_spike_rate,
                     **plot_kwargs,
                 )
-                
-            for context_name, color in zip(("aud", "vis"), ('orange', 'grey')):
-                
+
+            for rewarded_modality, color in zip(("aud", "vis"), ("orange", "grey")):
+
                 if average_block_psth:
                     hist_results = []
                     for _, block_trials in trials.group_by("block_index"):
-                        df = (
-                            block_trials.filter(
-                                pl.col(f"is_{context_name}_context"),
-                                pl.col("stim_name") == stim,
-                            )
+                        df = block_trials.filter(
+                            pl.col(f"is_{rewarded_modality}_context"),
+                            pl.col("stim_name") == stim,
                         )
                         a = df["stim_centered_spike_times"].to_numpy()
                         if not a.size:
@@ -376,35 +403,37 @@ def plot(
                         hist, bin_edges = utils.makePSTH_numba(
                             spikes=np.sort(unit_spike_times),
                             startTimes=np.array(df["stim_start_time"] - pad_start),
-                            windowDur=pad_start + xlim_1, binSize=bin_size_s,
+                            windowDur=pad_start + xlim_1,
+                            binSize=bin_size_s,
                         )
                         bin_edges = bin_edges - pad_start
                         # hist, bin_edges = hist_(a)
                         hist_results.append(hist)
-                        add_psth_plot(hist, bin_edges, lw=.3, c=color, alpha=.3)
+                        add_psth_plot(hist, bin_edges, lw=0.3, c=color, alpha=0.3)
                     if not hist_results:
                         continue
-                    add_psth_plot(np.mean(hist_results, axis=0), bin_edges, lw=.75, c=color)
+                    add_psth_plot(
+                        np.mean(hist_results, axis=0), bin_edges, lw=0.75, c=color
+                    )
                 else:
-                    df = (
-                        trials.filter(
-                            pl.col(f"is_{context_name}_context"),
-                            pl.col("stim_name") == stim,
-                        )
+                    df = trials.filter(
+                        pl.col(f"is_{rewarded_modality}_context"),
+                        pl.col("stim_name") == stim,
                     )
                     hist, bin_edges = utils.makePSTH_numba(
                         spikes=np.sort(unit_spike_times),
                         startTimes=np.array(df["stim_start_time"] - pad_start),
-                        windowDur=pad_start + xlim_1, binSize=bin_size_s,
+                        windowDur=pad_start + xlim_1,
+                        binSize=bin_size_s,
                     )
                     bin_edges = bin_edges - pad_start
-                    add_psth_plot(hist, bin_edges, lw=.5, c=color)
-                    
+                    add_psth_plot(hist, bin_edges, lw=0.5, c=color)
+
             # response window cyan patch in PSTH
             rect = patches.Rectangle(
                 xy=(response_window_start_time, ymin),
                 width=response_window_stop_time - response_window_start_time,
-                height=ymax - ymin + .5,
+                height=ymax - ymin + 0.5,
                 linewidth=0,
                 edgecolor="none",
                 facecolor=[0.85, 0.95, 1, 0.5],
@@ -415,7 +444,7 @@ def plot(
                 # add a scale bar
                 length = (ymax - ymin) * scale_bar_len / max_psth_spike_rate
                 ax.plot(
-                    [xlim_0 - .1, xlim_0 - .1],
+                    [xlim_0 - 0.1, xlim_0 - 0.1],
                     [ymax - length, ymax],
                     c="k",
                     lw=1,
@@ -431,13 +460,13 @@ def plot(
                     color="k",
                     rotation=0,
                 )
-                
+
         # stim onset vertical line
         ax.axvline(x=0, **line_params)
 
         ax.set_xlim(xlim_0, xlim_1)
         ax.set_ylim(-0.5, max(ypos, *last_ypos) + 0.5)
-        ax.set_xticks(sorted(set([min(xlim_0, 0), 0, xlim_1])))
+        ax.set_xticks(sorted({min(xlim_0, 0), 0, xlim_1}))
         # ax.set_xticklabels("" if v % 2 else str(v) for v in ax.get_xticks())
         ax.xaxis.set_tick_params(labelsize=6)
         ax.set_yticks([])
@@ -473,7 +502,7 @@ def plot(
         len(
             pl.DataFrame(performance).filter(
                 pl.col("same_modal_dprime") > 1.0,
-                pl.col("cross_modal_dprime") > 1.0,
+                pl.col("cross_modality_dprime") > 1.0,
             )
         )
         > 3
@@ -491,43 +520,61 @@ def plot(
     fig.set_dpi(300)
     return fig
 
+
 def get_unit_ids_shailaja_pkl() -> tuple[str, ...]:
     import pickle
+
     f = pathlib.Path("c:/users/ben.hardcastle/downloads/list_of_context_units.pkl")
     p = pickle.loads(f.read_bytes())
     unit_ids = []
-    for k, v in p.items():
+    for _k, v in p.items():
         unit_ids.extend(v)
     return tuple(sorted(unit_ids))
 
+
 def get_unit_ids_shawn_session_list() -> pl.Series:
-    sessions = [f"{i}_0" for i in ('666986_2023-08-16', '714748_2024-06-24','664851_2023-11-16','666986_2023-08-16',
-                    '667252_2023-09-28','674562_2023-10-03','681532_2023-10-18',
-                    '708016_2024-04-29','714753_2024-07-02','644866_2023-02-10',
-'674562_2023-10-05','712141_2024-06-06')]
+    sessions = [
+        f"{i}_0"
+        for i in (
+            "666986_2023-08-16",
+            "714748_2024-06-24",
+            "664851_2023-11-16",
+            "666986_2023-08-16",
+            "667252_2023-09-28",
+            "674562_2023-10-03",
+            "681532_2023-10-18",
+            "708016_2024-04-29",
+            "714753_2024-07-02",
+            "644866_2023-02-10",
+            "674562_2023-10-05",
+            "712141_2024-06-06",
+        )
+    ]
     top_k = 20
     units = (
         pl.read_csv("c:/users/ben.hardcastle/downloads/context_encoding_units.csv")
-        .group_by('session_id')
-        .agg(
-            pl.col('unit_id').top_k_by(by=pl.col('context drop score'), k=top_k)
-        )
-        .explode('unit_id')
-    ).get_column('unit_id')
+        .group_by("session_id")
+        .agg(pl.col("unit_id").top_k_by(by=pl.col("context drop score"), k=top_k))
+        .explode("unit_id")
+    ).get_column("unit_id")
     if len(units) < top_k * len(sessions):
         print(f"Expected {top_k * len(sessions)} units, got {len(units)}")
     return units
 
+
 def get_specific_unit_ids() -> list[str]:
     return [
-        '644866_2023-02-07_D-510',
+        "644866_2023-02-07_D-510",
         # '667252_2023-09-26_C-233',
     ]
 
+
 def get_grouped_baseline_psth_parquet():
-    u = (
-        pl.read_parquet(r"C:\Users\ben.hardcastle\github\npc_sessions_cache\src\npc_sessions_cache\figures\paper2\baseline_psth.parquet")
-        .join(utils.get_component_df("units"), on='unit_id', )
+    u = pl.read_parquet(
+        r"C:\Users\ben.hardcastle\github\npc_sessions_cache\src\npc_sessions_cache\figures\paper2\baseline_psth.parquet"
+    ).join(
+        utils.get_component_df("units"),
+        on="unit_id",
     )
     k = 10
     dfs = []
@@ -535,59 +582,68 @@ def get_grouped_baseline_psth_parquet():
         for target in ("target",):
             col = pl.col(f"{stim}_{target}_context_selectivity_index").abs()
             dfs.append(
-                u
-                .group_by(
-                    'structure'
-                )
+                u.group_by("structure")
                 .agg(
                     [
-                        col.top_k(k).alias('abs_context_index'),
-                        pl.col('unit_id').top_k_by(col, k),
+                        col.top_k(k).alias("abs_context_index"),
+                        pl.col("unit_id").top_k_by(col, k),
                     ]
                 )
-                .explode(pl.all().exclude('structure'))
+                .explode(pl.all().exclude("structure"))
             )
-                
-    return pl.concat(dfs).sort('abs_context_index', descending=True)
+
+    return pl.concat(dfs).sort("abs_context_index", descending=True)
+
 
 def get_unit_ids_baseline_psth_parquet():
-    return get_grouped_baseline_psth_parquet()['unit_id']
+    return get_grouped_baseline_psth_parquet()["unit_id"]
+
 
 if __name__ == "__main__":
 
     plot(
-        unit_id='742903_2024-10-21_E-179',
-        unit_spike_times=np.load(r"C:\Users\ben.hardcastle\Downloads\05392fb2-557a-4185-990b-8b94026d7eae.npy"),
-    ).savefig('ks4_742903_2024-10-21_E-179.png')
+        unit_id="742903_2024-10-21_E-179",
+        unit_spike_times=np.load(
+            r"C:\Users\ben.hardcastle\Downloads\05392fb2-557a-4185-990b-8b94026d7eae.npy"
+        ),
+    ).savefig("ks4_742903_2024-10-21_E-179.png")
     exit()
-    
+
     all_stim_names = ("sound1", "vis1", "sound2", "vis2")
     target_stim_names = ("sound1", "vis1")
     pyfile_path = pathlib.Path(__file__)
-    
+
     raise_on_error = True
     skip_existing = False
     print(f"{skip_existing=}, {raise_on_error=}")
     get_unit_id_func = get_specific_unit_ids
     for unit_id in get_unit_id_func():
-        
+
         figsave_path = pyfile_path.with_name(f"{pyfile_path.stem}_{unit_id}")
         if get_unit_id_func in (
             get_unit_ids_shawn_session_list,
-            get_unit_ids_baseline_psth_parquet
+            get_unit_ids_baseline_psth_parquet,
         ):
-            materials_path = pathlib.Path("C:/Users/ben.hardcastle/OneDrive - Allen Institute/Shared Documents - Dynamic Routing/DR Manuscripts/DR Paper 2 - context representations/Figures/Figure 3/materials")
+            materials_path = pathlib.Path(
+                "C:/Users/ben.hardcastle/OneDrive - Allen Institute/Shared Documents - Dynamic Routing/DR Manuscripts/DR Paper 2 - context representations/Figures/Figure 3/materials"
+            )
             if get_unit_id_func is get_unit_ids_shawn_session_list:
-                requested_path = materials_path / "top_context_units_by_session_v0.0.235"
+                requested_path = (
+                    materials_path / "top_context_units_by_session_v0.0.235"
+                )
             elif get_unit_id_func is get_unit_ids_baseline_psth_parquet:
-                area = get_grouped_baseline_psth_parquet().filter(pl.col('unit_id') == unit_id)['structure'][0]
-                requested_path = materials_path / "top_context_units_by_area_v0.0.235" / area
+                area = get_grouped_baseline_psth_parquet().filter(
+                    pl.col("unit_id") == unit_id
+                )["structure"][0]
+                requested_path = (
+                    materials_path / "top_context_units_by_area_v0.0.235" / area
+                )
             requested_path.mkdir(exist_ok=True, parents=True)
             figsave_path = requested_path / figsave_path.name
         if skip_existing and figsave_path.with_suffix(".png").exists():
             print(f"skipping {pyfile_path.stem} for {unit_id} - already exists")
-            continue        
-        
+            continue
+
         print(f"plotting {pyfile_path.stem} for {unit_id}")
         try:
             fig = plot(
@@ -604,6 +660,6 @@ if __name__ == "__main__":
         fig.savefig(f"{figsave_path}.png", dpi=300, bbox_inches="tight")
         fig.savefig(f"{figsave_path}.pdf", dpi=300, bbox_inches="tight")
         plt.close(fig)
-        
+
 
 # %%

@@ -3,10 +3,8 @@ from __future__ import annotations
 import functools
 import logging
 import pathlib
-import tempfile
 
 import npc_lims
-import nrrd
 import numba
 import numpy as np
 import numpy.typing as npt
@@ -101,7 +99,7 @@ def get_good_units_df() -> pl.DataFrame:
                 get_component_lf("performance")
                 .filter(
                     pl.col("same_modal_dprime") > 1.0,
-                    pl.col("cross_modal_dprime") > 1.0,
+                    pl.col("cross_modality_dprime") > 1.0,
                 )
                 .group_by(pl.col("session_id"))
                 .agg(
@@ -148,9 +146,12 @@ def get_good_units_df() -> pl.DataFrame:
     logger.info(f"Fetched {len(good_units)} good units")
     return good_units
 
+
 from typing import TypeVar
 
 T = TypeVar("T", pl.DataFrame, pl.LazyFrame)
+
+
 def filter_prod_sessions(
     df: T,
     cross_modal_dprime_threshold: float = 1.0,
@@ -158,22 +159,20 @@ def filter_prod_sessions(
 ) -> T:
     """
     Filter the dataframe to only include sessions that are pass dprime threshold
-    specified in at least 3 blocks. 
-    
+    specified in at least 3 blocks.
+
     usage:
-    electrodes = get_component_df("electrodes").pipe(filter_prod_sessions, cross_modal_dprime_threshold=1.0)    
+    electrodes = get_component_df("electrodes").pipe(filter_prod_sessions, cross_modal_dprime_threshold=1.0)
     """
     prod_trials = get_prod_trials(cross_modal_dprime_threshold, late_autorewards)
     if isinstance(df, pl.LazyFrame):
         prod_trials = prod_trials.lazy()
-    return (
-        df
-        .join(
-            other=prod_trials,
-            on="session_id",
-            how="semi", # only keep rows in left table that have match in right table (ie prod sessions)
-        )
+    return df.join(
+        other=prod_trials,
+        on="session_id",
+        how="semi",  # only keep rows in left table that have match in right table (ie prod sessions)
     )
+
 
 @functools.cache
 def get_prod_trials(
@@ -181,13 +180,13 @@ def get_prod_trials(
 ) -> pl.DataFrame:
     if late_autorewards is None:
         late_autorewards_expr = pl.lit(True)
-    elif late_autorewards == True:
+    elif late_autorewards is True:
         late_autorewards_expr = (
-            pl.col("keywords").list.contains("late_autorewards") == True
+            pl.col("keywords").list.contains("late_autorewards") is True
         )
-    elif late_autorewards == False:
+    elif late_autorewards is False:
         late_autorewards_expr = (
-            pl.col("keywords").list.contains("early_autorewards") == True
+            pl.col("keywords").list.contains("early_autorewards") is True
         )
 
     return (
@@ -220,7 +219,7 @@ def get_prod_trials(
                 get_component_df("performance")
                 .filter(
                     # pl.col('same_modal_dprime') > 1.0,
-                    pl.col("cross_modal_dprime")
+                    pl.col("cross_modality_dprime")
                     > cross_modal_dprime_threshold,
                 )
                 .with_columns(
@@ -253,7 +252,7 @@ def get_prod_trials(
         )
         # add a column that indicates if the first block in a session is aud context:
         .with_columns(
-            (pl.col("context_name").first() == "aud")
+            (pl.col("rewarded_modality").first() == "aud")
             .over("session_id")
             .alias("is_first_block_aud"),
         )
@@ -357,7 +356,7 @@ def makePSTH_numba(
     bins = np.arange(0, windowDur + binSize, binSize)
     convkernel = np.ones(int(convolution_kernel / binSize))
     counts = np.zeros(bins.size - 1)
-    for i, start in enumerate(startTimes):
+    for _i, start in enumerate(startTimes):
         startInd = np.searchsorted(spikes, start)
         endInd = np.searchsorted(spikes, start + windowDur)
         counts = counts + np.histogram(spikes[startInd:endInd] - start, bins)[0]

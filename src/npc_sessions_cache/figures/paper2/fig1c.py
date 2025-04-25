@@ -20,7 +20,7 @@ def plot(
     session_id: str,
     stim_names=("vis1", "sound1", "vis2", "sound2"),
     use_session_obj: bool = False,
-    session = None,
+    session=None,
 ) -> plt.Figure:
     try:
         session_id = npc_session.SessionRecord(
@@ -28,23 +28,26 @@ def plot(
         ).id  # in case session_id is an npc_sessions object
     except (AttributeError, TypeError):
         session_id = npc_session.SessionRecord(session_id).id
-        
+
     if use_session_obj or session is not None:
         if session is not None:
             obj = session
         else:
             import npc_sessions
+
             obj = npc_sessions.Session(session_id)
-        trials = pl.DataFrame(obj.trials[:]).drop('index', strict=False)
-        performance: pl.DataFrame = pl.DataFrame(obj.intervals['performance'][:])
+        trials = pl.DataFrame(obj.trials[:]).drop("index", strict=False)
+        performance: pl.DataFrame = pl.DataFrame(obj.intervals["performance"][:])
         lick_times: npt.NDArray = obj._all_licks[0].timestamps
-    
+
     else:
         licks_all_sessions = utils.get_component_zarr("licks")
         trials_all_sessions = utils.get_component_df("trials")
         performance_all_sessions = utils.get_component_df("performance")
 
-        performance = performance_all_sessions.filter(pl.col("session_id") == session_id)
+        performance = performance_all_sessions.filter(
+            pl.col("session_id") == session_id
+        )
         trials = trials_all_sessions.filter(pl.col("session_id") == session_id)
         lick_times: npt.NDArray = licks_all_sessions[session_id]["timestamps"][:]
 
@@ -53,9 +56,7 @@ def plot(
     # add licks to trials:
     pad_start = 1.5  # seconds
     lick_times_by_trial = tuple(
-        lick_times[slice(start, stop)]
-        if 0 <= start < stop < len(lick_times)
-        else []
+        lick_times[slice(start, stop)] if 0 <= start < stop < len(lick_times) else []
         for start, stop in np.searchsorted(
             lick_times, trials.select(pl.col("start_time") - pad_start, "stop_time")
         )
@@ -78,7 +79,7 @@ def plot(
             maintain_order=True,
         )
         .all()
-        .drop('lick_times')
+        .drop("lick_times")
     )
 
     # select VIStarget / AUDtarget trials
@@ -92,16 +93,16 @@ def plot(
     # alignment of blocks:
     trials_: pl.DataFrame = trials_.collect()
     for block_index in trials_["block_index"].unique():
-        context_name = trials_.filter(pl.col("block_index") == block_index)[
-            "context_name"
+        rewarded_modality = trials_.filter(pl.col("block_index") == block_index)[
+            "rewarded_modality"
         ][0]
-        autorewarded_stim = modality_to_rewarded_stim[context_name]
+        autorewarded_stim = modality_to_rewarded_stim[rewarded_modality]
         for stim_name in stim_names:
             if autorewarded_stim == stim_name:
                 continue
             extra_df = trials.filter(
                 # filter original trials, not modified ones with dummy instruction trials
-                # need to make sure same set of columns for both though                      
+                # need to make sure same set of columns for both though
                 pl.col("block_index") == block_index,
                 pl.col("is_reward_scheduled"),
                 pl.col("trial_index_in_block")
@@ -114,9 +115,11 @@ def plot(
                 is_rewarded=pl.lit(False),
                 stim_centered_lick_times=pl.lit([]),
             )
-            trials_ = trials_.drop('index', strict=False)
-            extra_df = extra_df.drop('index', strict=False)
-            assert not (diff := set(trials_.columns) ^ set(extra_df.columns)), f"difference in columns: {diff}"
+            trials_ = trials_.drop("index", strict=False)
+            extra_df = extra_df.drop("index", strict=False)
+            assert not (
+                diff := set(trials_.columns) ^ set(extra_df.columns)
+            ), f"difference in columns: {diff}"
             trials_ = pl.concat([trials_, extra_df], how="vertical_relaxed")
 
     # add columns for easier parsing of block structure:
@@ -130,18 +133,17 @@ def plot(
         .over("stim_name", "block_index"),
     )
 
-
-    scatter_params = dict(
-        marker="|",
-        s=20,
-        color=[0.85] * 3,
-        alpha=1,
-        edgecolor="none",
-    )
-    line_params = dict(
-        color="grey",
-        lw=0.3,
-    )
+    scatter_params = {
+        "marker": "|",
+        "s": 20,
+        "color": [0.85] * 3,
+        "alpha": 1,
+        "edgecolor": "none",
+    }
+    line_params = {
+        "color": "grey",
+        "lw": 0.3,
+    }
     response_window_start_time = 0.1  # np.median(np.diff(trials.select('stim_start_time', 'response_window_start_time')))
     response_window_stop_time = 1  # np.median(np.diff(trials.select('stim_start_time', 'response_window_stop_time')))
     xlim_0 = -1
@@ -157,7 +159,7 @@ def plot(
 
         stim_trials = trials_.filter(pl.col("stim_name") == stim)
         idx_in_block = 0
-        for idx, trial in enumerate(stim_trials.iter_rows(named=True)):
+        for _idx, trial in enumerate(stim_trials.iter_rows(named=True)):
 
             num_instructed_trials = max(
                 len(
@@ -171,7 +173,7 @@ def plot(
                 for c in ("aud", "vis")
             )
 
-            is_vis_block: bool = "vis" in trial["context_name"]
+            is_vis_block: bool = "vis" in trial["rewarded_modality"]
             is_vis_target: bool = "vis1" in trial["stim_name"]
             is_aud_target: bool = "sound1" in trial["stim_name"]
             is_rewarded_stim: bool = (is_vis_target and is_vis_block) or (
@@ -227,14 +229,18 @@ def plot(
 
                 if is_rewarded_stim:
                     # autoreward trials green patch
-                    green_patch_params = dict(color=[0.9, 0.95, 0.9], lw=0, zorder=-1)
+                    green_patch_params = {
+                        "color": [0.9, 0.95, 0.9],
+                        "lw": 0,
+                        "zorder": -1,
+                    }
                     ax.axhspan(
                         ymin=max(ypos, 0) - halfline,
                         ymax=ypositions[num_instructed_trials - 1] + halfline,
                         **green_patch_params,
                     )
 
-                if trial["is_vis_context"] and len(block_df) > num_instructed_trials:
+                if trial["is_vis_rewarded"] and len(block_df) > num_instructed_trials:
                     # vis block grey patch
                     ax.axhspan(
                         ymin=ypositions[num_instructed_trials] - halfline,
@@ -277,33 +283,37 @@ def plot(
 
             # licks
             lick_times = np.array(trial["stim_centered_lick_times"])
-            eventplot_params = dict(
-                lineoffsets=ypos,
-                linewidths=0.3,
-                linelengths=0.8,
-                color=[0.4] * 3,
-                zorder=99,
-            )
+            eventplot_params = {
+                "lineoffsets": ypos,
+                "linewidths": 0.3,
+                "linelengths": 0.8,
+                "color": [0.4] * 3,
+                "zorder": 99,
+            }
             if lick_times.size == 1 and lick_times[0] is None:
                 continue
             ax.eventplot(positions=lick_times, **eventplot_params)
 
             # times of interest
-            override_params = dict(alpha=1)
+            override_params = {"alpha": 1}
             if trial["is_rewarded"]:
                 time_of_interest = trial["reward_time"] - trial["stim_start_time"]
-                override_params |= dict(marker=".", color="c", edgecolor="none")
+                override_params |= {"marker": ".", "color": "c", "edgecolor": "none"}
             elif trial["is_false_alarm"]:
                 time_of_interest = lick_times[lick_times > 0][0]
                 false_alarm_line = True  # set False to draw a dot instead of a line
                 if false_alarm_line:
                     ax.eventplot(
                         positions=[time_of_interest],
-                        **eventplot_params | dict(color="r"),
+                        **eventplot_params | {"color": "r"},
                     )
                     continue
                 else:
-                    override_params |= dict(marker=".", color="r", edgecolor="none")
+                    override_params |= {
+                        "marker": ".",
+                        "color": "r",
+                        "edgecolor": "none",
+                    }
             else:
                 continue
             ax.scatter(
@@ -314,7 +324,7 @@ def plot(
                 clip_on=False,
             )
         last_ypos.append(ypos)
-        
+
         # stim onset vertical line
         ax.axvline(x=0, **line_params)
 
@@ -350,12 +360,12 @@ def plot(
         ax.spines["right"].set_visible(False)
         ax.spines["left"].set_visible(False)
         ax.set_zorder(199)
-         
+
     is_pass = (
         len(
             pl.DataFrame(performance).filter(
                 pl.col("same_modal_dprime") > 1.0,
-                pl.col("cross_modal_dprime") > 1.0,
+                pl.col("cross_modality_dprime") > 1.0,
             )
         )
         > 3
@@ -377,9 +387,7 @@ if __name__ == "__main__":
     # session_id = '620263_2022-07-26' #< session with 10 autorewards
 
     stim_names = ("vis1", "vis2", "sound1", "sound2")
-    for session_id, stim_names in zip(
-        (b, c), (stim_names, ("sound1", "vis1"))
-    ):
+    for session_id, stim_names in zip((b, c), (stim_names, ("sound1", "vis1"))):
         pyfile_path = pathlib.Path(__file__)
         print(f"plotting {pyfile_path.stem} for {session_id}")
         fig = plot(session_id, stim_names)

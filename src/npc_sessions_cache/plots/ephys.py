@@ -13,6 +13,7 @@ import matplotlib.colors
 import matplotlib.figure
 import matplotlib.pyplot
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gs
 import npc_session
 import numba
 import numpy as np
@@ -346,12 +347,14 @@ def _plot_ephys_noise(
             std(data),
             np.arange(data.shape[1]),
             **plot_kwargs,
+            alpha=0.3
         )
     else:
         ax.plot(
             std(data),
             y_range,
             **plot_kwargs,
+            alpha=0.3
         )
     if median_subtraction:
         offset_corrected_data = data - np.nanmedian(data, axis=0)
@@ -362,13 +365,13 @@ def _plot_ephys_noise(
             ax.plot(
                 std(median_subtracted_data),
                 np.arange(median_subtracted_data.shape[1]),
-                **plot_kwargs | {"color": "r", "alpha": 0.5},
+                **plot_kwargs | {"color": "r", "alpha": 0.3},
             )
         else:
             ax.plot(
                 std(median_subtracted_data),
                 y_range,
-                **plot_kwargs | {"color": "r", "alpha": 0.5},
+                **plot_kwargs | {"color": "r", "alpha": 0.3},
             )
     ax.set_ymargin(0)
     ax.set_xlabel("SD (microvolts)")
@@ -812,15 +815,15 @@ def _get_unit_denisty_per_channel(
 
 def _plot_structure_areas(
     electrodes_probe: pd.DataFrame,
-    unit_density_values_plot: npt.NDArray,
     y_positions: list,
     ax: matplotlib.axes.Axes,
     num_channels: int = 384,
+    unit_density_offset: int = UNIT_DENSITY_OFFSET,
+    use_median_for_text: bool = True
 ) -> tuple[str, ...]:
     color = "000000"
     structures_seen = {}
     structure_positions = {}
-    legend = []
 
     for i in range(num_channels - 1, -1, -1):
         structure = electrodes_probe[electrodes_probe["channel"] == i][
@@ -838,13 +841,13 @@ def _plot_structure_areas(
             patch = matplotlib.patches.Patch(color=f"#{color}", label=structure)
             #legend.append(patch)
             structures_seen[structure] = color
-            structure_positions[structure] = [(ax.get_xlim()[1] - 0.0007, (y_positions[i] - 200) * MICRONS_PER_PIXEL)]
+            structure_positions[structure] = [(ax.get_xlim()[1] - 0.0007, (y_positions[i] - unit_density_offset) * MICRONS_PER_PIXEL)]
         else:
             color = structures_seen[structure]
-            structure_positions[structure].append((ax.get_xlim()[1] - 0.0007, (y_positions[i] - 200) * MICRONS_PER_PIXEL))
+            structure_positions[structure].append((ax.get_xlim()[1] - 0.0007, (y_positions[i] - unit_density_offset) * MICRONS_PER_PIXEL))
 
         rect = matplotlib.patches.Rectangle(
-            (ax.get_xlim()[1] - 0.0007, (y_positions[i] - 200) * MICRONS_PER_PIXEL),
+            (ax.get_xlim()[1] - 0.0007, (y_positions[i] - unit_density_offset) * MICRONS_PER_PIXEL),
             width=0.0005,
             height=0.0005,
             color=f"#{color}",
@@ -854,7 +857,12 @@ def _plot_structure_areas(
     #ax.legend(handles=legend, loc="center left", bbox_to_anchor=(1, 0.5))
     for structure in structure_positions:
         y_structure_position = np.array([pos[1] for pos in structure_positions[structure]])
-        ax.text(ax.get_xlim()[1], np.median(y_structure_position), s=structure, color=f'#{structures_seen[structure]}',
+        if use_median_for_text:
+            text_position = np.median(y_structure_position)
+        else:
+            text_position = y_structure_position[0]
+
+        ax.text(ax.get_xlim()[1], text_position, s=structure, color=f'#{structures_seen[structure]}',
                 fontweight='bold')
     
     return tuple(structure_positions.keys())
@@ -897,26 +905,44 @@ def _plot_ephys_noise_with_unit_density_areas(
         / f"Probe_{probe[-1]}{session.info.experiment_day}_anchors.pickle"
     )
 
+    correlation_plot_path = (
+        upath.UPath(
+            "s3://aind-scratch-data/arjun.sridhar/tissuecyte_cloud_processed/correlation_plots"
+        )
+        / f"{session.info.subject}"
+        / f"{probe[-1]}{session.info.experiment_day}_corr_full.pickle"
+    )
+
     if not image_path.exists():
-        raise FileNotFoundError(f"No slice images for session {session.id}")
+        raise FileNotFoundError(f"No slice images for session {session.id} and probe {probe}")
 
     if not anchors_path.exists():
         raise FileNotFoundError(
             f"No alignments for session {session.id} and probe {probe}"
         )
 
+    if not correlation_plot_path.exists():
+        raise FileNotFoundError(f"No correlation plot for session {session.id} and probe {probe}")
+    
     with io.BytesIO(image_path.read_bytes()) as f:
         image = Image.open(f)
         enhancer = ImageEnhance.Brightness(image)
         brightened_image = enhancer.enhance(BRIGHTNESS_FACTOR)
         slice_image = np.array(brightened_image)
 
+    correlation_plot_data = pd.read_pickle(correlation_plot_path)['img']
     anchors = pd.read_pickle(anchors_path)
     unit_density_points = np.array(anchors[0])
-
     y_positions = [point[1] for point in unit_density_points]
 
-    fig, ax = plt.subplots(1, 2)
+    grid_spec = gs.GridSpec(1, 4, width_ratios=[2, 0.5, 1, 1])
+    fig = plt.figure(figsize=(12, 6))
+
+    # Create subplots using the grid
+    ax1 = fig.add_subplot(grid_spec[0])  # First plot (larger)
+    ax2 = fig.add_subplot(grid_spec[1])  # Second plot
+    ax3 = fig.add_subplot(grid_spec[2])  # Third plot
+    ax4 = fig.add_subplot(grid_spec[3])  # Fourth plot
 
     anchor_positions = anchors[3]
     anchor_points = []
@@ -925,32 +951,53 @@ def _plot_ephys_noise_with_unit_density_areas(
         if anchor in y_positions:
             anchor_points.append(y_positions.index(anchor))
 
-    ax[1].imshow(slice_image[SLICE_IMAGE_OFFSET:, :])
+
+    ax4.imshow(slice_image[SLICE_IMAGE_OFFSET:, :])
     # ax2 = ax.twiny()
-    ax[0].plot(
-        smoothed,
-        (unit_density_points[:, 1][:num_channels] - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL,
-        alpha=0.3,
-    )
     _plot_ephys_noise(
         timeseries_probe,
-        ax=ax[0],
+        ax=ax3,
         y_range=(unit_density_points[:, 1][:num_channels] - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL,
     )
-    for position in anchor_positions:
-        ax[0].axhline(y=(position - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL, c="r")
-        ax[1].axhline(y=position - UNIT_DENSITY_OFFSET, c="r")
-
-    ax[0].set_ylim(max(y_positions) * MICRONS_PER_PIXEL, 0)
-    ax[1].set_ylim(max(y_positions), 0)
-    ax[1].yaxis.tick_right()
-    _plot_structure_areas(
-        electrodes_probe, timeseries_probe, y_positions, ax[0]
+    ax3.plot(
+        smoothed,
+        (unit_density_points[:, 1][:num_channels] - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL,
     )
 
-    ax[0].set_title("")
-    ax[0].set_ylabel("Microns")
-    ax[0].set_xlabel("")
+    for position in anchor_positions:
+        ax3.axhline(y=(position - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL, c="r")
+        ax4.axhline(y=position - UNIT_DENSITY_OFFSET, c="r")
+
+    ax3.set_ylim(max(y_positions) * MICRONS_PER_PIXEL, 0)
+    ax2.plot(unit_density_points[:, 0], unit_density_points[:, 1][::-1] * MICRONS_PER_PIXEL)
+    ax1.imshow(np.flipud(correlation_plot_data), extent=[0, num_channels * MICRONS_PER_PIXEL, 
+                                                           (min(unit_density_points[:, 1]) * MICRONS_PER_PIXEL),
+                                                           (max(unit_density_points[:, 1]) * MICRONS_PER_PIXEL)],
+                                                           cmap='viridis')
+
+    ax1.set_aspect('auto')
+    ax1.set_xticks([])
+    ax1.set_yticks([])
+
+    ax2.set_xticks([])
+    ax2.set_ylim(min(unit_density_points[:, 1]) * MICRONS_PER_PIXEL, max(unit_density_points[:, 1]) * MICRONS_PER_PIXEL)
+    ax2.set_yticks([])
+    ax2.spines['top'].set_visible(False)
+    ax2.spines['right'].set_visible(False)
+    ax2.spines['bottom'].set_visible(False)
+    ax2.spines['left'].set_visible(False)
+    #_plot_structure_areas(electrodes_probe, y_positions[::-1], ax[0], unit_density_offset=0, use_median_for_text=False)
+
+    ax4.set_ylim(max(y_positions), 0)
+    ax4.yaxis.tick_right()
+    _plot_structure_areas(
+        electrodes_probe, y_positions, ax3
+    )
+
+    ax3.set_title("")
+    ax3.set_ylabel("Microns")
+    ax3.set_xlabel("")
+
     is_deep_insertion = "deep_insertions" in session.keywords
     if is_deep_insertion:
         deep_probes = next(
@@ -959,7 +1006,7 @@ def _plot_ephys_noise_with_unit_density_areas(
         is_deep_probe = npc_session.ProbeRecord(probe) in deep_probes
     else:
         is_deep_probe = False
-    ax[0].set_title(
+    ax3.set_title(
         f"CCF aligned with unit density (blue) and raw ephys noise (black/red)\n{probe} | {'deep' if is_deep_insertion and is_deep_probe else 'regular'} insertion"
     )
     plt.tight_layout()

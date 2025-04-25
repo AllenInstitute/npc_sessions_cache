@@ -200,7 +200,7 @@ def plot(
                 len(
                     trials.filter(  # check original trials, not modified ones with dummy instruction trials
                         pl.col("block_index") == trial["block_index"],
-                        pl.col(f"is_{c}_context"),
+                        pl.col(f"is_{c}_rewarded"),
                         pl.col("is_reward_scheduled"),
                         pl.col("trial_index_in_block") < 14,
                     )
@@ -394,7 +394,7 @@ def plot(
                     hist_results = []
                     for _, block_trials in trials.group_by("block_index"):
                         df = block_trials.filter(
-                            pl.col(f"is_{rewarded_modality}_context"),
+                            pl.col(f"is_{rewarded_modality}_rewarded"),
                             pl.col("stim_name") == stim,
                         )
                         a = df["stim_centered_spike_times"].to_numpy()
@@ -417,7 +417,7 @@ def plot(
                     )
                 else:
                     df = trials.filter(
-                        pl.col(f"is_{rewarded_modality}_context"),
+                        pl.col(f"is_{rewarded_modality}_rewarded"),
                         pl.col("stim_name") == stim,
                     )
                     hist, bin_edges = utils.makePSTH_numba(

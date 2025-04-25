@@ -165,7 +165,7 @@ def plot(
                 len(
                     trials.filter(  # check original trials, not modified ones with dummy instruction trials
                         pl.col("block_index") == trial["block_index"],
-                        pl.col(f"is_{c}_context"),
+                        pl.col(f"is_{c}_rewarded"),
                         pl.col("is_reward_scheduled"),
                         pl.col("trial_index_in_block") < 14,
                     )

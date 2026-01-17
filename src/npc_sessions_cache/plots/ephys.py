@@ -130,7 +130,7 @@ def get_sorting_view_links(
     session: npc_sessions.DynamicRoutingSession,
     key: Literal["sorting_summary", "timeseries"],
     probe_letter: str | npc_session.ProbeRecord | None = None,
-) -> tuple[upath.UPath, ...]:
+) -> tuple[str, ...]:
     vis = session.sorted_data.visualization_output_json()
     links = []
     for v in vis.values():
@@ -140,24 +140,21 @@ def get_sorting_view_links(
                     link
                 ):
                     continue
-            components = []
-            for h in link.split("#"):
-                components.extend(h.split("?"))
-            links.append(upath.UPath(*components))
+            links.append(link)
     return tuple(links)
 
 
 def plot_sorting_view_summary_links(
     session: npc_sessions.DynamicRoutingSession,
     probe_letter: str | npc_session.ProbeRecord | None = None,
-) -> tuple[upath.UPath, ...]:
+) -> tuple[str, ...]:
     return get_sorting_view_links(session, "sorting_summary", probe_letter=probe_letter)
 
 
 def plot_sorting_view_timeseries_links(
     session: npc_sessions.DynamicRoutingSession,
     probe_letter: str | npc_session.ProbeRecord | None = None,
-) -> tuple[upath.UPath, ...]:
+) -> tuple[str, ...]:
     return get_sorting_view_links(session, "timeseries", probe_letter=probe_letter)
 
 

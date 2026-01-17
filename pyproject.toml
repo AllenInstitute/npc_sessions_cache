@@ -15,7 +15,7 @@ dependencies = [
     "ipympl>=0.9.3",
     "ipywidgets>=8.1.0",
     "npc-sessions>=0.0.268",
-    "npc-sync>=0.1.16",
+    "npc-sync>=0.1.26",
     "npc-lims>=0.1.174",
     "dynamic-routing-analysis @ git+https://github.com/AllenInstitute/dynamic_routing_analysis",
     "hvplot>=0.10.0",

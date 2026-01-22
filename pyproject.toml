@@ -14,7 +14,7 @@ dependencies = [
     "traitlets<=5.9.0",
     "ipympl>=0.9.3",
     "ipywidgets>=8.1.0",
-    "npc-sessions>=0.0.268",
+    "npc-sessions>=0.0.274",
     "npc-sync>=0.1.26",
     "npc-lims>=0.1.174",
     "dynamic-routing-analysis @ git+https://github.com/AllenInstitute/dynamic_routing_analysis",
@@ -28,11 +28,10 @@ dependencies = [
     "hdmf<4.0",
     "shapely<2.0.7", # wheels not building
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 readme = "README.md"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "License :: OSI Approved :: MIT License",
@@ -52,61 +51,6 @@ write_dataframes = "npc_sessions_cache.scripts.write_dataframes:main"
 write_notebooks = "npc_sessions_cache.scripts.write_notebooks:main"
 write_cache = "npc_sessions_cache.scripts.write_sessions_to_cache:main"
 
-[tool.pdm]
-plugins = [
-    "pdm-bump",
-]
-[tool.pdm.resolution.overrides]
-polars = ">=0.2"
-
-[tool.pdm.dev-dependencies]
-dev = [
-    "pytest>=7.4.0",
-    "ruff>=0.0.282",
-    "mypy>=1.4.1",
-    "pytest-cov>=4.1.0",
-    "black>=23.7.0",
-    "pytest-xdist>=3.3.1",
-]
-
-[tool.pdm.scripts]
-ruff = "ruff check src --fix-only"
-black = "black src"
-test = "pytest --cov --cov-report=xml"
-mypy = "mypy src --install-types --non-interactive"
-
-[tool.pdm.scripts.prebuild]
-composite = [
-    "mypy",
-    "test",
-    "black",
-    "ruff",
-]
-
-[tool.pdm.scripts.dryrun]
-composite = [
-    "prebuild",
-    "pdm publish --repository testpypi",
-]
-
-[tool.pdm.scripts.bumpver]
-composite = [
-    "pdm self add pdm-bump",
-    "pdm bump micro",
-]
-
-[tool.pdm.scripts.tag]
-composite = [
-    "pdm self add pdm-bump",
-    "pdm bump tag",
-]
-
-[tool.pdm.scripts.pub]
-composite = [
-    "prebuild",
-    "bumpver",
-    "pdm publish",
-]
 
 [tool.setuptools.packages.find]
 where = [

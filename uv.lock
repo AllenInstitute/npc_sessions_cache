@@ -2924,7 +2924,7 @@ wheels = [
 [[package]]
 name = "npc-sessions"
 version = "0.0.274"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/AllenInstitute/npc_sessions#02427e20bf592738aa047cdf0bfe8257dd058961" }
 dependencies = [
     { name = "aind-session" },
     { name = "dynamicroutingtask" },
@@ -2952,10 +2952,6 @@ dependencies = [
     { name = "scipy" },
     { name = "tables", version = "3.10.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "tables", version = "3.10.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/41/0f/45b023c5a9f819a4ca1e65f69adaf15b0d5df69b2931779c4f449a3d6746/npc_sessions-0.0.274.tar.gz", hash = "sha256:628ce9b69c7c606293fc26fb3458ed14fc447609c1a8b16acd094a3c83440a0d", size = 85050 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e0/93/02213c94500256805b2587f07b35ee02091e1a1a49664d64c831d9291739/npc_sessions-0.0.274-py3-none-any.whl", hash = "sha256:a6eb5469741704d21a866e16a36bf353f4be867423608fcfbc41734bd76dc31b", size = 89486 },
 ]
 
 [[package]]
@@ -2996,7 +2992,7 @@ requires-dist = [
     { name = "matplotlib", specifier = "<=3.8.4" },
     { name = "nbconvert", specifier = ">=7.9.2" },
     { name = "npc-lims", specifier = ">=0.1.174" },
-    { name = "npc-sessions", specifier = ">=0.0.274" },
+    { name = "npc-sessions", git = "https://github.com/AllenInstitute/npc_sessions" },
     { name = "npc-sync", specifier = ">=0.1.26" },
     { name = "polars", specifier = ">=1.9.0" },
     { name = "pyarrow", specifier = ">=14.0" },

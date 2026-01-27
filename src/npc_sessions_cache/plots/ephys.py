@@ -383,6 +383,7 @@ def _plot_ephys_image(
     timeseries: pynwb.TimeSeries,
     interval: utils.Interval | None = None,
     median_subtraction: bool = True,
+    offset_correction: bool = True,
     ax: matplotlib.axes.Axes | None = None,
     **imshow_kwargs,
 ) -> matplotlib.figure.Figure:
@@ -397,9 +398,10 @@ def _plot_ephys_image(
         )
     samples = np.arange(s0, s1)
     data = timeseries.data[samples, :] * timeseries.conversion
+    if offset_correction:
+        data = data - np.nanmedian(data, axis=0)
     if median_subtraction:
-        offset_corrected_data = data - np.nanmedian(data, axis=0)
-        data = (offset_corrected_data.T - np.nanmedian(offset_corrected_data, axis=1)).T
+        data = (data.T - np.nanmedian(data, axis=1)).T
 
     if ax is None:
         ax = plt.subplot()
@@ -428,6 +430,7 @@ def _plot_session_ephys_noise(
     lfp: bool = False,
     interval: utils.Interval = None,
     median_subtraction: bool = True,
+    offset_correction: bool = True,
     **plot_kwargs,
 ) -> matplotlib.figure.Figure:
     if lfp:
@@ -442,6 +445,7 @@ def _plot_session_ephys_noise(
             ax=ax,
             interval=interval,
             median_subtraction=median_subtraction,
+            offset_correction=offset_correction,
             **plot_kwargs,
         )
         ax.set_title(label, fontsize=8)

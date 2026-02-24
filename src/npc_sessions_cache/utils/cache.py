@@ -15,7 +15,6 @@ from collections.abc import Mapping
 
 import boto3
 import botocore.exceptions
-import ndx_events
 import npc_io
 import npc_lims
 import npc_session
@@ -308,7 +307,7 @@ def consolidate_cache(
                 ]
             )
         else:
-            table = pyarrow.dataset.dataset(cache_dir).to_table()
+            table = pyarrow.dataset.dataset(list(map(pyarrow.dataset.dataset, (p.as_posix() for p in cache_dir.iterdir())))).to_table()
         pyarrow.parquet.write_table(
             table=table,
             where=consolidated_cache_path,
@@ -336,7 +335,7 @@ def add_session_metadata(
 def _write_timeseries_to_cache(
     session_id: str | npc_session.SessionRecord,
     component_name: npc_lims.NWBComponentStr,
-    timeseries: pynwb.TimeSeries | ndx_events.Events,
+    timeseries: pynwb.TimeSeries,
     version: str | None = None,
     skip_existing: bool = True,
 ) -> None:

@@ -3,7 +3,6 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING
 
-import matplotlib.figure
 import matplotlib.patches
 import matplotlib.pyplot as plt
 import npc_sessions
@@ -19,7 +18,7 @@ import npc_sessions_cache.plots.plot_utils as plot_utils
 
 def plot_performance_by_block(
     session: npc_sessions.DynamicRoutingSession,
-) -> matplotlib.figure.Figure:
+) -> plt.Figure:
     task_performance_by_block_df: pd.DataFrame = session.performance[:]
 
     dprime_threshold = 1.5 if session.is_training else 1.0
@@ -86,7 +85,7 @@ def plot_performance_by_block(
 
 def plot_first_lick_latency_hist(
     session: npc_sessions.DynamicRoutingSession,
-) -> matplotlib.figure.Figure:
+) -> plt.Figure:
     # first lick latency histogram
 
     trials: pd.DataFrame = session.trials[:]
@@ -117,7 +116,7 @@ def plot_first_lick_latency_hist(
 
 def plot_lick_raster(
     session: npc_sessions.DynamicRoutingSession,
-) -> matplotlib.figure.Figure:
+) -> plt.Figure:
     from npc_sessions_cache.figures.paper2.fig1c import plot
 
     return plot(session_id=session.id, session=session)
@@ -125,7 +124,7 @@ def plot_lick_raster(
 
 def plot_running(
     session: npc_sessions.DynamicRoutingSession,
-) -> matplotlib.figure.Figure:
+) -> plt.Figure:
     timeseries = session.processing["behavior"]["running_speed"]
     epochs: pd.DataFrame = session.epochs[:]
     licks = session.processing["behavior"]["licks"]
@@ -184,7 +183,7 @@ def plot_running(
 
 def plot_response_rate_by_stimulus_type(
     session: npc_sessions.DynamicRoutingSession,
-) -> matplotlib.figure.Figure:
+) -> plt.Figure:
 
     trials = session.trials[:]
     start_time = trials.iloc[0]["start_time"]
@@ -627,7 +626,7 @@ def plot_licks_by_block(session: npc_sessions.DynamicRoutingSession) -> plt.Figu
 
 def plot_lick_raster_by_block(
     session: npc_sessions.DynamicRoutingSession,
-) -> matplotlib.figure.Figure:
+) -> plt.Figure:
     lick_times = session.processing["behavior"]["licks"].timestamps
     trials = pl.DataFrame(session.trials[:])
     lick_times_by_trial = tuple(
@@ -657,7 +656,6 @@ def plot_lick_raster_by_block(
     is_pass = (
         len(
             pl.DataFrame(session.intervals["performance"][:]).filter(
-                pl.col("same_modal_dprime") > 1.0,
                 pl.col("cross_modality_dprime") > 1.0,
             )
         )

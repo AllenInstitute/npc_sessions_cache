@@ -3,12 +3,10 @@ from __future__ import annotations
 import contextlib
 import datetime
 import io
-import random
 from collections.abc import Iterable
 from typing import TYPE_CHECKING
 
 import cv2
-import matplotlib.figure
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import npc_mvr
@@ -35,7 +33,11 @@ def _plot_video_info(
     ).augmented_camera_info
 
     captured_output = io.StringIO()
-    with contextlib.redirect_stdout(captured_output) if capture_stdout else contextlib.nullcontext():
+    with (
+        contextlib.redirect_stdout(captured_output)
+        if capture_stdout
+        else contextlib.nullcontext()
+    ):
         for camera, info in augmented_camera_info.items():
             rich.print(f"[bold]{camera} camera stats[bold]")
 
@@ -47,7 +49,9 @@ def _plot_video_info(
                 abs(frame_rate - 60) > 0.05,
             )
 
-            lost_frame_percentage = 100 * info["FramesLostCount"] / info["FramesRecorded"]
+            lost_frame_percentage = (
+                100 * info["FramesLostCount"] / info["FramesRecorded"]
+            )
             lost_frame_string = plot_utils.add_valence_to_string(
                 f"Lost frame percentage: {np.round(lost_frame_percentage, 3)} \t",
                 lost_frame_percentage,
@@ -71,73 +75,104 @@ def _plot_video_info(
     else:
         return None
 
+
 def plot_pupil_area_with_running(
     session: npc_sessions.DynamicRoutingSession,
-) -> matplotlib.figure.Figure:
-    real_timestamps = np.array(session._eye_tracking.timestamps)[np.isnan(session._eye_tracking.pupil_area)]
-    valid_running_times = ~np.isnan(session._running_speed.timestamps) & ~np.isnan(session._running_speed.data)
+) -> plt.Figure:
+    np.array(session._eye_tracking.timestamps)[
+        np.isnan(session._eye_tracking.pupil_area)
+    ]
+    valid_running_times = ~np.isnan(session._running_speed.timestamps) & ~np.isnan(
+        session._running_speed.data
+    )
     # for xlim in range(0, round(real_timestamps[-1]), 1000):
     plt.figure()
-    plt.plot(session._running_speed.timestamps[valid_running_times], session._running_speed.data[valid_running_times]/np.nanmax(session._running_speed.data), lw=.2)
-    plt.plot(session._eye_tracking.timestamps, (v := session._eye_tracking.pupil_area/np.nanmax(session._eye_tracking.pupil_area)) - np.nanmedian(v), lw=.2)
-    plt.gca().legend(['running speed', 'pupil area'])
-    plt.gca().set_xlabel('time (s)')
+    plt.plot(
+        session._running_speed.timestamps[valid_running_times],
+        session._running_speed.data[valid_running_times]
+        / np.nanmax(session._running_speed.data),
+        lw=0.2,
+    )
+    plt.plot(
+        session._eye_tracking.timestamps,
+        (
+            v := session._eye_tracking.pupil_area
+            / np.nanmax(session._eye_tracking.pupil_area)
+        )
+        - np.nanmedian(v),
+        lw=0.2,
+    )
+    plt.gca().legend(["running speed", "pupil area"])
+    plt.gca().set_xlabel("time (s)")
     # plt.gca().set_aspect(100)
     plt.gcf().set_size_inches(15, 5)
     plt.gca().get_yaxis().set_visible(False)
     plt.title(f"{session.id}")
     return plt.gcf()
 
+
 def plot_pupil_response(
     session: npc_sessions.DynamicRoutingSession,
-) -> matplotlib.figure.Figure:
+) -> plt.Figure:
     median_with_shaded_std = False
-    dur = 2.5 # s
+    dur = 2.5  # s
     pupil_area = session._eye_tracking.pupil_area
     real_timestamps = session._eye_tracking.timestamps
 
-    query = 'is_vis_nontarget & ~is_response'
-    t0 = session.trials[:].query(query)['stim_start_time'].to_numpy()
+    query = "is_vis_nontarget & ~is_response"
+    t0 = session.trials[:].query(query)["stim_start_time"].to_numpy()
     t1 = t0 + dur
     trial_pupil_size = [
-        pupil_area[slice(start, stop)] - np.nanmean(pupil_area[slice(baseline_0, start)])
-        if 0 <= start < stop <= len(pupil_area) else []
+        (
+            pupil_area[slice(start, stop)]
+            - np.nanmean(pupil_area[slice(baseline_0, start)])
+            if 0 <= start < stop <= len(pupil_area)
+            else []
+        )
         for baseline_0, start, stop in np.searchsorted(
             real_timestamps, np.array([t0 - 0.5, t0, t1]).T
         )
     ]
     if median_with_shaded_std:
         trial_pupil_size: npt.NDArray = np.array([t for t in trial_pupil_size if t])
-        x = np.arange(0, dur, dur/trial_pupil_size.shape[1])
+        x = np.arange(0, dur, dur / trial_pupil_size.shape[1])
         y = np.nanmedian(trial_pupil_size, 0)
         plt.fill_between(
-            x, y - np.nanstd(trial_pupil_size, 0), y + np.nanstd(trial_pupil_size, 0),
-            alpha=.2
+            x,
+            y - np.nanstd(trial_pupil_size, 0),
+            y + np.nanstd(trial_pupil_size, 0),
+            alpha=0.2,
         )
         plt.plot(x, y)
         # plt.show()
     else:
         for arr in trial_pupil_size:
-            x = np.arange(0, dur, dur/len(arr))
+            x = np.arange(0, dur, dur / len(arr))
             y = arr
-            plt.plot(x, y, lw=.2, alpha=.5, c='k')
+            plt.plot(x, y, lw=0.2, alpha=0.5, c="k")
         if np.any(y):
-            plt.plot(x, np.nanmedian([t for t in trial_pupil_size if np.any(t)], 0), lw=2)
-            
-    plt.gca().set(xlabel="time from vis stim onset (s)", ylabel="pupil area minus baseline (pixels)")
+            plt.plot(
+                x, np.nanmedian([t for t in trial_pupil_size if np.any(t)], 0), lw=2
+            )
+
+    plt.gca().set(
+        xlabel="time from vis stim onset (s)",
+        ylabel="pupil area minus baseline (pixels)",
+    )
     plt.title(f"pupil response to stim\n{query}\n{session.id}", fontsize=8)
-    plt.axhline(y=0, c='k', lw=.5, ls='--')
-    plt.axvline(x=0, c='k', lw=.5, ls='--')
+    plt.axhline(y=0, c="k", lw=0.5, ls="--")
+    plt.axvline(x=0, c="k", lw=0.5, ls="--")
     plt.gca().set_ylim(-500, 500)
     plt.gca().set_xlim(-0.1, dur + 0.1)
     plt.gcf().set_size_inches(3, 4)
     return plt.gcf()
 
+
 def plot_camera_frames(
     session: npc_sessions.DynamicRoutingSession,
     paths: Iterable[upath.UPath] | None = None,
     num_frames_to_grab: int = 5,
-) -> matplotlib.figure.Figure:
+) -> plt.Figure:
     """Just plots evenly spaced frames, no concept of epochs.
 
     video frames across cameras aren't synced .
@@ -146,8 +181,8 @@ def plot_camera_frames(
         paths = session.video_paths
 
     paths = tuple(paths)
-    if len(paths) == 3: # beh, eye, face
-        paths = (paths[0], paths[-1], paths[-2]) # beh, face, eye
+    if len(paths) == 3:  # beh, eye, face
+        paths = (paths[0], paths[-1], paths[-2])  # beh, face, eye
     fig = plt.figure(
         figsize=[10, 3 * len(paths)], constrained_layout=True, facecolor="0.5"
     )
@@ -188,7 +223,7 @@ def plot_lick_triggered_frames(
     session: npc_sessions.DynamicRoutingSession,
     trial_idx: int | None = None,
     lick_time: float | None = None,
-) -> matplotlib.figure.Figure:
+) -> plt.Figure:
     NUM_LICKS = 8 if (trial_idx is None and lick_time is None) else 1
     NUM_CAMERAS = 2  # 1 x face, 1 x body
 
@@ -210,8 +245,8 @@ def plot_lick_triggered_frames(
         lick_times = np.percentile(
             response_times[~np.isnan(response_times)],
             np.arange(0, 100, 100 / NUM_LICKS),
-            method='closest_observation',
-        )  
+            method="closest_observation",
+        )
     else:
         lick_times = [lick_time]
 
@@ -286,4 +321,3 @@ def plot_lick_triggered_frames(
 
     plt.tight_layout()
     return fig
-

@@ -3,13 +3,10 @@ from __future__ import annotations
 import random
 from typing import TYPE_CHECKING
 
-import matplotlib.figure
 import matplotlib.pyplot as plt
 import npc_sessions
 import npc_stim
 import numpy as np
-import pandas as pd
-import rich
 
 if TYPE_CHECKING:
     pass
@@ -17,7 +14,7 @@ if TYPE_CHECKING:
 
 def _plot_bad_lick_times(
     session: npc_sessions.DynamicRoutingSession,
-) -> tuple[matplotlib.figure.Figure, ...]:
+) -> tuple[plt.Figure, ...]:
     """A loop making eventplots vsyncs for trials with:
     - licks in script but no lick within response window
     - licks not in script, but lick within response window
@@ -51,7 +48,7 @@ def _plot_bad_lick_times(
 
 def _plot_assorted_lick_times(
     session: npc_sessions.DynamicRoutingSession,
-) -> tuple[matplotlib.figure.Figure, ...]:
+) -> tuple[plt.Figure, ...]:
     sync_time = session._trials.response_time
     script_time = npc_stim.safe_index(
         session._trials._flip_times, session._trials._sam.trialResponseFrame
@@ -78,7 +75,7 @@ def _plot_assorted_lick_times(
 
 def _plot_trial_lick_timing(
     session: npc_sessions.DynamicRoutingSession, trial_idx: int
-) -> matplotlib.figure.Figure:
+) -> plt.Figure:
     if not session.is_sync or session._trials._sync is None:
         raise ValueError("session must have sync data")
     start = session._trials.response_window_start_time[trial_idx]
@@ -180,7 +177,7 @@ def _plot_trial_lick_timing(
 
 def _plot_lick_times_on_sync_and_script(
     session: npc_sessions.DynamicRoutingSession,
-) -> tuple[matplotlib.figure.Figure, matplotlib.figure.Figure]:
+) -> tuple[plt.Figure, plt.Figure]:
     """
     - stem plot of lick times on sync relative to lick times in TaskControl
     - histogram showing distribution of same intervals
@@ -215,7 +212,7 @@ def _plot_lick_times_on_sync_and_script(
     return fig1, fig2
 
 
-def _plot_reward_times(session) -> matplotlib.figure.Figure:
+def _plot_reward_times(session) -> plt.Figure:
     fig, ax = plt.subplots()
     ax.hist(session.trials[:].reward_time - session.trials[:].response_time)
     ax.xaxis.label.set_text("contingent_reward_time - response_time (s)")
@@ -228,7 +225,7 @@ def _plot_reward_times(session) -> matplotlib.figure.Figure:
 
 def plot_long_vsync_occurrences(
     session: npc_sessions.DynamicRoutingSession,
-) -> matplotlib.figure.Figure:
+) -> plt.Figure:
     all_vsyncs = np.hstack(session.sync_data.vsync_times_in_blocks)
 
     interval_threshold = 0.017  # s
@@ -260,7 +257,9 @@ def plot_long_vsync_occurrences(
             all_long_intervals.extend(long_intervals)
 
         plt.gca().set_title(condition.split("_")[1])
-        plt.gca().axvline(trial["stim_start_time"] - trial.start_time, c="k", ls="--", lw=.5)
+        plt.gca().axvline(
+            trial["stim_start_time"] - trial.start_time, c="k", ls="--", lw=0.5
+        )
         top_ax = plt.gca().secondary_xaxis("top")
         top_ax.set_xticks([trial["stim_start_time"] - trial.start_time])
         top_ax.set_xticklabels(
@@ -282,6 +281,3 @@ def plot_long_vsync_occurrences(
         f"{session.id} - vsync intervals > {interval_threshold:.3f} s", fontsize=8
     )
     return fig
-
-
-

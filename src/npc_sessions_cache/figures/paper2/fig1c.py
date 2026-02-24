@@ -39,7 +39,7 @@ def plot(
             obj = npc_sessions.Session(session_id)
         trials = pl.DataFrame(obj.trials[:]).drop("index", strict=False)
         performance: pl.DataFrame = pl.DataFrame(obj.intervals["performance"][:])
-        lick_times: npt.NDArray = obj._all_licks[0].timestamps
+        lick_times: npt.NDArray = obj._licks[0].timestamps
 
     else:
         licks_all_sessions = utils.get_component_zarr("licks")
@@ -365,7 +365,7 @@ def plot(
     is_pass = (
         len(
             pl.DataFrame(performance).filter(
-                pl.col("same_modal_dprime") > 1.0,
+                # pl.col("same_modal_dprime") > 1.0,
                 pl.col("cross_modality_dprime") > 1.0,
             )
         )
@@ -386,12 +386,23 @@ if __name__ == "__main__":
     #                     '667252_2023-09-28','674562_2023-10-03','681532_2023-10-18',
     #                     '708016_2024-04-29','714753_2024-07-02','644866_2023-02-10']:
     # session_id = '620263_2022-07-26' #< session with 10 autorewards
-
+    d = '774916_2025-03-25'
+    e = '774916_2025-03-24'
+    sessions = [
+        '774916_2025-03-24', # ctrl
+        '774916_2025-03-25',
+        '739828_2025-02-17', # ctrl
+        '739828_2025-02-18',
+        '772657_2025-03-03', # ctrl
+        '772657_2025-03-04',
+    ]
     stim_names = ("vis1", "vis2", "sound1", "sound2")
-    for session_id, stim_names in zip((b, c), (stim_names, ("sound1", "vis1"))):
+    stim_names = ("vis1", "sound1")
+    # for session_id, stim_names in zip((b, c), (stim_names, ("sound1", "vis1"))):
+    for session_id in sessions:
         pyfile_path = pathlib.Path(__file__)
         print(f"plotting {pyfile_path.stem} for {session_id}")
-        fig = plot(session_id, stim_names)
+        fig = plot(session_id, stim_names, use_session_obj=True)
 
         figsave_path = pyfile_path.with_name(f"{pyfile_path.stem}_{session_id}")
         fig.savefig(f"{figsave_path}.png", dpi=300, bbox_inches="tight")

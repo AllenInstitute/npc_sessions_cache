@@ -98,7 +98,7 @@ def get_good_units_df() -> pl.DataFrame:
             other=(
                 get_component_lf("performance")
                 .filter(
-                    pl.col("same_modal_dprime") > 1.0,
+                    # pl.col("same_modal_dprime") > 1.0,
                     pl.col("cross_modality_dprime") > 1.0,
                 )
                 .group_by(pl.col("session_id"))

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import matplotlib.figure
 import matplotlib.pyplot as plt
 import npc_ephys
 import npc_sessions
@@ -17,7 +16,7 @@ import npc_sessions_cache.plots.plot_utils as plot_utils
 
 def _plot_barcode_times(
     session: npc_sessions.DynamicRoutingSession,
-) -> matplotlib.figure.Figure:
+) -> plt.Figure:
     timing_info = session.ephys_timing_data  # skips unused probes
     fig = plt.figure()
     for info in timing_info:
@@ -37,7 +36,7 @@ def _plot_barcode_times(
 
 def plot_barcode_intervals(
     session: npc_sessions.DynamicRoutingSession,
-) -> tuple[matplotlib.figure.Figure, dict] | None:
+) -> tuple[plt.Figure, dict] | None:
     """
     Plot barcode intervals for sync and for each probe after sample rate
     correction
@@ -60,7 +59,10 @@ def plot_barcode_intervals(
             total_time_on_line=info.device.ttl_sample_numbers[-1] / nominal_AP_rate,
         )
         raw = ephys_barcode_times
-        corrected = ephys_barcode_times * (nominal_AP_rate / info.sampling_rate) + info.start_time
+        corrected = (
+            ephys_barcode_times * (nominal_AP_rate / info.sampling_rate)
+            + info.start_time
+        )
         intervals = np.diff(corrected)
         max_deviation = np.max(np.abs(intervals - np.median(intervals)))
 
@@ -70,7 +72,7 @@ def plot_barcode_intervals(
             "max_deviation_from_median_interval": max_deviation,
             "max_deviation_from_30s_interval": np.max(np.abs(intervals - 30)),
         }
-    if not device_barcode_dict: 
+    if not device_barcode_dict:
         raise ValueError(f"No ephys timing data available for {session.id}")
     barcode_rising = session.sync_data.get_rising_edges(0, "seconds")
     barcode_falling = session.sync_data.get_falling_edges(0, "seconds")
@@ -131,7 +133,7 @@ def plot_barcode_intervals(
 
 def plot_vsync_interval_dist(
     session: npc_sessions.DynamicRoutingSession,
-) -> matplotlib.figure.Figure | None:
+) -> plt.Figure | None:
     if not session.is_sync:
         return None
     for vsync_block in session.sync_data.vsync_times_in_blocks:
@@ -166,7 +168,7 @@ def plot_vsync_interval_dist(
 
 def plot_diode_flip_intervals(
     session: npc_sessions.DynamicRoutingSession,
-) -> matplotlib.figure.Figure | None:
+) -> plt.Figure | None:
     if not session.is_sync:
         return None
     fig = session.sync_data.plot_diode_measured_sync_square_flips()
@@ -179,9 +181,10 @@ def plot_diode_flip_intervals(
     fig.set_size_inches(12, 6)
     return fig
 
+
 def plot_vsync_intervals(
     session: npc_sessions.DynamicRoutingSession,
-) -> matplotlib.figure.Figure | None:
+) -> plt.Figure | None:
     if not session.is_sync:
         return None
     sync = session.sync_data
@@ -198,13 +201,9 @@ def plot_vsync_intervals(
         1,
         len(vsyncs_per_stim),
         sharey=True,
-        gridspec_kw={
-            "width_ratios": num_vsyncs_per_stim / min(num_vsyncs_per_stim)
-        },
+        gridspec_kw={"width_ratios": num_vsyncs_per_stim / min(num_vsyncs_per_stim)},
     )
-    fig.suptitle(
-        f"vsync intervals, {expected_period = } s"
-    )
+    fig.suptitle(f"vsync intervals, {expected_period = } s")
     y_deviations_from_expected_period: list[float] = []
     for idx, (ax, d) in enumerate(zip(fig.axes, vsyncs_per_stim)):
         # add horizontal line at expected period
@@ -254,7 +253,7 @@ def plot_vsync_intervals(
 
 def plot_frametime_intervals(
     session: npc_sessions.DynamicRoutingSession,
-) -> matplotlib.figure.Figure | None:
+) -> plt.Figure | None:
     if not session.is_sync:
         return None
     sync = session.sync_data
@@ -273,9 +272,7 @@ def plot_frametime_intervals(
             "width_ratios": num_frametimes_per_stim / min(num_frametimes_per_stim)
         },
     )
-    fig.suptitle(
-        f"frametime intervals, {expected_period = } s"
-    )
+    fig.suptitle(f"frametime intervals, {expected_period = } s")
     y_deviations_from_expected_period: list[float] = []
     for idx, (ax, d) in enumerate(zip(fig.axes, frametimes_per_stim)):
         # add horizontal line at expected period
@@ -323,10 +320,9 @@ def plot_frametime_intervals(
     return fig
 
 
-    
 def _plot_vsyncs_and_diode_flips_at_ends_of_each_stim(
     session: npc_sessions.DynamicRoutingSession,
-) -> matplotlib.figure.Figure | None:
+) -> plt.Figure | None:
     if not session.is_sync:
         return None
     rich.print("[bold] Fraction long frames [/bold]")
@@ -373,7 +369,7 @@ def _plot_vsyncs_and_diode_flips_at_ends_of_each_stim(
     return fig
 
 
-def _plot_histogram_of_frame_intervals(session) -> matplotlib.figure.Figure:
+def _plot_histogram_of_frame_intervals(session) -> plt.Figure:
     stim_frame_times = {
         k: v
         for k, v in session.stim_frame_times.items()
@@ -392,4 +388,3 @@ def _plot_histogram_of_frame_intervals(session) -> matplotlib.figure.Figure:
         ax.set_ylabel("frame interval count")
     plt.tight_layout()
     return fig_hist
-

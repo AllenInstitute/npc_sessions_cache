@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import io
-from multiprocessing import Value
 import time
 from typing import TYPE_CHECKING, Literal
 
@@ -10,10 +9,9 @@ import codeocean
 import codeocean.computation
 import matplotlib.axes
 import matplotlib.colors
-import matplotlib.figure
+import matplotlib.gridspec as gs
 import matplotlib.pyplot
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gs
 import npc_session
 import numba
 import numpy as np
@@ -51,6 +49,7 @@ RESOLUTION_UM = 25
 MICRONS_PER_PIXEL = 10
 BRIGHTNESS_FACTOR = 1.5
 
+
 @numba.njit
 def makePSTH_numba(
     spikes: npt.NDArray[np.floating],
@@ -65,7 +64,7 @@ def makePSTH_numba(
     bins = np.arange(0, windowDur + binSize, binSize)
     convkernel = np.ones(int(convolution_kernel / binSize))
     counts = np.zeros(bins.size - 1)
-    for i, start in enumerate(startTimes):
+    for _i, start in enumerate(startTimes):
         startInd = np.searchsorted(spikes, start)
         endInd = np.searchsorted(spikes, start + windowDur)
         counts = counts + np.histogram(spikes[startInd:endInd] - start, bins)[0]
@@ -81,7 +80,7 @@ def makePSTH_numba(
 def plot_unit_metrics(
     session: npc_sessions.DynamicRoutingSession,
     probe_letter: str | npc_session.ProbeRecord | None = None,
-) -> tuple[matplotlib.figure.Figure, ...]:
+) -> tuple[plt.Figure, ...]:
     units: pd.DataFrame = session.units[:].query("default_qc")
 
     metrics = [
@@ -161,9 +160,9 @@ def plot_sorting_view_timeseries_links(
 def plot_all_spike_histograms(
     session: npc_sessions.DynamicRoutingSession,
     probe_letter: str | npc_session.ProbeRecord | None = None,
-) -> tuple[matplotlib.figure.Figure, ...]:
+) -> tuple[plt.Figure, ...]:
     session.units[:].query("default_qc")
-    figs: list[matplotlib.figure.Figure] = []
+    figs: list[plt.Figure] = []
     for obj in session.all_spike_histograms.children:
         if probe_letter is not None and npc_session.ProbeRecord(
             obj.name
@@ -189,7 +188,7 @@ def plot_all_spike_histograms(
 
 def _plot_unit_waveform(
     session: npc_sessions.DynamicRoutingSession | pynwb.NWBFile, index_or_id: int | str
-) -> matplotlib.figure.Figure:
+) -> plt.Figure:
     """Waveform on peak channel"""
     fig = plt.figure()
     unit = (
@@ -225,7 +224,7 @@ def _plot_unit_spatiotemporal_waveform(
     session: npc_sessions.DynamicRoutingSession | pynwb.NWBFile,
     index_or_id: int | str,
     **pcolormesh_kwargs,
-) -> matplotlib.figure.Figure:
+) -> plt.Figure:
     """Waveforms across channels around peak channel - currently no interpolation"""
 
     unit = (
@@ -317,7 +316,7 @@ def _plot_ephys_noise(
     y_range: npt.NDArray | None = None,
     ax: matplotlib.axes.Axes | None = None,
     **plot_kwargs,
-) -> matplotlib.figure.Figure:
+) -> plt.Figure:
     timestamps = timeseries.get_timestamps()
     if interval is None:
         interval = ((t := np.ceil(timestamps)[0]), t + 1)
@@ -340,19 +339,9 @@ def _plot_ephys_noise(
     plot_kwargs.setdefault("lw", 0.5)
     plot_kwargs.setdefault("color", "k")
     if y_range is None:
-        ax.plot(
-            std(data),
-            np.arange(data.shape[1]),
-            **plot_kwargs,
-            alpha=0.3
-        )
+        ax.plot(std(data), np.arange(data.shape[1]), **plot_kwargs, alpha=0.3)
     else:
-        ax.plot(
-            std(data),
-            y_range,
-            **plot_kwargs,
-            alpha=0.3
-        )
+        ax.plot(std(data), y_range, **plot_kwargs, alpha=0.3)
     if median_subtraction:
         offset_corrected_data = data - np.nanmedian(data, axis=0)
         median_subtracted_data = (
@@ -386,7 +375,7 @@ def _plot_ephys_image(
     offset_correction: bool = True,
     ax: matplotlib.axes.Axes | None = None,
     **imshow_kwargs,
-) -> matplotlib.figure.Figure:
+) -> plt.Figure:
     timestamps = timeseries.get_timestamps()
     if interval is None:
         interval = ((t := np.ceil(timestamps)[0]), t + 1)
@@ -432,7 +421,7 @@ def _plot_session_ephys_noise(
     median_subtraction: bool = True,
     offset_correction: bool = True,
     **plot_kwargs,
-) -> matplotlib.figure.Figure:
+) -> plt.Figure:
     if lfp:
         container = session._raw_lfp
     else:
@@ -469,7 +458,7 @@ def plot_raw_ephys_segments(
     median_subtraction: bool = True,
     probe_letter: str | npc_session.ProbeRecord | None = None,
     **imshow_kwargs,
-) -> tuple[matplotlib.figure.Figure, ...]:
+) -> tuple[plt.Figure, ...]:
     if lfp:
         container = session._raw_lfp
     else:
@@ -521,7 +510,7 @@ def plot_raw_ephys_segments(
 def plot_raw_ap_vs_surface(
     session: npc_sessions.DynamicRoutingSession | pynwb.NWBFile,
     probe_letter: str | npc_session.ProbeRecord | None = None,
-) -> tuple[matplotlib.figure.Figure, ...] | None:
+) -> tuple[plt.Figure, ...] | None:
     if not session.is_surface_channels:
         return None
     time_window = 0.5
@@ -617,7 +606,7 @@ def plot_optotagging(
     session: npc_sessions.DynamicRoutingSession | pynwb.NWBFile,
     combine_locations: bool = True,
     combine_probes: bool = False,
-) -> tuple[matplotlib.figure.Figure, ...] | None:
+) -> tuple[plt.Figure, ...] | None:
     try:
         opto_trials = session.intervals["optotagging_trials"][:]
     except KeyError:
@@ -689,7 +678,7 @@ def plot_optotagging(
                     baseline_dur = (window_dur - duration) / 2
                     convolution_kernel = max(duration / 10, 2 * bin_size)
                     all_resp = []
-                    for iu, unit in filtered_units.sort_values("rel_y").iterrows():
+                    for _iu, unit in filtered_units.sort_values("rel_y").iterrows():
                         sts = np.array(unit["spike_times"])
                         resp = makePSTH_numba(
                             sts,
@@ -745,7 +734,11 @@ def plot_optotagging(
                             xycoords="data",
                             xytext=(marker_position, all_resp.shape[0] + 0.5),
                             textcoords="data",
-                            arrowprops=dict(arrowstyle="simple", color="black", lw=0),
+                            arrowprops={
+                                "arrowstyle": "simple",
+                                "color": "black",
+                                "lw": 0,
+                            },
                         )
                     ax.set_title(f"{power = :.1f}", y=1.05)
             figs.append(fig)
@@ -759,7 +752,7 @@ def plot_optotagging(
 def plot_probe_yield(
     session: npc_sessions.DynamicRoutingSession,
     probe_letter: str | npc_session.ProbeRecord | None = None,
-) -> matplotlib.figure.Figure:
+) -> plt.Figure:
     del probe_letter  # unused  - just allows functools.partial application
     units = session.units[:]
     good_unit_filter = (
@@ -773,11 +766,11 @@ def plot_probe_yield(
         probe_units = units.loc[probe_filter]
         good_units = units.loc[good_unit_filter & probe_filter]
         counts.append(
-            dict(
-                probe=probe.removeprefix("probe"),
-                good=len(good_units),
-                bad=len(probe_units) - len(good_units),
-            )
+            {
+                "probe": probe.removeprefix("probe"),
+                "good": len(good_units),
+                "bad": len(probe_units) - len(good_units),
+            }
         )
 
     ax = pd.DataFrame.from_records(counts).plot.bar(
@@ -820,7 +813,7 @@ def _plot_structure_areas(
     ax: matplotlib.axes.Axes,
     num_channels: int = 384,
     unit_density_offset: int = UNIT_DENSITY_OFFSET,
-    use_median_for_text: bool = True
+    use_median_for_text: bool = True,
 ) -> tuple[str, ...]:
     color = "000000"
     structures_seen = {}
@@ -839,33 +832,53 @@ def _plot_structure_areas(
                         "color_hex_triplet"
                     ].values[0]
 
-            patch = matplotlib.patches.Patch(color=f"#{color}", label=structure)
-            #legend.append(patch)
+            matplotlib.patches.Patch(color=f"#{color}", label=structure)
+            # legend.append(patch)
             structures_seen[structure] = color
-            structure_positions[structure] = [(ax.get_xlim()[1] - 0.0007, (y_positions[i] - unit_density_offset) * MICRONS_PER_PIXEL)]
+            structure_positions[structure] = [
+                (
+                    ax.get_xlim()[1] - 0.0007,
+                    (y_positions[i] - unit_density_offset) * MICRONS_PER_PIXEL,
+                )
+            ]
         else:
             color = structures_seen[structure]
-            structure_positions[structure].append((ax.get_xlim()[1] - 0.0007, (y_positions[i] - unit_density_offset) * MICRONS_PER_PIXEL))
+            structure_positions[structure].append(
+                (
+                    ax.get_xlim()[1] - 0.0007,
+                    (y_positions[i] - unit_density_offset) * MICRONS_PER_PIXEL,
+                )
+            )
 
         rect = matplotlib.patches.Rectangle(
-            (ax.get_xlim()[1] - 0.0007, (y_positions[i] - unit_density_offset) * MICRONS_PER_PIXEL),
+            (
+                ax.get_xlim()[1] - 0.0007,
+                (y_positions[i] - unit_density_offset) * MICRONS_PER_PIXEL,
+            ),
             width=0.0005,
             height=0.0005,
             color=f"#{color}",
         )
         ax.add_patch(rect)
 
-    #ax.legend(handles=legend, loc="center left", bbox_to_anchor=(1, 0.5))
+    # ax.legend(handles=legend, loc="center left", bbox_to_anchor=(1, 0.5))
     for structure in structure_positions:
-        y_structure_position = np.array([pos[1] for pos in structure_positions[structure]])
+        y_structure_position = np.array(
+            [pos[1] for pos in structure_positions[structure]]
+        )
         if use_median_for_text:
             text_position = np.median(y_structure_position)
         else:
             text_position = y_structure_position[0]
 
-        ax.text(ax.get_xlim()[1], text_position, s=structure, color=f'#{structures_seen[structure]}',
-                fontweight='bold')
-    
+        ax.text(
+            ax.get_xlim()[1],
+            text_position,
+            s=structure,
+            color=f"#{structures_seen[structure]}",
+            fontweight="bold",
+        )
+
     return tuple(structure_positions.keys())
 
 
@@ -873,7 +886,7 @@ def _plot_ephys_noise_with_unit_density_areas(
     session: npc_sessions.DynamicRoutingSession,
     probe: str,
     num_channels: int = 384,
-) -> matplotlib.figure.Figure:
+) -> plt.Figure:
     electrodes = session.electrodes[:]
     units = session.units[:]
     units_probe = units[units["electrode_group_name"] == probe]
@@ -889,7 +902,7 @@ def _plot_ephys_noise_with_unit_density_areas(
     kernel_size = 10
     conv = np.ones(kernel_size) / kernel_size
 
-    smoothed = np.convolve(unit_denisty_values[:, 1], conv, mode='same') / 1000
+    smoothed = np.convolve(unit_denisty_values[:, 1], conv, mode="same") / 1000
 
     image_path = (
         upath.UPath(
@@ -915,7 +928,9 @@ def _plot_ephys_noise_with_unit_density_areas(
     )
 
     if not image_path.exists():
-        raise FileNotFoundError(f"No slice images for session {session.id} and probe {probe}")
+        raise FileNotFoundError(
+            f"No slice images for session {session.id} and probe {probe}"
+        )
 
     if not anchors_path.exists():
         raise FileNotFoundError(
@@ -923,15 +938,17 @@ def _plot_ephys_noise_with_unit_density_areas(
         )
 
     if not correlation_plot_path.exists():
-        raise FileNotFoundError(f"No correlation plot for session {session.id} and probe {probe}")
-    
+        raise FileNotFoundError(
+            f"No correlation plot for session {session.id} and probe {probe}"
+        )
+
     with io.BytesIO(image_path.read_bytes()) as f:
         image = Image.open(f)
         enhancer = ImageEnhance.Brightness(image)
         brightened_image = enhancer.enhance(BRIGHTNESS_FACTOR)
         slice_image = np.array(brightened_image)
 
-    correlation_plot_data = pd.read_pickle(correlation_plot_path)['img']
+    correlation_plot_data = pd.read_pickle(correlation_plot_path)["img"]
     anchors = pd.read_pickle(anchors_path)
     unit_density_points = np.array(anchors[0])
     y_positions = [point[1] for point in unit_density_points]
@@ -952,17 +969,18 @@ def _plot_ephys_noise_with_unit_density_areas(
         if anchor in y_positions:
             anchor_points.append(y_positions.index(anchor))
 
-
     ax4.imshow(slice_image[SLICE_IMAGE_OFFSET:, :])
     # ax2 = ax.twiny()
     _plot_ephys_noise(
         timeseries_probe,
         ax=ax3,
-        y_range=(unit_density_points[:, 1][:num_channels] - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL,
+        y_range=(unit_density_points[:, 1][:num_channels] - UNIT_DENSITY_OFFSET)
+        * MICRONS_PER_PIXEL,
     )
     ax3.plot(
         smoothed,
-        (unit_density_points[:, 1][:num_channels] - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL,
+        (unit_density_points[:, 1][:num_channels] - UNIT_DENSITY_OFFSET)
+        * MICRONS_PER_PIXEL,
     )
 
     for position in anchor_positions:
@@ -970,30 +988,39 @@ def _plot_ephys_noise_with_unit_density_areas(
         ax4.axhline(y=position - UNIT_DENSITY_OFFSET, c="r")
 
     ax3.set_ylim(max(y_positions) * MICRONS_PER_PIXEL, 0)
-    ax2.plot(unit_density_points[:, 0], unit_density_points[:, 1][::-1] * MICRONS_PER_PIXEL)
-    ax1.imshow(np.flipud(correlation_plot_data), extent=[0, num_channels * MICRONS_PER_PIXEL, 
-                                                           (min(unit_density_points[:, 1]) * MICRONS_PER_PIXEL),
-                                                           (max(unit_density_points[:, 1]) * MICRONS_PER_PIXEL)],
-                                                           cmap='viridis')
+    ax2.plot(
+        unit_density_points[:, 0], unit_density_points[:, 1][::-1] * MICRONS_PER_PIXEL
+    )
+    ax1.imshow(
+        np.flipud(correlation_plot_data),
+        extent=[
+            0,
+            num_channels * MICRONS_PER_PIXEL,
+            (min(unit_density_points[:, 1]) * MICRONS_PER_PIXEL),
+            (max(unit_density_points[:, 1]) * MICRONS_PER_PIXEL),
+        ],
+        cmap="viridis",
+    )
 
-    ax1.set_aspect('auto')
+    ax1.set_aspect("auto")
     ax1.set_xticks([])
     ax1.set_yticks([])
 
     ax2.set_xticks([])
-    ax2.set_ylim(min(unit_density_points[:, 1]) * MICRONS_PER_PIXEL, max(unit_density_points[:, 1]) * MICRONS_PER_PIXEL)
+    ax2.set_ylim(
+        min(unit_density_points[:, 1]) * MICRONS_PER_PIXEL,
+        max(unit_density_points[:, 1]) * MICRONS_PER_PIXEL,
+    )
     ax2.set_yticks([])
-    ax2.spines['top'].set_visible(False)
-    ax2.spines['right'].set_visible(False)
-    ax2.spines['bottom'].set_visible(False)
-    ax2.spines['left'].set_visible(False)
-    #_plot_structure_areas(electrodes_probe, y_positions[::-1], ax[0], unit_density_offset=0, use_median_for_text=False)
+    ax2.spines["top"].set_visible(False)
+    ax2.spines["right"].set_visible(False)
+    ax2.spines["bottom"].set_visible(False)
+    ax2.spines["left"].set_visible(False)
+    # _plot_structure_areas(electrodes_probe, y_positions[::-1], ax[0], unit_density_offset=0, use_median_for_text=False)
 
     ax4.set_ylim(max(y_positions), 0)
     ax4.yaxis.tick_right()
-    _plot_structure_areas(
-        electrodes_probe, y_positions, ax3
-    )
+    _plot_structure_areas(electrodes_probe, y_positions, ax3)
 
     ax3.set_title("")
     ax3.set_ylabel("Microns")
@@ -1017,7 +1044,7 @@ def _plot_ephys_noise_with_unit_density_areas(
 
 def plot_ccf_aligned_ephys(
     session: npc_sessions.DynamicRoutingSession, probe: str | None = None
-) -> tuple[matplotlib.figure.Figure, ...] | None:
+) -> tuple[plt.Figure, ...] | None:
     """
     Plots the raw ephys noise with the unit density from sorting, along with the channel alignments and slice the probe went through
     """
@@ -1041,7 +1068,7 @@ def _plot_electrodes_implant_hole(
     electrodes: pd.DataFrame,
     ccf_volume: npt.NDArray,
     probe_insertion_db_connection: sqlite3.Connection,
-) -> matplotlib.figure.Figure:
+) -> plt.Figure:
     electrodes_probe = electrodes[electrodes["group_name"] == probe]
     electrode_groups = session.electrode_groups
 
@@ -1107,7 +1134,7 @@ def _get_ccf_volume(ccf_template_path: upath.UPath) -> npt.NDArray:
 
 def plot_insertion_history(
     session: npc_sessions.DynamicRoutingSession, probe: str | None = None
-) -> tuple[matplotlib.figure.Figure, ...] | None:
+) -> tuple[plt.Figure, ...] | None:
     """
     Plots horizontal view of ccf volume with probe for session in yellow, and all other probes that went through same insertion configuration (same probe, hole, and implant) in red
     """
@@ -1146,7 +1173,7 @@ def plot_insertion_history(
 
 def plot_sensory_responses(
     session: npc_sessions.DynamicRoutingSession,
-) -> tuple[matplotlib.figure.Figure, ...]:
+) -> tuple[plt.Figure, ...]:
     from npc_sessions_cache.figures.paper2 import fig3c
 
     trials = session.trials[:]
@@ -1235,7 +1262,7 @@ def plot_sensory_responses(
 def plot_drift_maps(
     session: npc_sessions.DynamicRoutingSession,
     probe_letter: str | npc_session.ProbeRecord | None = None,
-) -> tuple[matplotlib.figure.Figure, ...] | None:
+) -> tuple[plt.Figure, ...] | None:
     if not session.is_sorted:
         return None
     if probe_letter:
@@ -1276,9 +1303,9 @@ def plot_drift_maps(
             continue
         fig = plt.figure()
         plt.imshow(plt.imread(io.BytesIO(path.read_bytes())))
-        plt.gca().axis('off')
+        plt.gca().axis("off")
         plt.suptitle(path.stem, fontsize=8)
-        fig.set_layout_engine('tight')
+        fig.set_layout_engine("tight")
         figs.append(fig)
     return tuple(figs)
 

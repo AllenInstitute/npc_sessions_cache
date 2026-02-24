@@ -5,9 +5,6 @@ import itertools
 from typing import TYPE_CHECKING, Iterable, Literal
 import wave
 
-import matplotlib
-import matplotlib.axes
-import matplotlib.figure
 import npc_samstim
 import npc_sync
 import numpy as np
@@ -41,7 +38,7 @@ def get_audio_waveforms(
 
 def plot_microphone_response(
     session: npc_sessions.DynamicRoutingSession,
-) -> matplotlib.figure.Figure:
+) -> plt.Figure:
     """
     - plot difference between audio volume and baseline
     - take 90th percentile of voltage signals at:
@@ -82,7 +79,7 @@ def plot_microphone_response(
 def plot_audio_waveforms(
     session: npc_sessions.DynamicRoutingSession,
     target_stim: bool = True,
-) -> matplotlib.figure.Figure:
+) -> plt.Figure:
     """Plot a selection of audio waveforms aligned to stim start times. Default is
     one per block"""
     aud_trials = session.trials[:].query(f"is_aud_{'' if target_stim else 'non'}target")
@@ -95,7 +92,7 @@ def plot_audio_waveforms(
         resampling_factor=None,
     )
     fig, axes = plt.subplots(len(start_times), 1,  sharex=True, sharey=True)
-    if isinstance(axes, matplotlib.axes.Axes):
+    if isinstance(axes, plt.Axes):
         axes = [axes]
     for idx, (ax, waveform) in enumerate(zip(axes, waveforms)):
         ax: plt.Axes

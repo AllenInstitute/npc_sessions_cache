@@ -502,7 +502,7 @@ def plot(
     is_pass = (
         len(
             pl.DataFrame(performance).filter(
-                pl.col("same_modal_dprime") > 1.0,
+                # pl.col("same_modal_dprime") > 1.0,
                 pl.col("cross_modality_dprime") > 1.0,
             )
         )

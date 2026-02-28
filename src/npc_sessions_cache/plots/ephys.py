@@ -48,7 +48,7 @@ CCF_NUM_COLUMNS = 4  # ap, dv, ml, and region - for insertion db
 RESOLUTION_UM = 25
 MICRONS_PER_PIXEL = 10
 BRIGHTNESS_FACTOR = 1.5
-
+LFP_CORRELATION_NUM_SECS_TO_USE = 300
 
 @numba.njit
 def makePSTH_numba(
@@ -886,7 +886,10 @@ def _plot_ephys_noise_with_unit_density_areas(
     session: npc_sessions.DynamicRoutingSession,
     probe: str,
     num_channels: int = 384,
+    lfp_correlation: npt.NDArray
 ) -> plt.Figure:
+
+    # Here, we are recreating the unit denisty directly from the sorted data
     electrodes = session.electrodes[:]
     units = session.units[:]
     units_probe = units[units["electrode_group_name"] == probe]
@@ -896,14 +899,15 @@ def _plot_ephys_noise_with_unit_density_areas(
     unit_channel_counts = (
         peak_channel.value_counts().sort_index().reset_index().to_numpy()
     )
-    unit_denisty_values = _get_unit_denisty_per_channel(unit_channel_counts)
+    unit_denisty_values_from_spike_sorting = _get_unit_denisty_per_channel(unit_channel_counts)
 
     timeseries_probe = session._raw_ap.electrical_series[probe]
     kernel_size = 10
     conv = np.ones(kernel_size) / kernel_size
 
-    smoothed = np.convolve(unit_denisty_values[:, 1], conv, mode="same") / 1000
+    smoothed = np.convolve(unit_denisty_values_from_spike_sorting[:, 1], conv, mode="same") / 1000
 
+    # pull relevant paths that have been uploaded from the gui
     image_path = (
         upath.UPath(
             "s3://aind-scratch-data/arjun.sridhar/tissuecyte_cloud_processed/slice_images"
@@ -948,10 +952,11 @@ def _plot_ephys_noise_with_unit_density_areas(
         brightened_image = enhancer.enhance(BRIGHTNESS_FACTOR)
         slice_image = np.array(brightened_image)
 
+    # read data - pickle file is poor but such is life
     correlation_plot_data = pd.read_pickle(correlation_plot_path)["img"]
     anchors = pd.read_pickle(anchors_path)
-    unit_density_points = np.array(anchors[0])
-    y_positions = [point[1] for point in unit_density_points]
+    unit_density_points_gui = np.array(anchors[0])
+    y_positions = [point[1] for point in unit_density_points_gui]
 
     grid_spec = gs.GridSpec(1, 4, width_ratios=[2, 0.5, 1, 1])
     fig = plt.figure(figsize=(12, 6))
@@ -963,23 +968,23 @@ def _plot_ephys_noise_with_unit_density_areas(
     ax4 = fig.add_subplot(grid_spec[3])  # Fourth plot
 
     anchor_positions = anchors[3]
-    anchor_points = []
+    probe_channel_space = [] # get channel index in probe space
 
     for anchor in anchors[3]:
         if anchor in y_positions:
-            anchor_points.append(y_positions.index(anchor))
+            probe_channel_space.append(y_positions.index(anchor))
 
     ax4.imshow(slice_image[SLICE_IMAGE_OFFSET:, :])
-    # ax2 = ax.twiny()
+  
     _plot_ephys_noise(
         timeseries_probe,
         ax=ax3,
-        y_range=(unit_density_points[:, 1][:num_channels] - UNIT_DENSITY_OFFSET)
+        y_range=(unit_density_points_gui[:, 1][:num_channels] - UNIT_DENSITY_OFFSET)
         * MICRONS_PER_PIXEL,
     )
     ax3.plot(
         smoothed,
-        (unit_density_points[:, 1][:num_channels] - UNIT_DENSITY_OFFSET)
+        (unit_density_points_gui[:, 1][:num_channels] - UNIT_DENSITY_OFFSET)
         * MICRONS_PER_PIXEL,
     )
 
@@ -989,15 +994,15 @@ def _plot_ephys_noise_with_unit_density_areas(
 
     ax3.set_ylim(max(y_positions) * MICRONS_PER_PIXEL, 0)
     ax2.plot(
-        unit_density_points[:, 0], unit_density_points[:, 1][::-1] * MICRONS_PER_PIXEL
+        unit_density_points_gui[:, 0], unit_density_points_gui[:, 1][::-1] * MICRONS_PER_PIXEL
     )
     ax1.imshow(
         np.flipud(correlation_plot_data),
         extent=[
             0,
             num_channels * MICRONS_PER_PIXEL,
-            (min(unit_density_points[:, 1]) * MICRONS_PER_PIXEL),
-            (max(unit_density_points[:, 1]) * MICRONS_PER_PIXEL),
+            (min(unit_density_points_gui[:, 1]) * MICRONS_PER_PIXEL),
+            (max(unit_density_points_gui[:, 1]) * MICRONS_PER_PIXEL),
         ],
         cmap="viridis",
     )
@@ -1008,15 +1013,14 @@ def _plot_ephys_noise_with_unit_density_areas(
 
     ax2.set_xticks([])
     ax2.set_ylim(
-        min(unit_density_points[:, 1]) * MICRONS_PER_PIXEL,
-        max(unit_density_points[:, 1]) * MICRONS_PER_PIXEL,
+        min(unit_density_points_gui[:, 1]) * MICRONS_PER_PIXEL,
+        max(unit_density_points_gui[:, 1]) * MICRONS_PER_PIXEL,
     )
     ax2.set_yticks([])
     ax2.spines["top"].set_visible(False)
     ax2.spines["right"].set_visible(False)
     ax2.spines["bottom"].set_visible(False)
     ax2.spines["left"].set_visible(False)
-    # _plot_structure_areas(electrodes_probe, y_positions[::-1], ax[0], unit_density_offset=0, use_median_for_text=False)
 
     ax4.set_ylim(max(y_positions), 0)
     ax4.yaxis.tick_right()
@@ -1041,18 +1045,136 @@ def _plot_ephys_noise_with_unit_density_areas(
 
     return fig
 
+def extract_lfp_epoch_segment(
+    lfp: np.ndarray,
+    fs: float,
+    lfp_start_time: float,
+    epochs_df: pd.DataFrame,
+    task_epoch_name: str,
+    duration_s: Optional[float] = None,
+    channels_first: bool = False,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Extract a continuous LFP segment from a named epoch.
+
+    Parameters
+    ----------
+    lfp : np.ndarray
+        LFP array, shape (n_samples, n_channels) or (n_channels, n_samples)
+    fs : float
+        Sampling rate (Hz)
+    lfp_start_time : float
+        Absolute start time of the LFP recording (seconds)
+    epochs_df : pd.DataFrame
+        Epoch table with columns ['start_time', 'stop_time', 'script_name']
+    task_epoch_name : str
+        Epoch name to extract (e.g. 'DynamicRouting1')
+    duration_s : float, optional
+        Duration to extract from epoch start (seconds).
+        If None, extract full epoch.
+    channels_first : bool
+        Set True if lfp is shaped (n_channels, n_samples)
+
+    Returns
+    -------
+    lfp_segment : np.ndarray
+        Extracted LFP segment (same channel/sample ordering as input)
+    t : np.ndarray
+        Time vector in seconds (absolute)
+    """
+
+    # --- get epoch ---
+    epoch = epochs_df.loc[epochs_df["script_name"] == task_epoch_name].iloc[0]
+    epoch_start = epoch["start_time"]
+    epoch_stop = epoch["stop_time"]
+
+    # --- define window ---
+    if duration_s is None:
+        window_stop = epoch_stop
+    else:
+        window_stop = min(epoch_start + duration_s, epoch_stop)
+
+    window_start = epoch_start
+
+    # --- time → sample ---
+    start_idx = int(np.round((window_start - lfp_start_time) * fs))
+    stop_idx  = int(np.round((window_stop  - lfp_start_time) * fs))
+
+    if start_idx < 0 or stop_idx > lfp.shape[-1 if channels_first else 0]:
+        raise ValueError("Requested window is outside LFP data bounds")
+
+    # --- slice ---
+    if channels_first:
+        lfp_segment = lfp[:, start_idx:stop_idx]
+    else:
+        lfp_segment = lfp[start_idx:stop_idx, :]
+
+    # --- time vector ---
+    n_samples = stop_idx - start_idx
+    t = np.arange(n_samples) / fs + window_start
+
+    return lfp_segment, t
+
+def get_lfp_cmr_corr(
+    lfp: np.ndarray,
+    axis_time: int = 0,
+) -> np.ndarray:
+    """
+    Compute channel-channel correlation on single-shank LFP
+    using common median reference
+
+    Parameters
+    ----------
+    lfp : np.ndarray
+        LFP data, shape (time, channels) by default
+    axis_time : int
+        Axis corresponding to time (0 or 1)
+
+    Returns
+    -------
+    corr : np.ndarray
+        Correlation matrix (channels x channels)
+    """
+
+    # normalize to (time, channels)
+    if axis_time != 0:
+        lfp = np.swapaxes(lfp, axis_time, 0)
+
+    # common median reference
+    cmr = np.nanmedian(lfp, axis=1, keepdims=True)
+    lfp_cmr = lfp - cmr
+
+    # correlation
+    corr = np.corrcoef(lfp_cmr.T)
+
+    return corr
 
 def plot_ccf_aligned_ephys(
-    session: npc_sessions.DynamicRoutingSession, probe: str | None = None
+    session: npc_sessions.DynamicRoutingSession,  probe: str | None = None, use_lfp_correlation: bool = True
 ) -> tuple[plt.Figure, ...] | None:
     """
     Plots the raw ephys noise with the unit density from sorting, along with the channel alignments and slice the probe went through
+
+    Uses either spike correlation (from gui), or computes lfp correlation and uses that. Default is to use lfp correlation
     """
     if not session.is_annotated:
         return None
     figures = []
+    lfp_correlation = None
 
     if probe is not None:
+        if use_lfp_correlation:
+            epochs = session.epochs[:]
+            raw_lfp = session._raw_lfp
+            raw_lfp_probe = raw_lfp[probe]
+            lfp_segment, timestamps = extract_lfp_epoch_segment(
+                raw_lfp_probe.data, fs=raw_lfp_probe.rate, lfp_start_time=raw_lfp_probe.starting_time,
+                epochs_df=epochs[:], script_name="DynamicRouting1", duration_s=LFP_CORRELATION_NUM_SECS_TO_USE
+            )
+            corr = get_lfp_cmr_corr(lfp_segment)
+            order = np.arange(corr.shape[0])[::-1]
+            lfp_correlation = np.fliplr(corr[np.ix_(order, order)])
+
         figures.append(_plot_ephys_noise_with_unit_density_areas(session, probe))
     else:
         probes = sorted(session.electrodes[:]["group_name"].unique())

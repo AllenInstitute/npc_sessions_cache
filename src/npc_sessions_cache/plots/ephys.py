@@ -886,7 +886,7 @@ def _plot_ephys_noise_with_unit_density_areas(
     session: npc_sessions.DynamicRoutingSession,
     probe: str,
     num_channels: int = 384,
-    lfp_correlation: npt.NDArray
+    lfp_correlation: npt.NDArray | None = None
 ) -> plt.Figure:
 
     # Here, we are recreating the unit denisty directly from the sorted data
@@ -992,20 +992,74 @@ def _plot_ephys_noise_with_unit_density_areas(
         ax3.axhline(y=(position - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL, c="r")
         ax4.axhline(y=position - UNIT_DENSITY_OFFSET, c="r")
 
+    scales_for_plotting = []
+    for anchor_index, position in enumerate(anchor_positions):
+        if anchor_index - 1 >= 0:
+            # since we assume 10 micron spacing on the probe, and the image space is 10 microns
+            # this can be computed directly, where a pixel is 10 microns. The probe channel space is on the denominator here
+            # current formula is scale = (hist_position - hist_position(i - 1)) / (channel - channel(i - 1))
+            # so scale is taking number of channels between 2 anchors that have either been stretched or compressed 
+            # Thus, I think a value > 1 means the channels have been stretched between the 2 anchors and opposite for < 1
+            # The above interpreation could be completely wrong so take it with a grain of salt
+            scale = np.abs((position - anchor_positions[anchor_index - 1]) \
+            / (probe_channel_space[anchor_index] - probe_channel_space[anchor_index - 1]))
+            # x pos and y_mid are for displaying
+            x_pos = ax3.get_xlim()[0] - 0.08 * (ax3.get_xlim()[1] - ax3.get_xlim()[0])  
+            y_mid = ((position + anchor_positions[anchor_index - 1]) / 2 - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL
+
+            scales_for_plotting.append((scale, x_pos, y_mid))
+
+        ax3.axhline(y=(position - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL, c="r")
+        ax4.axhline(y=position - UNIT_DENSITY_OFFSET, c="r")
+
+    # get final scale factor and plotting stuff
+    # This should be around the same for all of them
+    last_scale_factor = np.abs((max(y_positions_gui) - anchor_positions[-1]) \
+            / (0 - anchor_points[-1]))
+    x_pos_last = ax3.get_xlim()[0] - 0.08 * (ax3.get_xlim()[1] - ax3.get_xlim()[0]) 
+    y_mid_last = ((max(unit_density_points[:, 1][:num_channels]) + anchor_positions[0]) / 2 - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL
+    scales_for_plotting.append((last_scale_factor, x_pos_last, y_mid_last))
+
+    for scale_to_plot in scales_for_plotting:
+        scale, x_pos, y_mid = scale_to_plot
+        # Place the text
+        ax3.text(
+            x_pos,
+            y_mid,
+            f"{scale:.2f}",
+            color="orange",
+            ha="center",
+            va="center",
+            fontsize=10,
+            fontweight="bold"
+        )
     ax3.set_ylim(max(y_positions) * MICRONS_PER_PIXEL, 0)
     ax2.plot(
         unit_density_points_gui[:, 0], unit_density_points_gui[:, 1][::-1] * MICRONS_PER_PIXEL
     )
-    ax1.imshow(
-        np.flipud(correlation_plot_data),
-        extent=[
-            0,
-            num_channels * MICRONS_PER_PIXEL,
-            (min(unit_density_points_gui[:, 1]) * MICRONS_PER_PIXEL),
-            (max(unit_density_points_gui[:, 1]) * MICRONS_PER_PIXEL),
-        ],
-        cmap="viridis",
-    )
+
+    if not lfp_correlation:
+        ax1.imshow(
+            np.flipud(correlation_plot_data),
+            extent=[
+                0,
+                num_channels * MICRONS_PER_PIXEL,
+                (min(unit_density_points_gui[:, 1] - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL),
+                (max(unit_density_points_gui[:, 1] - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL),
+            ],
+            cmap="viridis",
+        )
+    else:
+        ax1.imshow(
+            np.flipud(lfp_correlation),
+            extent=[
+                0,
+                num_channels * MICRONS_PER_PIXEL,
+                (min(unit_density_points_gui[:, 1] - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL),
+                (max(unit_density_points_gui[:, 1] - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL),
+            ],
+            cmap="viridis",
+        )
 
     ax1.set_aspect("auto")
     ax1.set_xticks([])
@@ -1116,23 +1170,23 @@ def extract_lfp_epoch_segment(
     return lfp_segment, t
 
 def get_lfp_cmr_corr(
-    lfp: np.ndarray,
+    lfp: npt.NDArray,
     axis_time: int = 0,
-) -> np.ndarray:
+) -> npt.NDArray:
     """
     Compute channel-channel correlation on single-shank LFP
     using common median reference
 
     Parameters
     ----------
-    lfp : np.ndarray
+    lfp : npt.NDArray
         LFP data, shape (time, channels) by default
     axis_time : int
         Axis corresponding to time (0 or 1)
 
     Returns
     -------
-    corr : np.ndarray
+    corr : npt.NDArray
         Correlation matrix (channels x channels)
     """
 
@@ -1149,6 +1203,46 @@ def get_lfp_cmr_corr(
 
     return corr
 
+def get_lfp_correlation_from_session(
+    session,
+    probe: str,
+    script_name: str,
+) -> npt.NDArray:
+    """
+    Extract LFP segment for a probe and compute the reordered CMR correlation matrix.
+
+    Parameters
+    ----------
+    session : object
+        Session object containing epochs and _raw_lfp.
+    probe : str
+        Probe key used to index into session._raw_lfp.
+    script_name : str
+        Script name used to select the epoch.
+
+    Returns
+    -------
+    npt.NDArray
+        Reordered (flipped) channel x channel correlation matrix.
+    """
+
+    epochs = session.epochs[:]
+    raw_lfp_probe = session._raw_lfp[probe]
+
+    lfp_segment, _ = extract_lfp_epoch_segment(
+        raw_lfp_probe.data,
+        fs=raw_lfp_probe.rate,
+        lfp_start_time=raw_lfp_probe.starting_time,
+        epochs_df=epochs,
+        script_name=script_name,
+        duration_s=LFP_CORRELATION_NUM_SECS_TO_USE,
+    )
+
+    corr = get_lfp_cmr_corr(lfp_segment)
+
+    order = np.arange(corr.shape[0])[::-1]
+    return np.fliplr(corr[np.ix_(order, order)])
+
 def plot_ccf_aligned_ephys(
     session: npc_sessions.DynamicRoutingSession,  probe: str | None = None, use_lfp_correlation: bool = True
 ) -> tuple[plt.Figure, ...] | None:
@@ -1164,16 +1258,7 @@ def plot_ccf_aligned_ephys(
 
     if probe is not None:
         if use_lfp_correlation:
-            epochs = session.epochs[:]
-            raw_lfp = session._raw_lfp
-            raw_lfp_probe = raw_lfp[probe]
-            lfp_segment, timestamps = extract_lfp_epoch_segment(
-                raw_lfp_probe.data, fs=raw_lfp_probe.rate, lfp_start_time=raw_lfp_probe.starting_time,
-                epochs_df=epochs[:], script_name="DynamicRouting1", duration_s=LFP_CORRELATION_NUM_SECS_TO_USE
-            )
-            corr = get_lfp_cmr_corr(lfp_segment)
-            order = np.arange(corr.shape[0])[::-1]
-            lfp_correlation = np.fliplr(corr[np.ix_(order, order)])
+            lfp_correlation = 
 
         figures.append(_plot_ephys_noise_with_unit_density_areas(session, probe))
     else:

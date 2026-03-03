@@ -49,6 +49,7 @@ RESOLUTION_UM = 25
 MICRONS_PER_PIXEL = 10
 BRIGHTNESS_FACTOR = 1.5
 LFP_CORRELATION_NUM_SECS_TO_USE = 300
+TASK_NAME_FOR_LFP_CORRELATION = "DynamicRouting1"
 
 @numba.njit
 def makePSTH_numba(
@@ -1203,9 +1204,9 @@ def get_lfp_cmr_corr(
 
     return corr
 
-def get_lfp_correlation_from_session(
-    session,
-    probe: str,
+def get_lfp_correlation(
+    raw_lfp_probe: npt.NDArray,
+    epochs: pd.DataFrame,
     script_name: str,
 ) -> npt.NDArray:
     """
@@ -1213,10 +1214,10 @@ def get_lfp_correlation_from_session(
 
     Parameters
     ----------
-    session : object
-        Session object containing epochs and _raw_lfp.
-    probe : str
-        Probe key used to index into session._raw_lfp.
+    raw_lfp_probe : object
+        Raw LFP object for a specific probe, with attributes `data`, `rate`, and `starting_time`.
+    epochs : pd.DataFrame
+        DataFrame of epochs (pre-fetched from session).
     script_name : str
         Script name used to select the epoch.
 
@@ -1225,10 +1226,6 @@ def get_lfp_correlation_from_session(
     npt.NDArray
         Reordered (flipped) channel x channel correlation matrix.
     """
-
-    epochs = session.epochs[:]
-    raw_lfp_probe = session._raw_lfp[probe]
-
     lfp_segment, _ = extract_lfp_epoch_segment(
         raw_lfp_probe.data,
         fs=raw_lfp_probe.rate,
@@ -1239,7 +1236,6 @@ def get_lfp_correlation_from_session(
     )
 
     corr = get_lfp_cmr_corr(lfp_segment)
-
     order = np.arange(corr.shape[0])[::-1]
     return np.fliplr(corr[np.ix_(order, order)])
 
@@ -1253,18 +1249,29 @@ def plot_ccf_aligned_ephys(
     """
     if not session.is_annotated:
         return None
+
     figures = []
+    # Fetch once, reuse across probes
+    epochs = session.epochs[:] if use_lfp_correlation else None
+    raw_lfp = session._raw_lfp if use_lfp_correlation else None
     lfp_correlation = None
 
     if probe is not None:
-        if use_lfp_correlation:
-            lfp_correlation = 
-
-        figures.append(_plot_ephys_noise_with_unit_density_areas(session, probe))
+        lfp_correlation = (
+            get_lfp_correlation(raw_lfp_probe=raw_lfp[probe], epochs=epochs, script_name=script_name)
+            if use_lfp_correlation
+            else None
+        )
+        figures.append(_plot_ephys_noise_with_unit_density_areas(session, probe, lfp_correlation=lfp_correlation))
     else:
         probes = sorted(session.electrodes[:]["group_name"].unique())
         for probe in probes:
-            figures.append(_plot_ephys_noise_with_unit_density_areas(session, probe))
+            lfp_correlation = (
+                get_lfp_correlation(raw_lfp_probe=raw_lfp[probe], epochs=epochs, script_name=script_name)
+                if use_lfp_correlation
+                else None
+            )
+            figures.append(_plot_ephys_noise_with_unit_density_areas(session, probe, lfp_correlation=lfp_correlation))
 
     return tuple(figures)
 

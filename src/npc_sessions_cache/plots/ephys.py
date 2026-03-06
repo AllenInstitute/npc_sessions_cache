@@ -1062,6 +1062,10 @@ def _plot_ephys_noise_with_unit_density_areas(
             cmap="viridis",
         )
 
+    # plot anchors on correlation image
+    for position in anchor_positions:
+        ax1.axhline(y=(position - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL, c="r")
+
     ax1.set_aspect("auto")
     ax1.set_xticks([])
     ax1.set_yticks([])

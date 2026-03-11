@@ -957,7 +957,7 @@ def _plot_ephys_noise_with_unit_density_areas(
     correlation_plot_data = pd.read_pickle(correlation_plot_path)["img"]
     anchors = pd.read_pickle(anchors_path)
     unit_density_points_gui = np.array(anchors[0])
-    y_positions = [point[1] for point in unit_density_points_gui]
+    y_positions_gui = [point[1] for point in unit_density_points_gui]
 
     grid_spec = gs.GridSpec(1, 4, width_ratios=[2, 0.5, 1, 1])
     fig = plt.figure(figsize=(12, 6))
@@ -972,8 +972,8 @@ def _plot_ephys_noise_with_unit_density_areas(
     probe_channel_space = [] # get channel index in probe space
 
     for anchor in anchors[3]:
-        if anchor in y_positions:
-            probe_channel_space.append(y_positions.index(anchor))
+        if anchor in y_positions_gui:
+            probe_channel_space.append(y_positions_gui.index(anchor))
 
     ax4.imshow(slice_image[SLICE_IMAGE_OFFSET:, :])
   
@@ -1016,9 +1016,9 @@ def _plot_ephys_noise_with_unit_density_areas(
     # get final scale factor and plotting stuff
     # This should be around the same for all of them
     last_scale_factor = np.abs((max(y_positions_gui) - anchor_positions[-1]) \
-            / (0 - anchor_points[-1]))
+            / (0 - probe_channel_space[-1]))
     x_pos_last = ax3.get_xlim()[0] - 0.08 * (ax3.get_xlim()[1] - ax3.get_xlim()[0]) 
-    y_mid_last = ((max(unit_density_points[:, 1][:num_channels]) + anchor_positions[0]) / 2 - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL
+    y_mid_last = ((max(unit_density_points_gui[:, 1][:num_channels]) + anchor_positions[0]) / 2 - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL
     scales_for_plotting.append((last_scale_factor, x_pos_last, y_mid_last))
 
     for scale_to_plot in scales_for_plotting:
@@ -1034,12 +1034,12 @@ def _plot_ephys_noise_with_unit_density_areas(
             fontsize=10,
             fontweight="bold"
         )
-    ax3.set_ylim(max(y_positions) * MICRONS_PER_PIXEL, 0)
+    ax3.set_ylim(max(y_positions_gui) * MICRONS_PER_PIXEL, 0)
     ax2.plot(
-        unit_density_points_gui[:, 0], unit_density_points_gui[:, 1][::-1] * MICRONS_PER_PIXEL
+        unit_density_points_gui[:, 0], (unit_density_points_gui[:, 1] - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL
     )
 
-    if not lfp_correlation:
+    if lfp_correlation is None:
         ax1.imshow(
             np.flipud(correlation_plot_data),
             extent=[
@@ -1051,13 +1051,15 @@ def _plot_ephys_noise_with_unit_density_areas(
             cmap="viridis",
         )
     else:
+        order = np.arange(lfp_correlation.shape[0])[::-1]
+        lfp_corr_sorted = np.fliplr(lfp_correlation[np.ix_(order, order)])
         ax1.imshow(
-            np.flipud(lfp_correlation),
+            np.flipud(lfp_corr_sorted),
             extent=[
                 0,
                 num_channels * MICRONS_PER_PIXEL,
-                (min(unit_density_points_gui[:, 1] - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL),
-                (max(unit_density_points_gui[:, 1] - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL),
+                (unit_density_points_gui[:, 1][0] - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL,
+                (unit_density_points_gui[:, 1][-1] - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL,
             ],
             cmap="viridis",
         )
@@ -1066,25 +1068,26 @@ def _plot_ephys_noise_with_unit_density_areas(
     for position in anchor_positions:
         ax1.axhline(y=(position - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL, c="r")
 
+    ax1.set_axis_off()
     ax1.set_aspect("auto")
     ax1.set_xticks([])
     ax1.set_yticks([])
+    ax1.sharey(ax3)
 
     ax2.set_xticks([])
-    ax2.set_ylim(
-        min(unit_density_points_gui[:, 1]) * MICRONS_PER_PIXEL,
-        max(unit_density_points_gui[:, 1]) * MICRONS_PER_PIXEL,
-    )
+    ax2.set_ylim(max(y_positions_gui) * MICRONS_PER_PIXEL, 0)
     ax2.set_yticks([])
     ax2.spines["top"].set_visible(False)
     ax2.spines["right"].set_visible(False)
     ax2.spines["bottom"].set_visible(False)
     ax2.spines["left"].set_visible(False)
 
-    ax4.set_ylim(max(y_positions), 0)
+    ax4.set_ylim(max(y_positions_gui), 0)
     ax4.yaxis.tick_right()
-    _plot_structure_areas(electrodes_probe, y_positions, ax3)
+    _plot_structure_areas(electrodes_probe, y_positions_gui, ax3)
 
+    ax3.set_ylim(max(y_positions_gui) * MICRONS_PER_PIXEL, 0)
+    ax3.set_yticks([0, 1000, 5000, 6000])
     ax3.set_title("")
     ax3.set_ylabel("Microns")
     ax3.set_xlabel("")
@@ -1211,7 +1214,7 @@ def get_lfp_cmr_corr(
 def get_lfp_correlation(
     raw_lfp_probe: npt.NDArray,
     epochs: pd.DataFrame,
-    script_name: str,
+    task_name: str,
 ) -> npt.NDArray:
     """
     Extract LFP segment for a probe and compute the reordered CMR correlation matrix.
@@ -1222,8 +1225,8 @@ def get_lfp_correlation(
         Raw LFP object for a specific probe, with attributes `data`, `rate`, and `starting_time`.
     epochs : pd.DataFrame
         DataFrame of epochs (pre-fetched from session).
-    script_name : str
-        Script name used to select the epoch.
+    task_epoch_name : str
+        Task name used to select the epoch.
 
     Returns
     -------
@@ -1235,7 +1238,7 @@ def get_lfp_correlation(
         fs=raw_lfp_probe.rate,
         lfp_start_time=raw_lfp_probe.starting_time,
         epochs_df=epochs,
-        script_name=script_name,
+        task_epoch_name=task_name,
         duration_s=LFP_CORRELATION_NUM_SECS_TO_USE,
     )
 
@@ -1262,7 +1265,7 @@ def plot_ccf_aligned_ephys(
 
     if probe is not None:
         lfp_correlation = (
-            get_lfp_correlation(raw_lfp_probe=raw_lfp[probe], epochs=epochs, script_name=script_name)
+            get_lfp_correlation(raw_lfp_probe=raw_lfp[probe], epochs=epochs, task_name=TASK_NAME_FOR_LFP_CORRELATION)
             if use_lfp_correlation
             else None
         )
@@ -1271,7 +1274,7 @@ def plot_ccf_aligned_ephys(
         probes = sorted(session.electrodes[:]["group_name"].unique())
         for probe in probes:
             lfp_correlation = (
-                get_lfp_correlation(raw_lfp_probe=raw_lfp[probe], epochs=epochs, script_name=script_name)
+                get_lfp_correlation(raw_lfp_probe=raw_lfp[probe], epochs=epochs, task_name=TASK_NAME_FOR_LFP_CORRELATION)
                 if use_lfp_correlation
                 else None
             )

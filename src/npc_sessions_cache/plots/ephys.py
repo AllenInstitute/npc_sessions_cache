@@ -994,6 +994,8 @@ def _plot_ephys_noise_with_unit_density_areas(
         ax4.axhline(y=position - UNIT_DENSITY_OFFSET, c="r")
 
     scales_for_plotting = []
+    probe_channel_space = sorted(probe_channel_space)[::-1]
+    anchor_positions = sorted(anchor_positions)
     for anchor_index, position in enumerate(anchor_positions):
         if anchor_index - 1 >= 0:
             # since we assume 10 micron spacing on the probe, and the image space is 10 microns
@@ -1018,7 +1020,7 @@ def _plot_ephys_noise_with_unit_density_areas(
     last_scale_factor = np.abs((max(y_positions_gui) - anchor_positions[-1]) \
             / (0 - probe_channel_space[-1]))
     x_pos_last = ax3.get_xlim()[0] - 0.08 * (ax3.get_xlim()[1] - ax3.get_xlim()[0]) 
-    y_mid_last = ((max(unit_density_points_gui[:, 1][:num_channels]) + anchor_positions[0]) / 2 - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL
+    y_mid_last = ((max(unit_density_points_gui[:, 1][:num_channels]) + anchor_positions[-1]) / 2 - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL
     scales_for_plotting.append((last_scale_factor, x_pos_last, y_mid_last))
 
     for scale_to_plot in scales_for_plotting:
@@ -1087,7 +1089,7 @@ def _plot_ephys_noise_with_unit_density_areas(
     _plot_structure_areas(electrodes_probe, y_positions_gui, ax3)
 
     ax3.set_ylim(max(y_positions_gui) * MICRONS_PER_PIXEL, 0)
-    ax3.set_yticks([0, 1000, 5000, 6000])
+    ax3.set_yticks([0, 500, 5000, 6000])
     ax3.set_title("")
     ax3.set_ylabel("Microns")
     ax3.set_xlabel("")

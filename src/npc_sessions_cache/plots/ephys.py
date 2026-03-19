@@ -41,6 +41,7 @@ STRUCTURE_TREE = pd.read_csv(
         "https://raw.githubusercontent.com/cortex-lab/allenCCF/master/structure_tree_safe_2017.csv"
     )
 )
+# Plotting stuff
 SLICE_IMAGE_OFFSET = 300
 UNIT_DENSITY_OFFSET = 200
 NUM_CHANNELS = 384
@@ -971,7 +972,7 @@ def _plot_ephys_noise_with_unit_density_areas(
     anchor_positions = anchors[3]
     probe_channel_space = [] # get channel index in probe space
 
-    for anchor in anchors[3]:
+    for anchor in anchor_positions:
         if anchor in y_positions_gui:
             probe_channel_space.append(y_positions_gui.index(anchor))
 

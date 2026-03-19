@@ -1002,7 +1002,9 @@ def _plot_ephys_noise_with_unit_density_areas(
             # this can be computed directly, where a pixel is 10 microns. The probe channel space is on the denominator here
             # current formula is scale = (hist_position - hist_position(i - 1)) / (channel - channel(i - 1))
             # so scale is taking number of channels between 2 anchors that have either been stretched or compressed 
-            # Thus, I think a value > 1 means the channels have been stretched between the 2 anchors and opposite for < 1
+            # the 1.06 comes from this (sharing a teams thread from Corbett):
+            # 
+            # Thus, I think a value > 1 (or 1.06?) means the channels have been stretched between the 2 anchors and opposite for < 1
             # The above interpreation could be completely wrong so take it with a grain of salt
             scale = np.abs((position - anchor_positions[anchor_index - 1]) \
             / (probe_channel_space[anchor_index] - probe_channel_space[anchor_index - 1]))
@@ -1053,8 +1055,6 @@ def _plot_ephys_noise_with_unit_density_areas(
             cmap="viridis",
         )
     else:
-        order = np.arange(lfp_correlation.shape[0])[::-1]
-        lfp_corr_sorted = np.fliplr(lfp_correlation[np.ix_(order, order)])
         ax1.imshow(
             np.flipud(lfp_corr_sorted),
             extent=[
@@ -1263,7 +1263,6 @@ def plot_ccf_aligned_ephys(
     # Fetch once, reuse across probes
     epochs = session.epochs[:] if use_lfp_correlation else None
     raw_lfp = session._raw_lfp if use_lfp_correlation else None
-    lfp_correlation = None
 
     if probe is not None:
         lfp_correlation = (

@@ -1004,8 +1004,9 @@ def _plot_ephys_noise_with_unit_density_areas(
             # current formula is scale = (hist_position - hist_position(i - 1)) / (channel - channel(i - 1))
             # so scale is taking number of channels between 2 anchors that have either been stretched or compressed 
             # the 1.06 comes from this (sharing a teams thread from Corbett):
-            # 
+            # since the CCF is actually LARGER than in vivo brains, by a factor of... drumroll... 1.06!
             # Thus, I think a value > 1 (or 1.06?) means the channels have been stretched between the 2 anchors and opposite for < 1
+            # The IBL gui seemed to be doing a similar thing
             # The above interpreation could be completely wrong so take it with a grain of salt
             scale = np.abs((position - anchor_positions[anchor_index - 1]) \
             / (probe_channel_space[anchor_index] - probe_channel_space[anchor_index - 1]))
@@ -1057,7 +1058,7 @@ def _plot_ephys_noise_with_unit_density_areas(
         )
     else:
         ax1.imshow(
-            np.flipud(lfp_corr_sorted),
+            np.flipud(lfp_correlation),
             extent=[
                 0,
                 num_channels * MICRONS_PER_PIXEL,

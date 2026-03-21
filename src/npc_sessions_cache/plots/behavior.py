@@ -126,37 +126,55 @@ def plot_running(
     session: npc_sessions.DynamicRoutingSession,
 ) -> plt.Figure:
     timeseries = session.processing["behavior"]["running_speed"]
-    epochs: pd.DataFrame = session.epochs[:]
-    licks = session.processing["behavior"]["licks"]
+    try:
+        epochs: pd.DataFrame = session.epochs[:]
+    except (ValueError, IndexError):
+        epochs = None
+    try:
+        licks = session.processing["behavior"]["licks"]
+    except KeyError:
+        licks = None
     plt.style.use("seaborn-v0_8-notebook")
 
     fig, ax = plt.subplots()
 
-    for _, epoch in epochs.iterrows():
-        epoch_indices = (timeseries.timestamps >= epoch["start_time"]) & (
-            timeseries.timestamps <= epoch["stop_time"]
-        )
-        if len(epoch_indices) > 0:
-            ax.plot(
-                timeseries.timestamps[epoch_indices],
-                timeseries.data[epoch_indices],
-                linewidth=0.1,
-                alpha=1,
-                color="k",
-                label="speed",
-                zorder=30,
+    if epochs is not None:
+        for _, epoch in epochs.iterrows():
+            epoch_indices = (timeseries.timestamps >= epoch["start_time"]) & (
+                timeseries.timestamps <= epoch["stop_time"]
             )
+            if len(epoch_indices) > 0:
+                ax.plot(
+                    timeseries.timestamps[epoch_indices],
+                    timeseries.data[epoch_indices],
+                    linewidth=0.1,
+                    alpha=1,
+                    color="k",
+                    label="speed",
+                    zorder=30,
+                )
+    else:
+        ax.plot(
+            timeseries.timestamps,
+            timeseries.data,
+            linewidth=0.1,
+            alpha=1,
+            color="k",
+            label="speed",
+            zorder=30,
+        )
     k = 100 if "cm" in timeseries.unit else 1
     ymax = 0.8 * k
     ax.set_ylim([-0.05 * k, ymax])
-    ax.vlines(
-        licks.timestamps,
-        *ax.get_ylim(),
-        color="lime",
-        linestyle="-",
-        linewidth=0.05,
-        zorder=10,
-    )
+    if licks is not None:
+        ax.vlines(
+            licks.timestamps,
+            *ax.get_ylim(),
+            color="lime",
+            linestyle="-",
+            linewidth=0.05,
+            zorder=10,
+        )
     ax.hlines(
         0,
         0,
@@ -166,7 +184,7 @@ def plot_running(
         linewidth=0.5,
         zorder=20,
     )
-    plot_utils.add_epoch_color_bars(ax, epochs, rotation=90, y=ymax, va="top")
+    plot_utils.add_epoch_color_bars(ax, epochs, rotation=90, y=ymax, va="top") if epochs is not None else None
     ax.margins(0)
     ax.set_frame_on(False)
     ax.set_ylabel(timeseries.unit)

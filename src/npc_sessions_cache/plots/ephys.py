@@ -1279,7 +1279,7 @@ def _get_lfp_corr_surface_with_main(session: npc_sessions.DynamicRoutingSession,
         raw_lfp_probe=session_surface._raw_lfp[probe], 
         epochs=None, task_name=None, use_epochs=False
     )
-    lfp_correlation = np.concatenate((lfp_correlation_surface, lfp_corr_main), axis=1)
+    lfp_correlation = np.concatenate((lfp_correlation_surface, lfp_corr_main), axis=0)
     return lfp_correlation
 
 

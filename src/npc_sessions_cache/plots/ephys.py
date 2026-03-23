@@ -1217,8 +1217,9 @@ def get_lfp_cmr_corr(
 
 def get_lfp_correlation(
     raw_lfp_probe: npt.NDArray,
-    epochs: pd.DataFrame,
-    task_name: str,
+    epochs: pd.DataFrame | None,
+    task_name: str | None,
+    use_epochs: bool = True,
 ) -> npt.NDArray:
     """
     Extract LFP segment for a probe and compute the reordered CMR correlation matrix.
@@ -1231,24 +1232,56 @@ def get_lfp_correlation(
         DataFrame of epochs (pre-fetched from session).
     task_epoch_name : str
         Task name used to select the epoch.
+    use_epochs : bool
+        Whether to use epochs for segment extraction. If False, uses the entire LFP recording.
 
     Returns
     -------
     npt.NDArray
         Reordered (flipped) channel x channel correlation matrix.
     """
-    lfp_segment, _ = extract_lfp_epoch_segment(
-        raw_lfp_probe.data,
-        fs=raw_lfp_probe.rate,
-        lfp_start_time=raw_lfp_probe.starting_time,
-        epochs_df=epochs,
-        task_epoch_name=task_name,
-        duration_s=LFP_CORRELATION_NUM_SECS_TO_USE,
-    )
+    if use_epochs:
+        lfp_segment, _ = extract_lfp_epoch_segment(
+            raw_lfp_probe.data,
+            fs=raw_lfp_probe.rate,
+            lfp_start_time=raw_lfp_probe.starting_time,
+            epochs_df=epochs,
+            task_epoch_name=task_name,
+            duration_s=LFP_CORRELATION_NUM_SECS_TO_USE,
+        )
+    else:
+        lfp_segment = raw_lfp_probe.data[:]
 
     corr = get_lfp_cmr_corr(lfp_segment)
     order = np.arange(corr.shape[0])[::-1]
     return np.fliplr(corr[np.ix_(order, order)])
+
+def _get_lfp_corr_surface_with_main(session: npc_sessions.DynamicRoutingSession, probe: str, lfp_corr_main: npt.NDArray) -> npt.NDArray:
+    """
+    Gets the lfp correlation with surface recording. Uses the entire recording and concats with the main recording
+
+    Parameters
+    ----------
+    session : npc_sessions.DynamicRoutingSession
+        The session object containing the main and surface recordings.
+    probe : str
+        The probe name for which to compute the surface LFP correlation.
+    lfp_corr_main : npt.NDArray
+        The LFP correlation matrix computed from the main recording, to be concatenated with the surface correlation.
+    
+    Returns
+    -------
+    npt.NDArray
+        The combined LFP correlation matrix including both main and surface recordings.
+    """
+    session_surface = npc_sessions.DynamicRoutingSurfaceRecording(session.id)
+    lfp_correlation_surface = get_lfp_correlation(
+        raw_lfp_probe=session_surface._raw_lfp[probe], 
+        epochs=None, task_name=None, use_epochs=False
+    )
+    lfp_correlation = np.concatenate((lfp_correlation_surface, lfp_corr_main), axis=1)
+    return lfp_correlation
+
 
 def plot_ccf_aligned_ephys(
     session: npc_sessions.DynamicRoutingSession,  probe: str | None = None, use_lfp_correlation: bool = True
@@ -1272,6 +1305,9 @@ def plot_ccf_aligned_ephys(
             if use_lfp_correlation
             else None
         )
+        if session.is_surface_channels:
+            lfp_correlation = _get_lfp_corr_surface_with_main(session, probe, lfp_correlation) if use_lfp_correlation else None
+
         figures.append(_plot_ephys_noise_with_unit_density_areas(session, probe, lfp_correlation=lfp_correlation))
     else:
         probes = sorted(session.electrodes[:]["group_name"].unique())
@@ -1281,6 +1317,9 @@ def plot_ccf_aligned_ephys(
                 if use_lfp_correlation
                 else None
             )
+            if session.is_surface_channels:
+                lfp_correlation = _get_lfp_corr_surface_with_main(session, probe, lfp_correlation) if use_lfp_correlation else None
+            
             figures.append(_plot_ephys_noise_with_unit_density_areas(session, probe, lfp_correlation=lfp_correlation))
 
     return tuple(figures)

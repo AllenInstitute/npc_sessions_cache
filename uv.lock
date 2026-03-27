@@ -2485,7 +2485,7 @@ wheels = [
 
 [[package]]
 name = "npc-ephys"
-version = "0.1.43"
+version = "0.1.45"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "npc-io" },
@@ -2499,9 +2499,9 @@ dependencies = [
     { name = "wavpack-numcodecs" },
     { name = "zarr" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b2/a7/11b4b531c6685c94d294051b6accf3150505bea24a485f5643a03d7f2f67/npc_ephys-0.1.43.tar.gz", hash = "sha256:ab74af55e2c1e12e229ab508a8be6aaa261eff8fbf9787945fc7bc0ba3438d22", size = 33949, upload-time = "2026-02-18T20:22:37.209Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/83/1c/ca52521cad8faf34b9bb6e0cded9f4430553ad633d01509adf423d67efd1/npc_ephys-0.1.45.tar.gz", hash = "sha256:cfa620dda1539a4a3e832fc10954f7158af15d99320ce2ee61004558b6e719c5", size = 33905, upload-time = "2026-03-27T20:56:35.766Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c8/27/dace80cfdcd8bc4e16dc7ba4880510052d79a3aa44a6dbb70f3919d4fb76/npc_ephys-0.1.43-py3-none-any.whl", hash = "sha256:c9825c9509abbf2b1640337044247ffe952724274f95ee12fa075c4f0628c366", size = 34549, upload-time = "2026-02-18T20:22:34.605Z" },
+    { url = "https://files.pythonhosted.org/packages/ed/8a/a3d9d0f130a1820977f013620be85f7cd676a704271362f31831c6aa440e/npc_ephys-0.1.45-py3-none-any.whl", hash = "sha256:58e4dcdbd841d3a65a455e87dce300e9d0a12d844cd01b413d977397783a241e", size = 34541, upload-time = "2026-03-27T20:56:34.679Z" },
 ]
 
 [package.optional-dependencies]
@@ -2553,7 +2553,7 @@ wheels = [
 
 [[package]]
 name = "npc-mvr"
-version = "0.1.15"
+version = "0.1.16"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "npc-io" },
@@ -2561,9 +2561,9 @@ dependencies = [
     { name = "opencv-python-headless" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0f/1f/9d8791b6a2cb14c4464082765989f0d1c648f84fcb74f037d65321e20d83/npc_mvr-0.1.15.tar.gz", hash = "sha256:cb84c2dc351b581a668bdbeb83d9f5c25352e1a28e24ed11ca68875aaab54d8f", size = 18949, upload-time = "2025-12-18T08:16:04.122Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/10/8d/8b3d9d25f5d734f45cf45d483475cf6dcfb2cbd302a86d263b63a95fa07c/npc_mvr-0.1.16.tar.gz", hash = "sha256:a2700c40d4e52ce494b1fd997486097e6519aeb84cd7ff48c740f78e4e562f6d", size = 18968, upload-time = "2026-03-27T20:53:46.802Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/13/d3/3d0c452d9f46595963dc91cca999566dafacd1acc50e913c2fb0d2ae40c3/npc_mvr-0.1.15-py3-none-any.whl", hash = "sha256:544a1cc114ddfdc2dceded16f34e14dc6a123bf8fac521d2bac0ab9266e31621", size = 16701, upload-time = "2025-12-18T08:16:02.863Z" },
+    { url = "https://files.pythonhosted.org/packages/4f/6f/a4e7b5c359dd3a93e80bbe45c4548eb61016f017103866d30241b24f176c/npc_mvr-0.1.16-py3-none-any.whl", hash = "sha256:e955de2883288d1eaca482e19a59a9e6598b6d8621db606afbdd67bf20d72976", size = 16692, upload-time = "2026-03-27T20:53:45.988Z" },
 ]
 
 [[package]]
@@ -2596,8 +2596,8 @@ wheels = [
 
 [[package]]
 name = "npc-sessions"
-version = "0.0.276"
-source = { git = "https://github.com/AllenInstitute/npc_sessions#582e36f8a613e97682e08d2685b4f33414488ca9" }
+version = "0.0.277"
+source = { git = "https://github.com/AllenInstitute/npc_sessions#83f7e8131873321f89d3280d198b404008400da9" }
 dependencies = [
     { name = "aind-session" },
     { name = "dynamicroutingtask" },

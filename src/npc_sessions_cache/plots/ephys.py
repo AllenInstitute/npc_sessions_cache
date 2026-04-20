@@ -894,6 +894,7 @@ def _plot_ephys_noise_with_unit_density_areas(
     # Here, we are recreating the unit denisty directly from the sorted data
     electrodes = session.electrodes[:]
     units = session.units[:]
+    units = units[units['decoder_label']!='noise'] #only include non-noise units in unit density plot
     units_probe = units[units["electrode_group_name"] == probe]
     electrodes_probe = electrodes[electrodes["group_name"] == probe]
     peak_channel = units_probe["peak_channel"]

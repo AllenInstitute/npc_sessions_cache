@@ -44,6 +44,7 @@ STRUCTURE_TREE = pd.read_csv(
 # Plotting stuff
 SLICE_IMAGE_OFFSET = 300
 UNIT_DENSITY_OFFSET = 200
+CCF_AREAS_OFFSET = 85
 NUM_CHANNELS = 384
 CCF_NUM_COLUMNS = 4  # ap, dv, ml, and region - for insertion db
 RESOLUTION_UM = 25
@@ -372,7 +373,7 @@ def _plot_ephys_noise(
             )
     ax.set_ymargin(0)
     ax.set_xlabel("SD (microvolts)")
-    ax.set_ylabel("channel number")
+    # ax.set_ylabel("channel number")
     ax.set_title(f"noise on {timeseries.electrodes.description}")
     fig = ax.get_figure()
     assert fig is not None
@@ -828,7 +829,7 @@ def _plot_structure_areas_ccb(
 ):
 
     xlim = ax.get_xlim()
-    ccfAreas_y_mapping = [[area[-1], (y-SLICE_IMAGE_OFFSET)*MICRONS_PER_PIXEL] for y, area in ccfAreas.items()]
+    ccfAreas_y_mapping = [[area[-1], (y-UNIT_DENSITY_OFFSET-CCF_AREAS_OFFSET)*MICRONS_PER_PIXEL] for y, area in ccfAreas.items()]
     all_areas = np.unique([a[0] for a in ccfAreas_y_mapping])
 
     area_to_y = {area: [] for area in all_areas}
@@ -842,6 +843,9 @@ def _plot_structure_areas_ccb(
                             "color_hex_triplet"
                         ].values[0]        
         else:
+            continue
+            
+        if y_min > 6000:
             continue
         ax.axhspan(y_min, y_max, xmin = 0.75 , xmax=1, color=f"#{color}", alpha=1)
         ax.text(
@@ -943,7 +947,6 @@ def _plot_ephys_noise_with_unit_density_areas(
         units = pd.concat((surface_units, units,), axis=0)
         num_channels = 384*2
 
-
     units = units[units['decoder_label']!='noise'] #only include non-noise units in unit density plot
     units_probe = units[units["electrode_group_name"] == probe]
     electrodes_probe = electrodes[electrodes["group_name"] == probe]
@@ -1029,14 +1032,23 @@ def _plot_ephys_noise_with_unit_density_areas(
     ccfAreas = pd.read_pickle(ccfAreas_path)
     y_positions_gui = [point[1] for point in unit_density_points_gui]
 
-    grid_spec = gs.GridSpec(1, 4, width_ratios=[2, 0.5, 1, 1])
-    fig = plt.figure(figsize=(12, 6))
+    if len(y_positions_gui)>384:
+        y_lims = [-1680, 6000]
+        y_ticks = [0, 500, 6000]
+
+    else:
+        y_lims = [500, 6000]
+        y_ticks = [500, 6000]
+
+    fig = plt.figure(figsize=(12, 6), constrained_layout=True)
+    grid_spec = gs.GridSpec(1, 4, figure=fig, width_ratios=[1.5, 0.5, 1, 1])
 
     # Create subplots using the grid
     ax1 = fig.add_subplot(grid_spec[0])  # First plot (larger)
     ax2 = fig.add_subplot(grid_spec[1])  # Second plot
     ax3 = fig.add_subplot(grid_spec[2])  # Third plot
     ax4 = fig.add_subplot(grid_spec[3])  # Fourth plot
+
 
     anchor_positions = anchors[3]
     probe_channel_space = [] # get channel index in probe space
@@ -1136,6 +1148,21 @@ def _plot_ephys_noise_with_unit_density_areas(
             fontsize=8,
             fontweight="bold"
         )
+    
+    ax4.set_ylim(max(y_positions_gui), 0)
+    ax4.yaxis.tick_right()
+    ax4.sharey(ax3)
+    ax4.set_ylabel('Microns')
+    _plot_structure_areas_ccb(electrodes_probe, y_positions_gui, ax3, ccfAreas, num_channels=384) #Seems that surface channel info is not saved by tissuecyte gui
+
+    # ax3.set_ylim(max(y_positions_gui) * MICRONS_PER_PIXEL, 0)
+    ax3.set_ylim(y_lims[0], y_lims[1])
+    ax3.invert_yaxis()
+    ax3.set_yticks(y_ticks)
+    ax3.set_title("")
+    # ax3.set_ylabel("Microns")
+    ax3.set_xlabel("")
+    
     # ax3.set_ylim(max(y_positions_gui) * MICRONS_PER_PIXEL, 0)
     ax2.plot(
         smoothed, (np.arange(len(smoothed))[::-1]) * MICRONS_PER_PIXEL)
@@ -1159,6 +1186,7 @@ def _plot_ephys_noise_with_unit_density_areas(
             #     (max(unit_density_points_gui[:, 1] - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL),
             # ],
             cmap="viridis",
+            aspect="auto",
         )
     else:
         ax1.imshow(
@@ -1177,38 +1205,29 @@ def _plot_ephys_noise_with_unit_density_areas(
             #     (unit_density_points_gui[:, 1][-1] - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL,
             # ],
             cmap="viridis",
+            aspect="auto",
         )
 
     # plot anchors on correlation image
     for position in probe_channel_space:
         ax1.axhline(y=(len(smoothed) - position) * MICRONS_PER_PIXEL, c="r")
+        ax2.axhline(y=(len(smoothed) - position) * MICRONS_PER_PIXEL, c="r")
 
     ax1.set_axis_off()
-    ax1.set_aspect("auto")
     ax1.set_xticks([])
     ax1.set_yticks([])
     ax1.sharey(ax2)
 
     ax2.set_xticks([])
-    ax2.set_ylim(max(y_positions_gui) * MICRONS_PER_PIXEL, 0)
+    ax2.set_aspect("auto")
+    # ax2.set_ylim(max(y_positions_gui) * MICRONS_PER_PIXEL, 0)
+    ax2.invert_yaxis()
     ax2.set_yticks([])
     ax2.spines["top"].set_visible(False)
     ax2.spines["right"].set_visible(False)
     ax2.spines["bottom"].set_visible(False)
     ax2.spines["left"].set_visible(False)
 
-    ax4.set_ylim(max(y_positions_gui), 0)
-    ax4.yaxis.tick_right()
-    ax4.sharey(ax3)
-    _plot_structure_areas_ccb(electrodes_probe, y_positions_gui, ax3, ccfAreas, num_channels=384) #Seems that surface channel info is not saved by tissuecyte gui
-
-    # ax3.set_ylim(max(y_positions_gui) * MICRONS_PER_PIXEL, 0)
-    ax3.set_ylim(ax3.get_ylim()[0], 6000)
-    ax3.invert_yaxis()
-    ax3.set_yticks([0, 500, 5000, 6000])
-    ax3.set_title("")
-    ax3.set_ylabel("Microns")
-    ax3.set_xlabel("")
 
     is_deep_insertion = "deep_insertions" in session.keywords
     if is_deep_insertion:
@@ -1221,7 +1240,6 @@ def _plot_ephys_noise_with_unit_density_areas(
     ax3.set_title(
         f"CCF aligned with unit density (blue) and raw ephys noise (black/red)\n{probe} | {'deep' if is_deep_insertion and is_deep_probe else 'regular'} insertion"
     )
-    plt.tight_layout()
 
     return fig
 

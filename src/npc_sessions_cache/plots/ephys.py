@@ -317,19 +317,28 @@ def _plot_ephys_noise(
     median_subtraction: bool = True,
     y_range: npt.NDArray | None = None,
     ax: matplotlib.axes.Axes | None = None,
+    surface_timeseries: pynwb.TimeSeries | None = None,
     **plot_kwargs,
 ) -> plt.Figure:
-    timestamps = timeseries.get_timestamps()
-    if interval is None:
-        interval = ((t := np.ceil(timestamps)[0]), t + 1)
-    t0, t1 = npc_sessions.parse_intervals(interval)[0]
-    s0, s1 = np.searchsorted(timestamps, (t0, t1))
-    if s0 == s1:
-        raise ValueError(
-            f"{interval=} is out of bounds ({timestamps[0]=}, {timestamps[-1]=})"
-        )
-    samples = np.arange(s0, s1)
-    data = timeseries.data[samples, :] * timeseries.conversion * 1000  # microvolts
+
+    def get_ts_data(ts: pynwb.TimeSeries, interval: utils.Interval) -> npt.NDArray:
+        timestamps = timeseries.get_timestamps()
+        if interval is None:
+            interval = ((t := np.ceil(timestamps)[0]), t + 1)
+        t0, t1 = npc_sessions.parse_intervals(interval)[0]
+        s0, s1 = np.searchsorted(timestamps, (t0, t1))
+        if s0 == s1:
+            raise ValueError(
+                f"{interval=} is out of bounds ({timestamps[0]=}, {timestamps[-1]=})"
+            )
+        samples = np.arange(s0, s1)
+        data = timeseries.data[samples, :] * timeseries.conversion * 1000  # microvolts
+        return data
+    
+    data = get_ts_data(timeseries, interval)
+    if surface_timeseries is not None:
+        surface_data = get_ts_data(surface_timeseries, interval)
+        data = np.concatenate([data, surface_data], axis=1)
 
     def std(data):
         std = np.nanstd(data, axis=0)
@@ -808,11 +817,46 @@ def _get_unit_denisty_per_channel(
     unit_denisty_values_array = np.array(unit_denisty_values)
     return unit_denisty_values_array
 
+def _plot_structure_areas_ccb(
+    electrodes_probe: pd.DataFrame,
+    y_positions: list,
+    ax: matplotlib.axes.Axes,
+    ccfAreas,
+    num_channels: int = 384,
+    unit_density_offset: int = UNIT_DENSITY_OFFSET,
+    use_median_for_text: bool = True,
+):
+
+    xlim = ax.get_xlim()
+    ccfAreas_y_mapping = [[area[-1], (y-SLICE_IMAGE_OFFSET)*MICRONS_PER_PIXEL] for y, area in ccfAreas.items()]
+    all_areas = np.unique([a[0] for a in ccfAreas_y_mapping])
+
+    area_to_y = {area: [] for area in all_areas}
+    for area, y in ccfAreas_y_mapping:
+        unique_ys = [a[1] for a in ccfAreas_y_mapping if a[0] == area]
+        area_to_y[area] = [np.min(unique_ys), np.max(unique_ys)]
+
+    for ia, (area, (y_min, y_max)) in enumerate(area_to_y.items()):
+        if area in STRUCTURE_TREE["acronym"].values:
+            color = STRUCTURE_TREE[STRUCTURE_TREE["acronym"] == area][
+                            "color_hex_triplet"
+                        ].values[0]        
+        else:
+            continue
+        ax.axhspan(y_min, y_max, xmin = 0.75 , xmax=1, color=f"#{color}", alpha=1)
+        ax.text(
+            xlim[1],
+            (y_min + y_max) / 2,
+            s=area,
+            color=f"#{color}",
+            fontweight="bold",
+        )
 
 def _plot_structure_areas(
     electrodes_probe: pd.DataFrame,
     y_positions: list,
     ax: matplotlib.axes.Axes,
+    ccfAreas,
     num_channels: int = 384,
     unit_density_offset: int = UNIT_DENSITY_OFFSET,
     use_median_for_text: bool = True,
@@ -894,6 +938,12 @@ def _plot_ephys_noise_with_unit_density_areas(
     # Here, we are recreating the unit denisty directly from the sorted data
     electrodes = session.electrodes[:]
     units = session.units[:]
+    if session.is_surface_channels:
+        surface_units = session.surface_recording.units[:]
+        units = pd.concat((surface_units, units,), axis=0)
+        num_channels = 384*2
+
+
     units = units[units['decoder_label']!='noise'] #only include non-noise units in unit density plot
     units_probe = units[units["electrode_group_name"] == probe]
     electrodes_probe = electrodes[electrodes["group_name"] == probe]
@@ -902,9 +952,13 @@ def _plot_ephys_noise_with_unit_density_areas(
     unit_channel_counts = (
         peak_channel.value_counts().sort_index().reset_index().to_numpy()
     )
-    unit_denisty_values_from_spike_sorting = _get_unit_denisty_per_channel(unit_channel_counts)
+    unit_denisty_values_from_spike_sorting = _get_unit_denisty_per_channel(unit_channel_counts, num_channels=num_channels)
 
     timeseries_probe = session._raw_ap.electrical_series[probe]
+    surface_timeseries_probe = None
+    if session.is_surface_channels and probe in session.surface_recording._raw_ap.fields["electrical_series"]:
+        surface_timeseries_probe = session.surface_recording._raw_ap.electrical_series[probe]
+
     kernel_size = 10
     conv = np.ones(kernel_size) / kernel_size
 
@@ -933,6 +987,14 @@ def _plot_ephys_noise_with_unit_density_areas(
         / f"{session.info.subject}"
         / f"{probe[-1]}{session.info.experiment_day}_corr_full.pickle"
     )
+    
+    ccfAreas_path = (
+        upath.UPath(
+            "s3://aind-scratch-data/arjun.sridhar/tissuecyte_cloud_processed/slice_images"
+        )
+        / f"{session.info.subject}"
+        / f"Probe_{probe[-1]}{session.info.experiment_day}_areas.pickle"
+    )
 
     if not image_path.exists():
         raise FileNotFoundError(
@@ -949,6 +1011,11 @@ def _plot_ephys_noise_with_unit_density_areas(
             f"No correlation plot for session {session.id} and probe {probe}"
         )
 
+    if not ccfAreas_path.exists():
+        raise FileNotFoundError(
+            f"No CCF areas for session {session.id} and probe {probe}"
+        )
+
     with io.BytesIO(image_path.read_bytes()) as f:
         image = Image.open(f)
         enhancer = ImageEnhance.Brightness(image)
@@ -959,6 +1026,7 @@ def _plot_ephys_noise_with_unit_density_areas(
     correlation_plot_data = pd.read_pickle(correlation_plot_path)["img"]
     anchors = pd.read_pickle(anchors_path)
     unit_density_points_gui = np.array(anchors[0])
+    ccfAreas = pd.read_pickle(ccfAreas_path)
     y_positions_gui = [point[1] for point in unit_density_points_gui]
 
     grid_spec = gs.GridSpec(1, 4, width_ratios=[2, 0.5, 1, 1])
@@ -977,13 +1045,20 @@ def _plot_ephys_noise_with_unit_density_areas(
         if anchor in y_positions_gui:
             probe_channel_space.append(y_positions_gui.index(anchor))
 
-    ax4.imshow(slice_image[SLICE_IMAGE_OFFSET:, :])
+    
+    slice_image_to_plot = slice_image[SLICE_IMAGE_OFFSET:, :]
+
+    # ax4.imshow(slice_image_to_plot, origin='lower', aspect='auto', extent=(0, slice_image_to_plot.shape[1], 0, slice_image_to_plot.shape[0]*10))
+
+    ax4.imshow(slice_image, origin='lower', aspect='auto', extent=(0, slice_image.shape[1], -SLICE_IMAGE_OFFSET*MICRONS_PER_PIXEL, (slice_image.shape[0] - SLICE_IMAGE_OFFSET)*MICRONS_PER_PIXEL))
+
   
     _plot_ephys_noise(
         timeseries_probe,
         ax=ax3,
         y_range=(unit_density_points_gui[:, 1][:num_channels] - UNIT_DENSITY_OFFSET)
         * MICRONS_PER_PIXEL,
+        surface_timeseries=surface_timeseries_probe
     )
     ax3.plot(
         smoothed,
@@ -993,9 +1068,10 @@ def _plot_ephys_noise_with_unit_density_areas(
 
     for position in anchor_positions:
         ax3.axhline(y=(position - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL, c="r")
-        ax4.axhline(y=position - UNIT_DENSITY_OFFSET, c="r")
+        ax4.axhline(y=(position - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL, c="r")
 
     scales_for_plotting = []
+    scale_y_bounds = []
     probe_channel_space = sorted(probe_channel_space)[::-1]
     anchor_positions = sorted(anchor_positions)
     for anchor_index, position in enumerate(anchor_positions):
@@ -1014,11 +1090,11 @@ def _plot_ephys_noise_with_unit_density_areas(
             # x pos and y_mid are for displaying
             x_pos = ax3.get_xlim()[0] - 0.08 * (ax3.get_xlim()[1] - ax3.get_xlim()[0])  
             y_mid = ((position + anchor_positions[anchor_index - 1]) / 2 - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL
-
+            scale_y_bounds.append((position, anchor_positions[anchor_index - 1]))
             scales_for_plotting.append((scale, x_pos, y_mid))
 
-        ax3.axhline(y=(position - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL, c="r")
-        ax4.axhline(y=position - UNIT_DENSITY_OFFSET, c="r")
+        # ax3.axhline(y=(position - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL, c="r")
+        # ax4.axhline(y=position - UNIT_DENSITY_OFFSET, c="r")
 
     # get final scale factor and plotting stuff
     # This should be around the same for all of them
@@ -1028,56 +1104,90 @@ def _plot_ephys_noise_with_unit_density_areas(
     y_mid_last = ((max(unit_density_points_gui[:, 1][:num_channels]) + anchor_positions[-1]) / 2 - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL
     scales_for_plotting.append((last_scale_factor, x_pos_last, y_mid_last))
 
+    import matplotlib.colors as mcolors
+    cmap = plt.get_cmap("bwr").copy()
+    cmap.set_under("blue")
+    cmap.set_over("red")
+
+    norm = mcolors.TwoSlopeNorm(vmin=0.5, vcenter=1.0, vmax=2.0)
+
+    ax3_lims = ax3.get_xlim()
+    ax3.set_xlim(ax3_lims[0] - 0.1 * (ax3_lims[1] - ax3_lims[0]), ax3_lims[1])
+    for scale, ybounds in zip(scales_for_plotting, scale_y_bounds):
+        ax3.axhspan(
+            (ybounds[0] - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL,
+            (ybounds[1] - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL,
+            xmin = 0,
+            xmax = 0.1,
+            color=cmap(norm(scale[0])),
+            alpha=0.3
+        )
+
     for scale_to_plot in scales_for_plotting:
         scale, x_pos, y_mid = scale_to_plot
         # Place the text
         ax3.text(
-            x_pos,
+            ax3.get_xlim()[0],
             y_mid,
             f"{scale:.2f}",
-            color="orange",
-            ha="center",
+            color='k',
+            ha="right",
             va="center",
-            fontsize=10,
+            fontsize=8,
             fontweight="bold"
         )
-    ax3.set_ylim(max(y_positions_gui) * MICRONS_PER_PIXEL, 0)
+    # ax3.set_ylim(max(y_positions_gui) * MICRONS_PER_PIXEL, 0)
     ax2.plot(
-        unit_density_points_gui[:, 0], (unit_density_points_gui[:, 1] - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL
-    )
+        smoothed, (np.arange(len(smoothed))[::-1]) * MICRONS_PER_PIXEL)
+    #     unit_density_points_gui[:, 0], (unit_density_points_gui[:, 1] - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL
+    # )
 
     if lfp_correlation is None:
         ax1.imshow(
             np.flipud(correlation_plot_data),
-            extent=[
+            # correlation_plot_data,
+            extent = [
                 0,
-                num_channels * MICRONS_PER_PIXEL,
-                (min(unit_density_points_gui[:, 1] - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL),
-                (max(unit_density_points_gui[:, 1] - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL),
+                len(smoothed) * MICRONS_PER_PIXEL,
+                0,
+                len(smoothed) * MICRONS_PER_PIXEL
             ],
+            # extent=[
+            #     0,
+            #     num_channels * MICRONS_PER_PIXEL,
+            #     (min(unit_density_points_gui[:, 1] - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL),
+            #     (max(unit_density_points_gui[:, 1] - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL),
+            # ],
             cmap="viridis",
         )
     else:
         ax1.imshow(
             np.flipud(lfp_correlation),
-            extent=[
+            # lfp_correlation,
+            extent = [
                 0,
-                num_channels * MICRONS_PER_PIXEL,
-                (unit_density_points_gui[:, 1][0] - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL,
-                (unit_density_points_gui[:, 1][-1] - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL,
+                len(smoothed) * MICRONS_PER_PIXEL,
+                0,
+                len(smoothed) * MICRONS_PER_PIXEL
             ],
+            # extent=[
+            #     0,
+            #     num_channels * MICRONS_PER_PIXEL,
+            #     (unit_density_points_gui[:, 1][0] - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL,
+            #     (unit_density_points_gui[:, 1][-1] - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL,
+            # ],
             cmap="viridis",
         )
 
     # plot anchors on correlation image
-    for position in anchor_positions:
-        ax1.axhline(y=(position - UNIT_DENSITY_OFFSET) * MICRONS_PER_PIXEL, c="r")
+    for position in probe_channel_space:
+        ax1.axhline(y=(len(smoothed) - position) * MICRONS_PER_PIXEL, c="r")
 
     ax1.set_axis_off()
     ax1.set_aspect("auto")
     ax1.set_xticks([])
     ax1.set_yticks([])
-    ax1.sharey(ax3)
+    ax1.sharey(ax2)
 
     ax2.set_xticks([])
     ax2.set_ylim(max(y_positions_gui) * MICRONS_PER_PIXEL, 0)
@@ -1089,9 +1199,12 @@ def _plot_ephys_noise_with_unit_density_areas(
 
     ax4.set_ylim(max(y_positions_gui), 0)
     ax4.yaxis.tick_right()
-    _plot_structure_areas(electrodes_probe, y_positions_gui, ax3)
+    ax4.sharey(ax3)
+    _plot_structure_areas_ccb(electrodes_probe, y_positions_gui, ax3, ccfAreas, num_channels=384) #Seems that surface channel info is not saved by tissuecyte gui
 
-    ax3.set_ylim(max(y_positions_gui) * MICRONS_PER_PIXEL, 0)
+    # ax3.set_ylim(max(y_positions_gui) * MICRONS_PER_PIXEL, 0)
+    ax3.set_ylim(ax3.get_ylim()[0], 6000)
+    ax3.invert_yaxis()
     ax3.set_yticks([0, 500, 5000, 6000])
     ax3.set_title("")
     ax3.set_ylabel("Microns")
@@ -1280,8 +1393,16 @@ def _get_lfp_corr_surface_with_main(session: npc_sessions.DynamicRoutingSession,
         raw_lfp_probe=session_surface._raw_lfp[probe], 
         epochs=None, task_name=None, use_epochs=False
     )
-    lfp_correlation = np.concatenate((lfp_correlation_surface, lfp_corr_main), axis=0)
-    return lfp_correlation
+
+    concat_matrix = np.zeros((lfp_correlation_surface.shape[0] + lfp_corr_main.shape[0],lfp_correlation_surface.shape[1] + lfp_corr_main.shape[1]))
+    # concat_matrix[-lfp_correlation_surface.shape[0]:, :lfp_correlation_surface.shape[1]] = lfp_correlation_surface
+    concat_matrix[:lfp_correlation_surface.shape[0], lfp_correlation_surface.shape[1]:] = lfp_correlation_surface
+    # concat_matrix[:lfp_corr_main.shape[0], lfp_correlation_surface.shape[1]:] = lfp_corr_main
+    concat_matrix[-lfp_corr_main.shape[0]:, :lfp_corr_main.shape[1]] = lfp_corr_main
+
+
+    # lfp_correlation = np.concatenate((lfp_correlation_surface, lfp_corr_main), axis=0)
+    return concat_matrix
 
 
 def plot_ccf_aligned_ephys(

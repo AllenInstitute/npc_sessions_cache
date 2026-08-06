@@ -307,7 +307,13 @@ def consolidate_cache(
                 ]
             )
         else:
-            table = pyarrow.dataset.dataset(list(map(pyarrow.dataset.dataset, (p.as_posix() for p in cache_dir.iterdir())))).to_table()
+            table = pyarrow.concat_tables(
+                [
+                    pyarrow.dataset.dataset(path.as_posix()).to_table()
+                    for path in cache_dir.iterdir()
+                ],
+                promote_options="permissive",
+            )
         pyarrow.parquet.write_table(
             table=table,
             where=consolidated_cache_path,

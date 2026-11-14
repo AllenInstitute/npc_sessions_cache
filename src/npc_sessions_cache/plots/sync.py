@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import matplotlib.pyplot as plt
 import npc_ephys
 import npc_sessions
+import npc_stim
 import numpy as np
 import rich
 
@@ -171,7 +172,7 @@ def plot_diode_flip_intervals(
 ) -> plt.Figure | None:
     if not session.is_sync:
         return None
-    fig = session.sync_data.plot_diode_measured_sync_square_flips()
+    fig = npc_stim.plot_diode_measured_sync_square_flips(session.sync_data)
     names = tuple(
         k for k, v in session.stim_frame_times.items() if not isinstance(v, Exception)
     )
@@ -192,7 +193,7 @@ def plot_vsync_intervals(
 
     vsyncs_per_stim = sync.vsync_times_in_blocks
 
-    frequency = sync.expected_diode_flip_rate
+    frequency = npc_stim.get_expected_diode_flip_rate(sync)
     expected_period = 1 / frequency
 
     num_vsyncs_per_stim = np.array([len(_) for _ in vsyncs_per_stim])
@@ -257,11 +258,13 @@ def plot_frametime_intervals(
     if not session.is_sync:
         return None
     sync = session.sync_data
-    frequency = sync.expected_diode_flip_rate
+    frequency = npc_stim.get_expected_diode_flip_rate(sync)
     expected_period = 1 / frequency
 
-    # get the intervals in parts (one for each stimulus)
-    frametimes_per_stim = sync.frame_display_time_blocks
+    # get the intervals in parts (one for each stimulus with frame times)
+    frametimes_per_stim = tuple(
+        v for v in session.stim_frame_times.values() if not isinstance(v, Exception)
+    )
 
     num_frametimes_per_stim = np.array([len(_) for _ in frametimes_per_stim])
     fig, _ = plt.subplots(
@@ -348,23 +351,10 @@ def _plot_vsyncs_and_diode_flips_at_ends_of_each_stim(
         )
 
     # TODO switch this to get epoch start/ stop times and plot only for good stimuli
-    names = tuple(
-        k for k, v in session.stim_frame_times.items() if not isinstance(v, Exception)
-    )
-    fig = session.sync_data.plot_stim_onsets()
-    for idx, ax in enumerate(fig.axes):
-        if len(names) == len(fig.axes):
-            ax.set_title(names[idx].split("_")[0])
-    fig.set_size_inches(10, 5 * len(fig.axes))
-    fig.subplots_adjust(hspace=0.3)
-
-    fig = session.sync_data.plot_stim_offsets()
-    names = tuple(k for k, v in session.stim_frame_times.items() if v is not None)
-    for idx, ax in enumerate(fig.axes):
-        if len(names) == len(fig.axes):
-            ax.set_title(names[idx].split("_")[0])
-    fig.set_size_inches(10, 5 * len(fig.axes))
-    fig.subplots_adjust(hspace=0.3)
+    # blocks are titled with their matched stim file
+    blocks = npc_stim.get_display_times(session.sync_data, session.stim_paths)
+    fig = npc_stim.plot_stim_onsets(session.sync_data, blocks)
+    fig = npc_stim.plot_stim_offsets(session.sync_data, blocks)
 
     return fig
 

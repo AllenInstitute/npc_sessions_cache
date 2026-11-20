@@ -124,7 +124,7 @@ def get_audio_latencies(
     # get nidaq latencies
     lat_nidaq_env = npc_samstim.get_stim_latencies_from_nidaq_recording(
         sel_stim,
-        session.sync_path,
+        session.sync_data,
         session.ephys_recording_dirs,
         "audio",
         use_envelope=True,
@@ -132,7 +132,7 @@ def get_audio_latencies(
 
     lat_nidaq_sig = npc_samstim.get_stim_latencies_from_nidaq_recording(
         sel_stim,
-        session.sync_path,
+        session.sync_data,
         session.ephys_recording_dirs,
         "audio",
         use_envelope=False,
@@ -160,7 +160,7 @@ def get_audio_latencies(
         )
 
         lat_sync = npc_samstim.get_stim_latencies_from_sync(
-            sel_stim, session.sync_path, "audio", sync_line
+            sel_stim, session.sync_data, "audio", sync_line
         )
 
         lat_sync_list = [y.latency for y in lat_sync if y is not None]

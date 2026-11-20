@@ -37,9 +37,7 @@ import npc_sessions_cache.utils as utils
 matplotlib.rcParams.update({"font.size": 8})
 
 STRUCTURE_TREE = pd.read_csv(
-    upath.UPath(
-        "https://raw.githubusercontent.com/cortex-lab/allenCCF/master/structure_tree_safe_2017.csv"
-    )
+    "https://raw.githubusercontent.com/cortex-lab/allenCCF/master/structure_tree_safe_2017.csv"
 )
 # Plotting stuff
 SLICE_IMAGE_OFFSET = 300
@@ -312,6 +310,22 @@ def _plot_unit_spatiotemporal_waveform(
     return fig
 
 
+def _get_timestamps(timeseries: pynwb.TimeSeries) -> npt.NDArray[np.float64]:
+    """`TimeSeries.get_timestamps()` fails on array timestamps in some pynwb versions
+    (`if array:`), and timestamps are arrays for devices with dropped samples."""
+    if timeseries.timestamps is not None:
+        return np.asarray(timeseries.timestamps)
+    return timeseries.get_timestamps()
+
+
+def _get_rate(timeseries: pynwb.TimeSeries) -> float:
+    """Sampling rate, also for series with timestamps instead of a rate (devices with
+    dropped samples): from the first 1000 timestamps."""
+    if timeseries.rate is not None:
+        return timeseries.rate
+    return float(1 / np.median(np.diff(np.asarray(timeseries.timestamps[:1000]))))
+
+
 def _plot_ephys_noise(
     timeseries: pynwb.TimeSeries,
     interval: utils.Interval | None = None,
@@ -323,7 +337,7 @@ def _plot_ephys_noise(
 ) -> plt.Figure:
 
     def get_ts_data(ts: pynwb.TimeSeries, interval: utils.Interval) -> npt.NDArray:
-        timestamps = timeseries.get_timestamps()
+        timestamps = _get_timestamps(timeseries)
         if interval is None:
             interval = ((t := np.ceil(timestamps)[0]), t + 1)
         t0, t1 = npc_sessions.parse_intervals(interval)[0]
@@ -388,7 +402,7 @@ def _plot_ephys_image(
     ax: matplotlib.axes.Axes | None = None,
     **imshow_kwargs,
 ) -> plt.Figure:
-    timestamps = timeseries.get_timestamps()
+    timestamps = _get_timestamps(timeseries)
     if interval is None:
         interval = ((t := np.ceil(timestamps)[0]), t + 1)
     t0, t1 = npc_sessions.parse_intervals(interval)[0]
@@ -533,7 +547,7 @@ def plot_raw_ap_vs_surface(
             probe
         ) != npc_session.ProbeRecord(probe_letter):
             continue
-        n_samples = int(time_window * session._raw_ap[probe].rate)
+        n_samples = int(time_window * _get_rate(session._raw_ap[probe]))
         offset_corrected = session._raw_ap[probe].data[-n_samples:, :] - np.median(
             session._raw_ap[probe].data[-n_samples:, :], axis=0
         )
@@ -543,7 +557,9 @@ def plot_raw_ap_vs_surface(
             session.is_surface_channels
             and probe in session.surface_recording._raw_ap.fields["electrical_series"]
         ):
-            n_samples = int(time_window * session.surface_recording._raw_ap[probe].rate)
+            n_samples = int(
+                time_window * _get_rate(session.surface_recording._raw_ap[probe])
+            )
             offset_corrected_surface = session.surface_recording._raw_ap[probe].data[
                 -n_samples:, :
             ] - np.median(
@@ -623,6 +639,12 @@ def plot_optotagging(
         opto_trials = session.intervals["optotagging_trials"][:]
     except KeyError:
         return None
+    if "duration" not in opto_trials and "nominal_duration" in opto_trials:
+        # npc_sessions renamed `duration` -> `nominal_duration`
+        opto_trials = opto_trials.assign(duration=opto_trials["nominal_duration"])
+    # laser onset: `stim_start_time` (newer npc_sessions; `start_time` is the trial start)
+    onset_col = "stim_start_time" if "stim_start_time" in opto_trials else "start_time"
+    opto_trials = opto_trials[opto_trials[onset_col].notna()]
     electrodes = session.electrodes[:]
     units = session.units[:]
     good_unit_filter = (
@@ -683,7 +705,7 @@ def plot_optotagging(
                         filtered_trials = filtered_trials.query(
                             f"location == {location if location else probe!r}"
                         )
-                    start_times = filtered_trials["start_time"].values
+                    start_times = filtered_trials[onset_col].values
 
                     bin_size = 0.001
                     window_dur = 5 * duration * round(np.log10(1 / duration))
@@ -1026,10 +1048,10 @@ def _plot_ephys_noise_with_unit_density_areas(
         slice_image = np.array(brightened_image)
 
     # read data - pickle file is poor but such is life
-    correlation_plot_data = pd.read_pickle(correlation_plot_path)["img"]
-    anchors = pd.read_pickle(anchors_path)
+    correlation_plot_data = pd.read_pickle(io.BytesIO(correlation_plot_path.read_bytes()))["img"]
+    anchors = pd.read_pickle(io.BytesIO(anchors_path.read_bytes()))
     unit_density_points_gui = np.array(anchors[0])
-    ccfAreas = pd.read_pickle(ccfAreas_path)
+    ccfAreas = pd.read_pickle(io.BytesIO(ccfAreas_path.read_bytes()))
     y_positions_gui = [point[1] for point in unit_density_points_gui]
 
     if len(y_positions_gui)>384:

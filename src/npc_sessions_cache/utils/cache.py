@@ -34,15 +34,90 @@ logger = logging.getLogger(__name__)
 
 _PARQUET_COMPRESSION = "zstd"
 _COMPRESSION_LEVEL = 15
+_ADDITIONAL_COMPONENTS = ("lp_face_cam", "lp_side_cam", "eye_tracking")
+_CACHE_COMPONENTS = typing.get_args(npc_lims.NWBComponentStr) + _ADDITIONAL_COMPONENTS
 
 
 class MissingComponentError(AttributeError):
     pass
 
 
+def _get_cache_path(
+    nwb_component: str,
+    session_id: str | npc_session.SessionRecord | None = None,
+    version: str | None = None,
+    consolidated: bool = True,
+) -> npc_io.PathLike:
+    """Get a cache path, including paths for components newer than npc-lims."""
+    if nwb_component not in _ADDITIONAL_COMPONENTS:
+        return npc_lims.get_cache_path(
+            nwb_component=nwb_component,
+            session_id=session_id,
+            version=version,
+            consolidated=consolidated,
+        )
+
+    if consolidated and session_id is not None:
+        consolidated = False
+    cache_root = npc_lims.get_cache_path(
+        nwb_component="session",
+        version=version or npc_sessions.get_package_version(),
+        consolidated=False,
+    ).parent
+    if consolidated:
+        return cache_root / "consolidated" / f"{nwb_component}.parquet"
+    if session_id is None:
+        return cache_root / nwb_component
+    return cache_root / nwb_component / f"{npc_session.SessionRecord(session_id)}.parquet"
+
+
+def _get_cache_file_suffix(nwb_component: str) -> str:
+    if nwb_component in _ADDITIONAL_COMPONENTS:
+        return ".parquet"
+    return npc_lims.get_cache_file_suffix(nwb_component)
+
+
+def _get_component(
+    session: pynwb.NWBFile | npc_sessions.DynamicRoutingSession,
+    component_name: str,
+) -> pynwb.core.NWBContainer | pd.DataFrame | None:
+    """Get one of the video-analysis tables exposed by DynamicRoutingSession."""
+    try:
+        component = getattr(session, component_name, None)
+    except (AttributeError, FileNotFoundError, StopIteration, ValueError):
+        component = None
+    if component is not None:
+        return component
+
+    if component_name == "eye_tracking":
+        try:
+            return session._eye_tracking
+        except (AttributeError, FileNotFoundError, StopIteration, ValueError):
+            return None
+
+    lp_table_names = {
+        "lp_face_cam": {"lp_face_cam", "lp_face_camera", "lp_front_camera"},
+        "lp_side_cam": {"lp_side_cam", "lp_side_camera"},
+    }
+    if component_name in lp_table_names:
+        try:
+            tables = session._lp
+        except (AttributeError, FileNotFoundError, StopIteration, ValueError):
+            return None
+        return next(
+            (
+                table
+                for table in tables
+                if getattr(table, "name", None) in lp_table_names[component_name]
+            ),
+            None,
+        )
+    return None
+
+
 def _get_nwb_component(
     session: pynwb.NWBFile | npc_sessions.DynamicRoutingSession,
-    component_name: npc_lims.NWBComponentStr,
+    component_name: str,
 ) -> pynwb.core.NWBContainer | pd.DataFrame | None:
     def _component_metadata_to_single_row_df(component):
         # if value is a list, wrap it in another list so pandas doesn't interpret
@@ -94,10 +169,13 @@ def _get_nwb_component(
     elif component_name in session.intervals:
         return session.intervals.get(component_name)
 
+    if component_name in _ADDITIONAL_COMPONENTS:
+        return _get_component(session, component_name)
+
     c = getattr(session, component_name, None)
     if c is None:
         raise MissingComponentError(
-            f"Unknown NWB component {component_name!r} - available tables include {typing.get_args(npc_lims.NWBComponentStr)}"
+            f"Unknown NWB component {component_name!r} - available tables include {_CACHE_COMPONENTS}"
         )
     if isinstance(c, pynwb.core.LabelledDict):
         return _labelled_dict_to_df(c)
@@ -106,10 +184,10 @@ def _get_nwb_component(
 
 def component_exists(
     session_id: str | npc_session.SessionRecord,
-    component_name: npc_lims.NWBComponentStr,
+    component_name: str,
     version: str | None = None,
 ) -> bool:
-    extension = npc_lims.get_cache_file_suffix(component_name)
+    extension = _get_cache_file_suffix(component_name)
     # arrays other than spike times are only stored in consolidated zarr files:
     # rather than checking whether individual files exist, we check if the session
     # is in the consolidated zarr file
@@ -120,7 +198,7 @@ def component_exists(
             consolidated_zarr = True
     else:
         consolidated_zarr = False
-    path = npc_lims.get_cache_path(
+    path = _get_cache_path(
         nwb_component=component_name,
         session_id=session_id if not consolidated_zarr else None,
         version=version or npc_sessions.get_package_version(),
@@ -138,7 +216,7 @@ def component_exists(
 
 def write_nwb_component_to_cache(
     component: pynwb.core.NWBContainer | pd.DataFrame,
-    component_name: npc_lims.NWBComponentStr,
+    component_name: str,
     session_id: str | npc_session.SessionRecord,
     version: str | None = None,
     skip_existing: bool = True,
@@ -249,7 +327,7 @@ def write_all_components_to_cache(
     """
     logger.info(f"Writing all components to cache for {session.session_id}")
     version = version or npc_sessions.get_package_version()
-    for component_name in typing.get_args(npc_lims.NWBComponentStr):
+    for component_name in _CACHE_COMPONENTS:
         # skip before we potentially do a lot of processing to get component
         if skip_existing and component_exists(
             session.session_id, component_name, version=version
@@ -278,22 +356,22 @@ def write_all_components_to_cache(
 def consolidate_all_caches(version: str | None = None) -> None:
     """Consolidate all caches into a single file per component - with the
     exception of `units`, which are already reasonable size."""
-    for component_name in typing.get_args(npc_lims.NWBComponentStr):
+    for component_name in _CACHE_COMPONENTS:
         consolidate_cache(component_name, version=version)
 
 
 def consolidate_cache(
-    component_name: npc_lims.NWBComponentStr, version: str | None = None
+    component_name: str, version: str | None = None
 ) -> None:
     logger.info(f"Consolidating {component_name} caches")
     version = version or npc_sessions.get_package_version()
-    cache_dir = npc_lims.get_cache_path(
+    cache_dir = _get_cache_path(
         component_name, consolidated=False, version=version
     )
     if not cache_dir.exists() or not tuple(cache_dir.iterdir()):
         logger.info(f"No cache files found for {component_name}")
         return
-    consolidated_cache_path = npc_lims.get_cache_path(
+    consolidated_cache_path = _get_cache_path(
         component_name, consolidated=True, version=version
     )
     if consolidated_cache_path.suffix == ".parquet":
@@ -340,13 +418,13 @@ def add_session_metadata(
 
 def _write_timeseries_to_cache(
     session_id: str | npc_session.SessionRecord,
-    component_name: npc_lims.NWBComponentStr,
+    component_name: str,
     timeseries: pynwb.TimeSeries,
     version: str | None = None,
     skip_existing: bool = True,
 ) -> None:
     session_id = npc_session.SessionRecord(session_id).id
-    cache_path = npc_lims.get_cache_path(
+    cache_path = _get_cache_path(
         nwb_component=component_name,
         version=version or npc_sessions.get_package_version(),
         consolidated=True,
@@ -365,7 +443,7 @@ def _write_timeseries_to_cache(
 
 def _write_df_to_cache(
     session_id: str | npc_session.SessionRecord,
-    component_name: npc_lims.NWBComponentStr,
+    component_name: str,
     df: pd.DataFrame,
     version: str | None = None,
     skip_existing: bool = True,
@@ -373,7 +451,7 @@ def _write_df_to_cache(
     """Write dataframe to cache file (e.g. .parquet)."""
     if df.empty:
         raise ValueError(f"{session_id} {component_name} df is empty")
-    cache_path = npc_lims.get_cache_path(
+    cache_path = _get_cache_path(
         nwb_component=component_name,
         session_id=session_id,
         version=version or npc_sessions.get_package_version(),
@@ -398,11 +476,10 @@ def _write_df_to_cache(
         )
     elif cache_path.suffix == ".parquet":
         pyarrow.parquet.write_table(
-            table=pyarrow.Table.from_pandas(df, preserve_index=True),
+            table=pyarrow.Table.from_pandas(df, preserve_index=False),
             where=cache_path,
-            # disabled --------------------------------------------------------- #
-            ## row_group_size=20 if component_name == "units" else None,
             # - ---------------------------------------------------------------- #
+            row_group_size=100 if component_name == "units" else None,
             # each list in the units.spike_times column is large & should not really be
             # stored in this format. But we can at least optimize access.
             # Row groups are indivisible, so querying a single row will download a
@@ -449,20 +526,20 @@ def _write_spike_array_to_zarr_cache(
 
 
 def get_dataset(
-    nwb_component: npc_lims.NWBComponentStr,
+    nwb_component: str,
     session_id: str | npc_session.SessionRecord | None = None,
     version: str | None = None,
     consolidated: bool = True,
 ) -> pyarrow.dataset.Dataset:
     """Get dataset for all sessions, for all components, for the latest version."""
     return pyarrow.dataset.dataset(
-        npc_lims.get_cache_path(
+        _get_cache_path(
             nwb_component=nwb_component,
             session_id=session_id,
             version=version or npc_sessions.get_package_version(),
             consolidated=consolidated,
         ),
-        format=npc_lims.get_cache_file_suffix(nwb_component).lstrip("."),
+        format=_get_cache_file_suffix(nwb_component).lstrip("."),
     )
 
 

@@ -292,7 +292,7 @@ def write_and_upload_session_nwb(
     """
     logger.info(f"Writing {session.session_id} NWB")
     path = npc_lims.get_nwb_path(
-        session.session_id, version=version or npc_sessions.get_package_version()
+        session.session_id, version=version or npc_sessions.get_package_version(), zarr=zarr
     )
     if skip_existing and path.exists() and (npc_io.get_size(path) // 1024) > 1:
         logger.info(

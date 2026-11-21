@@ -1517,28 +1517,30 @@ def plot_ccf_aligned_ephys(
     epochs = session.epochs[:] if use_lfp_correlation else None
     raw_lfp = session._raw_lfp if use_lfp_correlation else None
 
-    if probe is not None:
-        lfp_correlation = (
-            get_lfp_correlation(raw_lfp_probe=raw_lfp[probe], epochs=epochs, task_name=TASK_NAME_FOR_LFP_CORRELATION)
-            if use_lfp_correlation
-            else None
-        )
-        if session.is_surface_channels:
-            lfp_correlation = _get_lfp_corr_surface_with_main(session, probe, lfp_correlation) if use_lfp_correlation else None
+    has_task_epoch = (
+        epochs is not None and (epochs["script_name"] == TASK_NAME_FOR_LFP_CORRELATION).any()
+    )
 
-        figures.append(_plot_ephys_noise_with_unit_density_areas(session, probe, lfp_correlation=lfp_correlation))
-    else:
-        probes = sorted(session.electrodes[:]["group_name"].unique())
-        for probe in probes:
-            lfp_correlation = (
-                get_lfp_correlation(raw_lfp_probe=raw_lfp[probe], epochs=epochs, task_name=TASK_NAME_FOR_LFP_CORRELATION)
-                if use_lfp_correlation
-                else None
-            )
-            if session.is_surface_channels:
-                lfp_correlation = _get_lfp_corr_surface_with_main(session, probe, lfp_correlation) if use_lfp_correlation else None
-            
-            figures.append(_plot_ephys_noise_with_unit_density_areas(session, probe, lfp_correlation=lfp_correlation))
+    def get_probe_lfp_correlation(probe: str) -> npt.NDArray | None:
+        """None -> the plot falls back to the alignment GUI's correlation image"""
+        if not use_lfp_correlation:
+            return None
+        if probe not in raw_lfp.electrical_series:
+            # e.g. 699847_2024-04-15 probeB: no LFP dir in the raw data
+            logger.warning(f"{session.id}: no LFP for {probe} - using alignment GUI correlation")
+            return None
+        if not has_task_epoch:
+            # e.g. sessions without usable task frame times
+            logger.warning(f"{session.id}: no {TASK_NAME_FOR_LFP_CORRELATION} epoch - using alignment GUI correlation")
+            return None
+        lfp_correlation = get_lfp_correlation(raw_lfp_probe=raw_lfp[probe], epochs=epochs, task_name=TASK_NAME_FOR_LFP_CORRELATION)
+        if session.is_surface_channels:
+            lfp_correlation = _get_lfp_corr_surface_with_main(session, probe, lfp_correlation)
+        return lfp_correlation
+
+    probes = [probe] if probe is not None else sorted(session.electrodes[:]["group_name"].unique())
+    for probe in probes:
+        figures.append(_plot_ephys_noise_with_unit_density_areas(session, probe, lfp_correlation=get_probe_lfp_correlation(probe)))
 
     return tuple(figures)
 

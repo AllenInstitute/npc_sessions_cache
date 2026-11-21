@@ -83,6 +83,8 @@ def plot_unit_metrics(
     probe_letter: str | npc_session.ProbeRecord | None = None,
 ) -> tuple[plt.Figure, ...]:
     units: pd.DataFrame = session.units[:].query("default_qc")
+    if units.empty:
+        return f"{session.id}: no units pass default_qc"
 
     metrics = [
         "drift_ptp",

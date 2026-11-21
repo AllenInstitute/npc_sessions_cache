@@ -316,6 +316,9 @@ def plot(
                 time_of_interest = trial["reward_time"] - trial["stim_start_time"]
                 override_params |= {"marker": ".", "color": "c", "edgecolor": "none"}
             elif trial["is_false_alarm"]:
+                if not (lick_times > 0).any():
+                    # response registered by the task but no lick on the sensor line in window
+                    continue
                 time_of_interest = lick_times[lick_times > 0][0]
                 false_alarm_line = True  # set False to draw a dot instead of a line
                 if false_alarm_line:

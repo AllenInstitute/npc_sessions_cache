@@ -1281,6 +1281,7 @@ def extract_lfp_epoch_segment(
     task_epoch_name: str,
     duration_s: Optional[float] = None,
     channels_first: bool = False,
+    timestamps: Optional[npt.ArrayLike] = None,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Extract a continuous LFP segment from a named epoch.
@@ -1325,8 +1326,13 @@ def extract_lfp_epoch_segment(
     window_start = epoch_start
 
     # --- time → sample ---
-    start_idx = int(np.round((window_start - lfp_start_time) * fs))
-    stop_idx  = int(np.round((window_stop  - lfp_start_time) * fs))
+    if timestamps is not None:
+        # explicit timestamps (devices with dropped samples have no scalar starting_time)
+        timestamps = np.asarray(timestamps)
+        start_idx, stop_idx = (int(i) for i in np.searchsorted(timestamps, [window_start, window_stop]))
+    else:
+        start_idx = int(np.round((window_start - lfp_start_time) * fs))
+        stop_idx  = int(np.round((window_stop  - lfp_start_time) * fs))
 
     if start_idx < 0 or stop_idx > lfp.shape[-1 if channels_first else 0]:
         raise ValueError("Requested window is outside LFP data bounds")
@@ -1338,8 +1344,11 @@ def extract_lfp_epoch_segment(
         lfp_segment = lfp[start_idx:stop_idx, :]
 
     # --- time vector ---
-    n_samples = stop_idx - start_idx
-    t = np.arange(n_samples) / fs + window_start
+    if timestamps is not None:
+        t = timestamps[start_idx:stop_idx]
+    else:
+        n_samples = stop_idx - start_idx
+        t = np.arange(n_samples) / fs + window_start
 
     return lfp_segment, t
 
@@ -1405,8 +1414,9 @@ def get_lfp_correlation(
     if use_epochs:
         lfp_segment, _ = extract_lfp_epoch_segment(
             raw_lfp_probe.data,
-            fs=raw_lfp_probe.rate,
+            fs=_get_rate(raw_lfp_probe),
             lfp_start_time=raw_lfp_probe.starting_time,
+            timestamps=_get_timestamps(raw_lfp_probe) if raw_lfp_probe.starting_time is None else None,
             epochs_df=epochs,
             task_epoch_name=task_name,
             duration_s=LFP_CORRELATION_NUM_SECS_TO_USE,
@@ -1436,11 +1446,16 @@ def _get_lfp_corr_surface_with_main(session: npc_sessions.DynamicRoutingSession,
     npt.NDArray
         The combined LFP correlation matrix including both main and surface recordings.
     """
-    session_surface = npc_sessions.DynamicRoutingSurfaceRecording(session.id)
-    lfp_correlation_surface = get_lfp_correlation(
-        raw_lfp_probe=session_surface._raw_lfp[probe], 
-        epochs=None, task_name=None, use_epochs=False
-    )
+    session_surface = session.surface_recording
+    if probe in session_surface._raw_lfp.electrical_series:
+        lfp_correlation_surface = get_lfp_correlation(
+            raw_lfp_probe=session_surface._raw_lfp[probe],
+            epochs=None, task_name=None, use_epochs=False
+        )
+    else:
+        # probe not recorded at surface channels (e.g. tip channel bank in the surface
+        # recording, so skipped by npc_sessions): leave the surface block blank
+        lfp_correlation_surface = np.full(lfp_corr_main.shape, np.nan)
 
     concat_matrix = np.zeros((lfp_correlation_surface.shape[0] + lfp_corr_main.shape[0],lfp_correlation_surface.shape[1] + lfp_corr_main.shape[1]))
     # concat_matrix[-lfp_correlation_surface.shape[0]:, :lfp_correlation_surface.shape[1]] = lfp_correlation_surface

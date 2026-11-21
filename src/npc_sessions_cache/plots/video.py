@@ -151,12 +151,15 @@ def plot_pupil_response(
         # plt.show()
     else:
         for arr in trial_pupil_size:
+            if len(arr) == 0:
+                # stim outside video frames (e.g. a block of frames lost by the camera)
+                continue
             x = np.arange(0, dur, dur / len(arr))
             y = arr
             plt.plot(x, y, lw=0.2, alpha=0.5, c="k")
-        if np.any(y):
-            # number of camera frames per trial window varies by +-1: truncate to shortest
-            valid = [t for t in trial_pupil_size if np.any(t)]
+        # number of camera frames per trial window varies by +-1: truncate to shortest
+        valid = [t for t in trial_pupil_size if np.any(t)]
+        if valid:
             n = min(len(t) for t in valid)
             plt.plot(
                 np.arange(n) * (dur / n),

@@ -48,7 +48,8 @@ def plot_performance_by_block(
     max_dprime = np.nanmax(
         np.abs(task_performance_by_block_df["signed_cross_modality_dprime"])
     )
-    ax[0].set_ylim([-2, 2] if max_dprime < 2 else [-max_dprime - 0.2, max_dprime + 0.2])
+    # single-block sessions have no cross-modal dprime (all NaN)
+    ax[0].set_ylim([-2, 2] if not np.isfinite(max_dprime) or max_dprime < 2 else [-max_dprime - 0.2, max_dprime + 0.2])
     ax[0].set_title(
         "cross-modal dprime: "
         + str(n_passing_blocks)
@@ -71,7 +72,7 @@ def plot_performance_by_block(
             )
         )
     )
-    ax[1].set_ylim([0, 2 if max_dprime < 2 else max_dprime + 0.2])
+    ax[1].set_ylim([0, 2 if not np.isfinite(max_dprime) or max_dprime < 2 else max_dprime + 0.2])
     ax[1].set_title("intra-modal dprime")
     ax[1].legend(["vis", "aud"])
     ax[1].set_xlabel("block index")

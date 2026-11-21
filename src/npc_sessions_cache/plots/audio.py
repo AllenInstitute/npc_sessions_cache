@@ -79,10 +79,13 @@ def plot_microphone_response(
 def plot_audio_waveforms(
     session: npc_sessions.DynamicRoutingSession,
     target_stim: bool = True,
-) -> plt.Figure:
+) -> plt.Figure | None:
     """Plot a selection of audio waveforms aligned to stim start times. Default is
     one per block"""
     aud_trials = session.trials[:].query(f"is_aud_{'' if target_stim else 'non'}target")
+    if aud_trials.empty:
+        # e.g. single vis-rewarded block: no aud stim is labelled as a target
+        return None
     start_times = np.array([trials.iloc[0]['stim_start_time'] for _, trials in aud_trials.groupby("block_index")])
     front_padding = .02 # sec
     waveforms = get_audio_waveforms(

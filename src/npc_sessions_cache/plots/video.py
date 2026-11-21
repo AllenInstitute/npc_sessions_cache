@@ -78,7 +78,9 @@ def _plot_video_info(
 
 def plot_pupil_area_with_running(
     session: npc_sessions.DynamicRoutingSession,
-) -> plt.Figure:
+) -> plt.Figure | None:
+    if not session.is_video:
+        return None
     np.array(session._eye_tracking.timestamps)[
         np.isnan(session._eye_tracking.pupil_area)
     ]
@@ -113,7 +115,9 @@ def plot_pupil_area_with_running(
 
 def plot_pupil_response(
     session: npc_sessions.DynamicRoutingSession,
-) -> plt.Figure:
+) -> plt.Figure | None:
+    if not session.is_video:
+        return None
     median_with_shaded_std = False
     dur = 2.5  # s
     pupil_area = session._eye_tracking.pupil_area
@@ -177,7 +181,7 @@ def plot_camera_frames(
     session: npc_sessions.DynamicRoutingSession,
     paths: Iterable[upath.UPath] | None = None,
     num_frames_to_grab: int = 5,
-) -> plt.Figure:
+) -> plt.Figure | None:
     """Just plots evenly spaced frames, no concept of epochs.
 
     video frames across cameras aren't synced .
@@ -186,6 +190,8 @@ def plot_camera_frames(
         paths = session.video_paths
 
     paths = tuple(paths)
+    if not paths:
+        return None
     if len(paths) == 3:  # beh, eye, face
         paths = (paths[0], paths[-1], paths[-2])  # beh, face, eye
     fig = plt.figure(
@@ -228,7 +234,9 @@ def plot_lick_triggered_frames(
     session: npc_sessions.DynamicRoutingSession,
     trial_idx: int | None = None,
     lick_time: float | None = None,
-) -> plt.Figure:
+) -> plt.Figure | None:
+    if not session.is_video:
+        return None
     NUM_LICKS = 8 if (trial_idx is None and lick_time is None) else 1
     NUM_CAMERAS = 2  # 1 x face, 1 x body
 
@@ -292,6 +300,13 @@ def plot_lick_triggered_frames(
                         frame_idx,
                     ]
                 )
+                if frame is None:
+                    # e.g. lick time outside of video (camera stopped early)
+                    ax.axis("off")
+                    ax.text(0.5, 0.5, "no frame", ha="center", va="center", fontsize=8, transform=ax.transAxes)
+                    if frame_idx == FRAMES_EITHER_SIDE_OF_LICK:
+                        ax.set_title(f"{video_path.stem}: no frame at {lick_time=:.1f} s", fontsize=8)
+                    continue
                 if "beh" in video_path.stem.lower():
                     x = slice(0, frame.shape[1] // 3)
                     y = slice(frame.shape[0] // 5, frame.shape[0] // 2)
@@ -320,7 +335,11 @@ def plot_lick_triggered_frames(
                 ]
             )
             linekwargs = {"linewidths": 3}
-            ax.eventplot(frame_times[frame_indices], label="frame", **linekwargs)
+            ax.eventplot(
+                frame_times[frame_indices[(frame_indices >= 0) & (frame_indices < len(frame_times))]],
+                label="frame",
+                **linekwargs,
+            )
             ax.eventplot([lick_time], color="red", label="lick", **linekwargs)
             ax.axis("off")
             if lick_idx == vid_idx == 0:

@@ -1493,12 +1493,15 @@ def _plot_electrodes_implant_hole(
     electrodes: pd.DataFrame,
     ccf_volume: npt.NDArray,
     probe_insertion_db_connection: sqlite3.Connection,
-) -> plt.Figure:
+) -> plt.Figure | None:
     electrodes_probe = electrodes[electrodes["group_name"] == probe]
     electrode_groups = session.electrode_groups
 
-    implant = electrode_groups[probe].location.split(" ")[0]
-    hole = electrode_groups[probe].location.split(" ")[1]
+    location = electrode_groups[probe].location.split(" ")
+    if len(location) < 2:
+        # implant/hole unknown (e.g. insertion metadata unavailable)
+        return None
+    implant, hole = location[0], location[1]
     cursor = probe_insertion_db_connection.execute(
         f"SELECT * FROM channel_ccf_coords cf WHERE (cf.Probe = '{probe[-1]}') AND (cf.Implant = '{implant}') AND (cf.Hole = '{hole}')"
     )
@@ -1574,26 +1577,19 @@ def plot_insertion_history(
     electrodes = session.electrodes[:]
     probe_insertion_db_connection = npc_lims.get_probe_target_db()
 
-    if probe is not None:
-        figures.append(
-            _plot_electrodes_implant_hole(
-                session, probe, electrodes, ccf_volume, probe_insertion_db_connection
-            )
+    probes = [probe] if probe is not None else sorted(electrodes["group_name"].unique())
+    for probe in probes:
+        fig = _plot_electrodes_implant_hole(
+            session,
+            probe,
+            electrodes,
+            ccf_volume,
+            probe_insertion_db_connection,
         )
-    else:
-        probes = sorted(electrodes["group_name"].unique())
-        for probe in probes:
-            figures.append(
-                _plot_electrodes_implant_hole(
-                    session,
-                    probe,
-                    electrodes,
-                    ccf_volume,
-                    probe_insertion_db_connection,
-                )
-            )
+        if fig is not None:
+            figures.append(fig)
 
-    return tuple(figures)
+    return tuple(figures) or None
 
 
 def plot_sensory_responses(

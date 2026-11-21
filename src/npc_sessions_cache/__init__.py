@@ -85,3 +85,40 @@ def _patch_empty_quiescent_interval_violations() -> None:
 
 
 _patch_empty_quiescent_interval_violations()
+
+
+def _patch_empty_dynamic_table_from_dataframe() -> None:
+    """hdmf DynamicTable.from_dataframe fails on an empty dataframe (`df[col].iloc[0]`), so NWB
+    writing fails for sessions with an empty table, e.g. no licks (728917_2024-10-04,
+    741611_2024-09-11/12). Build empty tables directly. Only changes sessions that would
+    otherwise fail."""
+    import numpy as np
+    import hdmf.common.table
+
+    cls = hdmf.common.table.DynamicTable
+    if getattr(cls.from_dataframe, "_empty_patched", False):
+        return
+    original = cls.from_dataframe.__func__
+
+    def from_dataframe(klass, *args, **kwargs):
+        df = kwargs.get("df")
+        if df is None or len(df) > 0 or args:
+            return original(klass, *args, **kwargs)
+        column_descriptions = kwargs.get("column_descriptions") or {}
+        table = klass(name=kwargs["name"], description=kwargs["table_description"])
+        for col in df.columns:
+            dtype = df[col].dtype
+            if dtype == object or not isinstance(dtype, np.dtype):
+                dtype = np.dtype(str) if col not in ("timestamps", "duration") else np.float64
+            table.add_column(
+                name=col,
+                description=column_descriptions.get(col, "no description"),
+                data=np.array([], dtype=dtype),
+            )
+        return table
+
+    from_dataframe._empty_patched = True  # type: ignore[attr-defined]
+    cls.from_dataframe = classmethod(from_dataframe)  # type: ignore[method-assign, assignment]
+
+
+_patch_empty_dynamic_table_from_dataframe()

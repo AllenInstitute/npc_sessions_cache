@@ -120,6 +120,9 @@ def plot_lick_raster(
 ) -> plt.Figure:
     from npc_sessions_cache.figures.paper2.fig1c import plot
 
+    licks = session._licks
+    if licks is None or len(licks) == 0:
+        return None  # no licks (e.g. passive/opto sessions)
     return plot(session_id=session.id, session=session)
 
 

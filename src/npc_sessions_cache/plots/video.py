@@ -251,15 +251,20 @@ def plot_lick_triggered_frames(
     ROWS_PER_LICK = ROWS_PER_VIDEO * NUM_CAMERAS
 
     if lick_time is None:
+        if "response_time" not in session.trials.colnames:
+            # column is omitted when there are no responses (e.g. passive/opto sessions with no licks)
+            return None
         response_times: npt.NDArray = (
             (session.trials[:].query("is_response").response_time.to_numpy())
             if trial_idx is None
             else (session.trials[trial_idx].response_time.to_numpy())
         )
-        if not response_times.shape:
-            raise ValueError(f"{session.id} has no lick response times")
+        response_times = np.atleast_1d(response_times).astype(float)
+        response_times = response_times[~np.isnan(response_times)]
+        if not response_times.size:
+            return None  # no lick responses
         lick_times = np.percentile(
-            response_times[~np.isnan(response_times)],
+            response_times,
             np.arange(0, 100, 100 / NUM_LICKS),
             method="closest_observation",
         )

@@ -39,7 +39,13 @@ def plot(
             obj = npc_sessions.Session(session_id)
         trials = pl.DataFrame(obj.trials[:]).drop("index", strict=False)
         performance: pl.DataFrame = pl.DataFrame(obj.intervals["performance"][:])
-        lick_times: npt.NDArray = obj._licks[0].timestamps
+        licks = obj._licks
+        if licks is None or len(licks) == 0:
+            lick_times = np.array([], dtype=np.float64)
+        elif isinstance(licks, (tuple, list)):  # older npc_sessions: tuple of TimeSeries
+            lick_times = np.asarray(licks[0].timestamps[:], dtype=np.float64)
+        else:  # DynamicTable: `licks[0]` would be only the first row
+            lick_times = np.asarray(licks["timestamps"][:], dtype=np.float64)
 
     else:
         licks_all_sessions = utils.get_component_zarr("licks")

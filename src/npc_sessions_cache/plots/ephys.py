@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import logging
 import time
 from typing import TYPE_CHECKING, Literal
 
@@ -33,6 +34,8 @@ import nrrd
 
 import npc_sessions_cache.plots.plot_utils as plot_utils
 import npc_sessions_cache.utils as utils
+
+logger = logging.getLogger(__name__)
 
 matplotlib.rcParams.update({"font.size": 8})
 
@@ -111,13 +114,20 @@ def plot_unit_metrics(
             is_probe = (probe_letter is not None) and (
                 npc_session.ProbeRecord(probe) == npc_session.ProbeRecord(probe_letter)
             )
-            units_probe_metric = units[units["electrode_group_name"] == probe][metric]
-            fig.axes[probe_index].hist(
-                units_probe_metric,
-                bins=20,
-                density=True,
-                color="orange" if is_probe else None,
-            )
+            units_probe_metric = units[units["electrode_group_name"] == probe][metric].dropna()
+            if units_probe_metric.empty:
+                # e.g. drift_ptp is NaN for all units on low-yield probes
+                fig.axes[probe_index].text(
+                    0.5, 0.5, "no values", ha="center", va="center",
+                    transform=fig.axes[probe_index].transAxes,
+                )
+            else:
+                fig.axes[probe_index].hist(
+                    units_probe_metric,
+                    bins=20,
+                    density=True,
+                    color="orange" if is_probe else None,
+                )
             fig.axes[probe_index].set_title(f"{probe}")
             fig.axes[probe_index].set_xlabel(x_labels[metric])
             probe_index += 1
@@ -335,12 +345,17 @@ def _plot_ephys_noise(
     y_range: npt.NDArray | None = None,
     ax: matplotlib.axes.Axes | None = None,
     surface_timeseries: pynwb.TimeSeries | None = None,
+    num_channels: int | None = None,
     **plot_kwargs,
 ) -> plt.Figure:
+    """`num_channels`: pad (NaN) or truncate the channel axis to this length, e.g. when
+    the alignment GUI has surface channels but the probe has no surface recording (pad), or
+    vice versa (truncate to main channels)."""
 
-    def get_ts_data(ts: pynwb.TimeSeries, interval: utils.Interval) -> npt.NDArray:
-        timestamps = _get_timestamps(timeseries)
+    def get_ts_data(ts: pynwb.TimeSeries, interval: utils.Interval | None) -> npt.NDArray:
+        timestamps = _get_timestamps(ts)
         if interval is None:
+            # first second of this series (surface recording has its own time range)
             interval = ((t := np.ceil(timestamps)[0]), t + 1)
         t0, t1 = npc_sessions.parse_intervals(interval)[0]
         s0, s1 = np.searchsorted(timestamps, (t0, t1))
@@ -349,13 +364,21 @@ def _plot_ephys_noise(
                 f"{interval=} is out of bounds ({timestamps[0]=}, {timestamps[-1]=})"
             )
         samples = np.arange(s0, s1)
-        data = timeseries.data[samples, :] * timeseries.conversion * 1000  # microvolts
+        data = ts.data[samples, :] * ts.conversion * 1000  # microvolts
         return data
     
     data = get_ts_data(timeseries, interval)
     if surface_timeseries is not None:
         surface_data = get_ts_data(surface_timeseries, interval)
-        data = np.concatenate([data, surface_data], axis=1)
+        n = min(len(data), len(surface_data))
+        data = np.concatenate([data[:n], surface_data[:n]], axis=1)
+    if num_channels is not None:
+        if data.shape[1] > num_channels:
+            data = data[:, :num_channels]
+        elif data.shape[1] < num_channels:
+            data = np.concatenate(
+                [data, np.full((data.shape[0], num_channels - data.shape[1]), np.nan)], axis=1
+            )
 
     def std(data):
         std = np.nanstd(data, axis=0)
@@ -963,34 +986,6 @@ def _plot_ephys_noise_with_unit_density_areas(
     lfp_correlation: npt.NDArray | None = None
 ) -> plt.Figure:
 
-    # Here, we are recreating the unit denisty directly from the sorted data
-    electrodes = session.electrodes[:]
-    units = session.units[:]
-    if session.is_surface_channels:
-        surface_units = session.surface_recording.units[:]
-        units = pd.concat((surface_units, units,), axis=0)
-        num_channels = 384*2
-
-    units = units[units['decoder_label']!='noise'] #only include non-noise units in unit density plot
-    units_probe = units[units["electrode_group_name"] == probe]
-    electrodes_probe = electrodes[electrodes["group_name"] == probe]
-    peak_channel = units_probe["peak_channel"]
-
-    unit_channel_counts = (
-        peak_channel.value_counts().sort_index().reset_index().to_numpy()
-    )
-    unit_denisty_values_from_spike_sorting = _get_unit_denisty_per_channel(unit_channel_counts, num_channels=num_channels)
-
-    timeseries_probe = session._raw_ap.electrical_series[probe]
-    surface_timeseries_probe = None
-    if session.is_surface_channels and probe in session.surface_recording._raw_ap.fields["electrical_series"]:
-        surface_timeseries_probe = session.surface_recording._raw_ap.electrical_series[probe]
-
-    kernel_size = 10
-    conv = np.ones(kernel_size) / kernel_size
-
-    smoothed = np.convolve(unit_denisty_values_from_spike_sorting[:, 1], conv, mode="same") / 1000
-
     # pull relevant paths that have been uploaded from the gui
     image_path = (
         upath.UPath(
@@ -1056,6 +1051,41 @@ def _plot_ephys_noise_with_unit_density_areas(
     ccfAreas = pd.read_pickle(io.BytesIO(ccfAreas_path.read_bytes()))
     y_positions_gui = [point[1] for point in unit_density_points_gui]
 
+    # The alignment GUI may or may not include surface channels (384-767) independently of
+    # whether this probe was recorded at surface channels: follow the GUI's channel count
+    use_surface = session.is_surface_channels and len(y_positions_gui) > 384
+    num_channels = 384 * 2 if use_surface else 384
+    if lfp_correlation is not None and lfp_correlation.shape[0] > num_channels:
+        # main block is bottom-left in `_get_lfp_corr_surface_with_main`
+        lfp_correlation = lfp_correlation[-num_channels:, :num_channels]
+
+    # Here, we are recreating the unit denisty directly from the sorted data
+    electrodes = session.electrodes[:]
+    units = session.units[:]
+    if use_surface:
+        surface_units = session.surface_recording.units[:]
+        units = pd.concat((surface_units, units,), axis=0)
+
+    units = units[units['decoder_label']!='noise'] #only include non-noise units in unit density plot
+    units_probe = units[units["electrode_group_name"] == probe]
+    electrodes_probe = electrodes[electrodes["group_name"] == probe]
+    peak_channel = units_probe["peak_channel"]
+
+    unit_channel_counts = (
+        peak_channel.value_counts().sort_index().reset_index().to_numpy()
+    )
+    unit_denisty_values_from_spike_sorting = _get_unit_denisty_per_channel(unit_channel_counts, num_channels=num_channels)
+
+    timeseries_probe = session._raw_ap.electrical_series[probe]
+    surface_timeseries_probe = None
+    if use_surface and probe in session.surface_recording._raw_ap.fields["electrical_series"]:
+        surface_timeseries_probe = session.surface_recording._raw_ap.electrical_series[probe]
+
+    kernel_size = 10
+    conv = np.ones(kernel_size) / kernel_size
+
+    smoothed = np.convolve(unit_denisty_values_from_spike_sorting[:, 1], conv, mode="same") / 1000
+
     if len(y_positions_gui)>384:
         y_lims = [-1680, 6000]
         y_ticks = [0, 500, 6000]
@@ -1074,12 +1104,14 @@ def _plot_ephys_noise_with_unit_density_areas(
     ax4 = fig.add_subplot(grid_spec[3])  # Fourth plot
 
 
-    anchor_positions = anchors[3]
-    probe_channel_space = [] # get channel index in probe space
-
-    for anchor in anchor_positions:
-        if anchor in y_positions_gui:
-            probe_channel_space.append(y_positions_gui.index(anchor))
+    # anchors that don't coincide with a GUI channel position can't be mapped to a channel
+    # (seen in 681532 probeC day 1): drop them so anchors and channels stay paired
+    anchor_positions = [a for a in anchors[3] if a in y_positions_gui]
+    if len(anchor_positions) < len(anchors[3]):
+        logger.warning(
+            f"{session.id} {probe}: ignoring alignment anchors not at a channel position: {sorted(set(anchors[3]) - set(anchor_positions))}"
+        )
+    probe_channel_space = [y_positions_gui.index(anchor) for anchor in anchor_positions] # channel index in probe space
 
     
     slice_image_to_plot = slice_image[SLICE_IMAGE_OFFSET:, :]
@@ -1094,7 +1126,8 @@ def _plot_ephys_noise_with_unit_density_areas(
         ax=ax3,
         y_range=(unit_density_points_gui[:, 1][:num_channels] - UNIT_DENSITY_OFFSET)
         * MICRONS_PER_PIXEL,
-        surface_timeseries=surface_timeseries_probe
+        surface_timeseries=surface_timeseries_probe,
+        num_channels=len(unit_density_points_gui[:, 1][:num_channels]),
     )
     ax3.plot(
         smoothed,

@@ -1255,9 +1255,15 @@ def _plot_ephys_noise_with_unit_density_areas(
 
     is_deep_insertion = "deep_insertions" in session.keywords
     if is_deep_insertion:
-        deep_probes = next(
-            kw for kw in session.keywords if "deep_insertion_probe_letters" in kw
-        ).split("=")[-1]
+        kw = next(
+            (kw for kw in session.keywords if "deep_insertion_probe_letters" in kw), None
+        )
+        if kw is not None:
+            deep_probes = kw.split("=")[-1]
+        else:  # keyword no longer added by npc_sessions
+            deep_probes = "".join(
+                sorted(set("ABCDEF") - set(session.surface_recording.probe_letters_to_skip or ""))
+            )
         is_deep_probe = npc_session.ProbeRecord(probe) in deep_probes
     else:
         is_deep_probe = False

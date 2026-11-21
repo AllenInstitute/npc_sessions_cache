@@ -30,7 +30,8 @@ def plot_surface_images(
         except:
             ctime = None
         plt.figure()
-        plt.imshow(plt.imread(io.BytesIO(p.read_bytes())))
+        # without a filename, imread assumes PNG: surface images are often JPEG
+        plt.imshow(plt.imread(io.BytesIO(p.read_bytes()), format=p.suffix.lstrip(".")))
         plt.title(f"{p.stem}\n{ctime or 'time unknown'}")
         plt.gca().axis("off")
         if ctime:

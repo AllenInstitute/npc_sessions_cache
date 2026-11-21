@@ -29,7 +29,7 @@ def _plot_video_info(
     "Not a plot: prints info to stdout"
 
     augmented_camera_info = npc_mvr.MVRDataset(
-        session_dir=session.sync_path.parent, sync_path=session.sync_path
+        session_dir=session.sync_path.parent, sync_path=session.sync_data
     ).augmented_camera_info
 
     captured_output = io.StringIO()
@@ -151,8 +151,13 @@ def plot_pupil_response(
             y = arr
             plt.plot(x, y, lw=0.2, alpha=0.5, c="k")
         if np.any(y):
+            # number of camera frames per trial window varies by +-1: truncate to shortest
+            valid = [t for t in trial_pupil_size if np.any(t)]
+            n = min(len(t) for t in valid)
             plt.plot(
-                x, np.nanmedian([t for t in trial_pupil_size if np.any(t)], 0), lw=2
+                np.arange(n) * (dur / n),
+                np.nanmedian([t[:n] for t in valid], 0),
+                lw=2,
             )
 
     plt.gca().set(
@@ -263,9 +268,11 @@ def plot_lick_triggered_frames(
     video_frame_times = npc_mvr.get_video_frame_times(
         session.sync_data, *session.video_paths
     )
-    for vid_idx, (video_path, frame_times) in enumerate(video_frame_times.items()):
-        if "eye" in video_path.stem.lower():
-            continue
+    # face + body cameras only (eye camera excluded; the order of paths isn't fixed)
+    non_eye_videos = [
+        (p, t) for p, t in video_frame_times.items() if "eye" not in p.stem.lower()
+    ][:NUM_CAMERAS]
+    for vid_idx, (video_path, frame_times) in enumerate(non_eye_videos):
         for lick_idx, lick_time in enumerate(lick_times):
             v = npc_mvr.get_video_data(video_path)  # TODO open with upath from cloud
 

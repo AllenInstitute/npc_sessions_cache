@@ -314,7 +314,9 @@ def write_output_from_single_function(
     except Exception:
         data = traceback.format_exc()
     if data is None:
-        logger.warning(f"{module_name}.{function_name} returned None - update it to return one or more of {typing.get_args(Data)}")  # type: ignore
+        # not applicable to this session: remove any previous output (e.g. a stale .error)
+        logger.info(f"{module_name}.{function_name} returned None for {key} - removing any existing output")
+        store.delete_data(key)
         return
     store.write_data(key, data)
     with contextlib.suppress():

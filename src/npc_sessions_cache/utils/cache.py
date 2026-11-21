@@ -21,8 +21,10 @@ import npc_session
 import pandas as pd
 import pyarrow
 import pyarrow.dataset
+import pyarrow.fs
 import pyarrow.parquet
 import pynwb
+import upath
 import zarr
 
 if typing.TYPE_CHECKING:
@@ -69,6 +71,18 @@ def _get_cache_path(
     if session_id is None:
         return cache_root / nwb_component
     return cache_root / nwb_component / f"{npc_session.SessionRecord(session_id)}.parquet"
+
+
+def _pa_filesystem(path: upath.UPath) -> pyarrow.fs.FileSystem:
+    """pyarrow can't take UPath objects (not os.PathLike since universal-pathlib
+    0.3): pass `path.path` with the fsspec filesystem wrapped for pyarrow."""
+    path = upath.UPath(path)
+    return pyarrow.fs.PyFileSystem(pyarrow.fs.FSSpecHandler(path.fs))
+
+
+def _zarr_store(path: upath.UPath) -> str:
+    """zarr 2 accepts fsspec URLs as str, not UPath objects."""
+    return upath.UPath(path).as_posix()
 
 
 def _get_cache_file_suffix(nwb_component: str) -> str:
@@ -205,7 +219,7 @@ def component_exists(
         consolidated=consolidated_zarr,
     )
     if consolidated_zarr:
-        z = zarr.open(path)
+        z = zarr.open(_zarr_store(path))
         if npc_session.SessionRecord(session_id).id in z:
             return True
         else:
@@ -376,7 +390,7 @@ def consolidate_cache(
     )
     if consolidated_cache_path.suffix == ".parquet":
         if component_name == "units":
-            dataset = pyarrow.dataset.dataset(cache_dir)
+            dataset = pyarrow.dataset.dataset(cache_dir.path, filesystem=_pa_filesystem(cache_dir))
             table = dataset.to_table(
                 columns=[
                     c
@@ -387,14 +401,15 @@ def consolidate_cache(
         else:
             table = pyarrow.concat_tables(
                 [
-                    pyarrow.dataset.dataset(path.as_posix()).to_table()
+                    pyarrow.dataset.dataset(path.path, filesystem=_pa_filesystem(path)).to_table()
                     for path in cache_dir.iterdir()
                 ],
                 promote_options="permissive",
             )
         pyarrow.parquet.write_table(
             table=table,
-            where=consolidated_cache_path,
+            where=consolidated_cache_path.path,
+            filesystem=_pa_filesystem(consolidated_cache_path),
             compression=_PARQUET_COMPRESSION,
             compression_level=_COMPRESSION_LEVEL,
         )
@@ -429,7 +444,7 @@ def _write_timeseries_to_cache(
         version=version or npc_sessions.get_package_version(),
         consolidated=True,
     )
-    z = zarr.open(cache_path, mode="a")
+    z = zarr.open(_zarr_store(cache_path), mode="a")
     if skip_existing and session_id in z:
         logger.debug(
             f"Skipping write to {cache_path} - {session_id} already exists and skip_existing=True"
@@ -475,9 +490,11 @@ def _write_df_to_cache(
             array_column_name=component_name,
         )
     elif cache_path.suffix == ".parquet":
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
         pyarrow.parquet.write_table(
             table=pyarrow.Table.from_pandas(df, preserve_index=False),
-            where=cache_path,
+            where=cache_path.path,
+            filesystem=_pa_filesystem(cache_path),
             # - ---------------------------------------------------------------- #
             row_group_size=100 if component_name == "units" else None,
             # each list in the units.spike_times column is large & should not really be
@@ -506,7 +523,7 @@ def _write_spike_array_to_zarr_cache(
     zarr_path = npc_lims.get_cache_path(
         array_column_name, consolidated=True, version=version or npc_sessions.get_package_version()
     )
-    z = zarr.open(zarr_path, mode="a")
+    z = zarr.open(_zarr_store(zarr_path), mode="a")
     for delay_sec in (0, 10 * random.sample(range(10), 1), 60 * random.sample(range(10), 1)):
         time.sleep(delay_sec)
         try:
@@ -532,13 +549,15 @@ def get_dataset(
     consolidated: bool = True,
 ) -> pyarrow.dataset.Dataset:
     """Get dataset for all sessions, for all components, for the latest version."""
+    path = _get_cache_path(
+        nwb_component=nwb_component,
+        session_id=session_id,
+        version=version or npc_sessions.get_package_version(),
+        consolidated=consolidated,
+    )
     return pyarrow.dataset.dataset(
-        _get_cache_path(
-            nwb_component=nwb_component,
-            session_id=session_id,
-            version=version or npc_sessions.get_package_version(),
-            consolidated=consolidated,
-        ),
+        path.path,
+        filesystem=_pa_filesystem(path),
         format=_get_cache_file_suffix(nwb_component).lstrip("."),
     )
 

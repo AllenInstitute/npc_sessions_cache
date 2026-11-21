@@ -56,8 +56,17 @@ def plot(
 
     # add licks to trials:
     pad_start = 1.5  # seconds
+    # all entries must be float64 arrays (not `[]` for empty trials): polars>=1.44
+    # raises AttributeError when a sequence mixes numpy arrays and lists
     lick_times_by_trial = tuple(
-        lick_times[slice(start, stop)] if 0 <= start < stop < len(lick_times) else []
+        np.asarray(
+            (
+                lick_times[slice(start, stop)]
+                if 0 <= start < stop < len(lick_times)
+                else []
+            ),
+            dtype=np.float64,
+        )
         for start, stop in np.searchsorted(
             lick_times, trials.select(pl.col("start_time") - pad_start, "stop_time")
         )

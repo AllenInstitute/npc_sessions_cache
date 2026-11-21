@@ -91,11 +91,14 @@ def plot(
         raise NoSpikesInTrialsError(f"No spike times found for {unit_id}")
     modality_to_rewarded_stim = {"aud": "sound1", "vis": "vis1"}
     # add spikes to trials:
+    # all entries must be float64 arrays (not `[]` for empty trials): polars>=1.44
+    # raises AttributeError when a sequence mixes numpy arrays and lists
     spike_times_by_trial = tuple(
-        (
+        np.asarray(
             unit_spike_times[slice(start, stop)]
             if 0 <= start < stop <= len(unit_spike_times)
-            else []
+            else [],
+            dtype=np.float64,
         )
         for start, stop in np.searchsorted(
             unit_spike_times,

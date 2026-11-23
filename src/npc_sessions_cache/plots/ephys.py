@@ -1346,6 +1346,7 @@ def extract_lfp_epoch_segment(
     """
 
     # --- get epoch ---
+    epochs_df = utils.get_valid_epochs(epochs_df)  # not blocks excluded by npc_sessions
     epoch = epochs_df.loc[epochs_df["script_name"] == task_epoch_name].iloc[0]
     epoch_start = epoch["start_time"]
     epoch_stop = epoch["stop_time"]
@@ -1514,7 +1515,8 @@ def plot_ccf_aligned_ephys(
 
     figures = []
     # Fetch once, reuse across probes
-    epochs = session.epochs[:] if use_lfp_correlation else None
+    # without blocks excluded by npc_sessions (`is_qc_pass` False: times may not be known)
+    epochs = utils.get_valid_epochs(session.epochs[:]) if use_lfp_correlation else None
     raw_lfp = session._raw_lfp if use_lfp_correlation else None
 
     has_task_epoch = (

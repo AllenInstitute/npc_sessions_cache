@@ -35,6 +35,8 @@ import pydantic
 import upath
 from typing_extensions import Self
 
+import npc_sessions_cache.utils.misc as misc
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_SESSION_METADATA_PATH = upath.UPath(
@@ -271,7 +273,9 @@ def get_session_record(
     else:
         trials = pd.DataFrame()
         performance = pd.DataFrame()
-    epochs_df = session.epochs[:]
+    # blocks excluded by npc_sessions keep a row in the epochs table (`is_qc_pass` False):
+    # only usable blocks count here
+    epochs_df = misc.get_valid_epochs(session.epochs[:])
 
     def is_in_epochs(name):
         return any(
@@ -347,7 +351,11 @@ def get_session_record(
                 "surface_recording_probe_letters_to_skip", ""
             )
         ),
-        perturbation_areas=sorted(trials.opto_label.unique()) if is_opto_task else None,
+        perturbation_areas=(
+            sorted(trials.opto_label.unique())
+            if is_opto_task and "opto_label" in trials
+            else None
+        ),
         areas_hit=(
             sorted(units.structure.unique()) if session.is_annotated else None
         ),  # add injection areas

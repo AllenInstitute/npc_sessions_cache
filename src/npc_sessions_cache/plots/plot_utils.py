@@ -37,11 +37,22 @@ def add_epoch_color_bars(
     } | text_kwargs
     for _, epoch in epochs.iterrows():
         epoch_name = epoch.script_name if "script_name" in epoch else ""
-        color = epoch_color_map[epoch_name] if epoch_name else "black"
-        ax.axvspan(epoch.start_time, epoch.stop_time, alpha=0.1, color=color, zorder=0)
+        if not (epoch.start_time <= epoch.stop_time):
+            continue  # times not known (nan), e.g. a block excluded by npc_sessions
+        color = epoch_color_map.get(epoch_name, "black")
+        # blocks excluded by npc_sessions keep a row in the epochs table, with `is_qc_pass` False
+        is_valid = "is_qc_pass" not in epoch or epoch.is_qc_pass is not False and epoch.is_qc_pass != False  # noqa: E712
+        ax.axvspan(
+            epoch.start_time,
+            epoch.stop_time,
+            alpha=0.1,
+            color=color,
+            zorder=0,
+            hatch=None if is_valid else "//",
+        )
         ax.text(
             x=(epoch.stop_time + epoch.start_time) / 2,
-            s=epoch_name,
+            s=epoch_name if is_valid else f"{epoch_name} (invalid)",
             **text_kwargs,
         )
 

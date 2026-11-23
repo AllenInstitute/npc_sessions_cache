@@ -271,8 +271,40 @@ def write_nwb_component_to_cache(
         except ValueError as e:
             if df.empty:
                 logger.warning(f"{session_id} {component_name} is empty - skipping write to cache")
+                if not skip_existing:
+                    _remove_stale_component(session_id, component_name, version)
             else:
                 raise e
+
+
+def _remove_stale_component(
+    session_id: str | npc_session.SessionRecord,
+    component_name: str,
+    version: str | None = None,
+) -> None:
+    """Remove a session's cache file for a component that the session doesn't have (any
+    more): left from an earlier run of the same version, it would otherwise stay in the
+    cache and end up in the consolidated table (e.g. `trials` for a session whose task
+    block is now excluded). Only per-session parquet files: session groups in a zarr store
+    (licks, running_speed, spike_times) are left."""
+    try:
+        if _get_cache_file_suffix(component_name) != ".parquet":
+            return
+        path = _get_cache_path(
+            nwb_component=component_name,
+            session_id=session_id,
+            version=version or npc_sessions.get_package_version(),
+            consolidated=False,
+        )
+        if path.suffix == ".parquet" and path.exists():
+            path.unlink()
+            logger.warning(
+                f"{session_id} has no {component_name}: removed {path} (from an earlier run)"
+            )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            f"{session_id}: couldn't check for / remove a stale {component_name} cache file: {exc!r}"
+        )
 
 
 def write_and_upload_session_nwb(
@@ -357,6 +389,8 @@ def write_all_components_to_cache(
             component = None
         if component is None:
             logger.debug(f"{component_name} not available for {session.session_id}")
+            # e.g. trials of a session whose task block is excluded by this run
+            _remove_stale_component(session.session_id, component_name, version)
             continue
         write_nwb_component_to_cache(
             component=component,

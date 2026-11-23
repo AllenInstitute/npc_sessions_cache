@@ -21,6 +21,7 @@ dependencies = [
     "npc-samstim==0.1.19",
     "npc-mvr>=0.1.18",
     "npc-lims>=0.1.204",
+    "dr-datacube>=0.1.4",
     "hvplot>=0.10.0",
     "pynrrd>=1.0.0",
     "matplotlib<=3.8.4",

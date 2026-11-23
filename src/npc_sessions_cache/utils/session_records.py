@@ -27,6 +27,7 @@ import pathlib
 import traceback
 from collections.abc import Iterator, Mapping
 
+import dr_datacube
 import npc_session
 import npc_sessions
 import numpy as np
@@ -259,6 +260,17 @@ class RecordStore(collections.abc.MutableMapping):
             self[record.session_id] = Record(**record._asdict())
 
 
+def get_behavior_session_type(
+    session: npc_sessions.DynamicRoutingSession,
+) -> dr_datacube.behavior.SessionType:
+    """Session type whose dr-datacube behavior criterion applies to this session."""
+    if session.is_templeton:
+        return "templeton"
+    if session.is_context_naive:
+        return "naive"
+    return "brainwide"
+
+
 def get_session_record(
     session_id: str | npc_session.SessionRecord,
     session: npc_sessions.DynamicRoutingSession | None = None,
@@ -397,15 +409,21 @@ def get_session_record(
             if session.is_task
             else None
         ),
+        # behavior criteria are defined in dr-datacube, so this table agrees with its
+        # session filters: `is_engaged` is the naive-session criterion and
+        # `is_good_behavior` is the criterion for this session's type
         is_engaged=(
             is_engaged := (
-                n_contingent_rewards is not None
-                and len([r for r in n_contingent_rewards if r > 10]) > 4
+                session.is_task
+                and dr_datacube.is_behavior_pass(performance, "naive")
             )
         ),
         is_good_behavior=(
             is_good_behavior := (
-                is_engaged and n_passing_blocks is not None and n_passing_blocks > 4
+                session.is_task
+                and dr_datacube.is_behavior_pass(
+                    performance, get_behavior_session_type(session)
+                )
             )
         ),
         is_bad_behavior=(is_engaged and not is_good_behavior),

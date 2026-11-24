@@ -1562,6 +1562,13 @@ def _plot_electrodes_implant_hole(
         # implant/hole unknown (e.g. insertion metadata unavailable)
         return None
     implant, hole = location[0], location[1]
+    # the targeting db may use different implant/hole names to the NWB (npc_shields), e.g. TS5 E vs 3001 4
+    try:
+        db_names = npc_lims.get_probe_insertion_metadata(session.id)["targeting_db"]
+    except (ValueError, KeyError):
+        pass
+    else:
+        implant, hole = db_names["implant"], db_names["probes"][probe[-1]] or hole
     cursor = probe_insertion_db_connection.execute(
         f"SELECT * FROM channel_ccf_coords cf WHERE (cf.Probe = '{probe[-1]}') AND (cf.Implant = '{implant}') AND (cf.Hole = '{hole}')"
     )

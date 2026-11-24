@@ -2175,7 +2175,7 @@ wheels = [
 
 [[package]]
 name = "npc-ephys"
-version = "0.1.54"
+version = "0.1.55"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "npc-io" },
@@ -2190,9 +2190,9 @@ dependencies = [
     { name = "wavpack-numcodecs" },
     { name = "zarr" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8a/37/571a1df5843ffa2a85bc11a566f801b07f9b2926eaf7e9b37099329541f4/npc_ephys-0.1.54.tar.gz", hash = "sha256:a31e7c13a69b589e1988e35ae42f513b4612349ca7db839d19240ac4fa91c388", size = 53040, upload-time = "2026-11-21T07:18:11.925Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4f/88/71efa11341e706db8a81659f1457636906be5dd5acc2ac6b0e6fe9ebde41/npc_ephys-0.1.55.tar.gz", hash = "sha256:b8801de111a7b8b80bd6c45a7f3f1f11e8037716628e950bd6b486a0bcc1ee4f", size = 53812, upload-time = "2026-11-24T08:34:24.538Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/55/da/b3a5e7aefaee90074fc84ff009f7dae019d2d79a57b43840d146cb1f9efb/npc_ephys-0.1.54-py3-none-any.whl", hash = "sha256:479d576b8c5fc6d4fc41ca68c425ab0d3fdd7989417d016a189ef96070effed3", size = 47938, upload-time = "2026-11-21T07:18:10.787Z" },
+    { url = "https://files.pythonhosted.org/packages/d7/31/053c161e3f56477fb5781bd421d746ae41e01d8617475662b19f1efb7cbd/npc_ephys-0.1.55-py3-none-any.whl", hash = "sha256:ab09ca75a6884a2c774a6a47e3dd78faf8fa97ba5eba9748991a6d669fc931bd", size = 48693, upload-time = "2026-11-24T08:34:23.699Z" },
 ]
 
 [package.optional-dependencies]
@@ -2361,7 +2361,7 @@ requires-dist = [
     { name = "ipywidgets", specifier = ">=8.1.0" },
     { name = "matplotlib", specifier = "<=3.8.4" },
     { name = "nbconvert", specifier = ">=7.9.2" },
-    { name = "npc-ephys", specifier = "==0.1.54" },
+    { name = "npc-ephys", specifier = "==0.1.55" },
     { name = "npc-lims", specifier = ">=0.1.204" },
     { name = "npc-mvr", specifier = ">=0.1.18" },
     { name = "npc-samstim", specifier = "==0.1.19" },

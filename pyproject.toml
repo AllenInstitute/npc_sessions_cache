@@ -17,7 +17,7 @@ dependencies = [
     "npc-sessions==0.0.303",
     "npc-sync==0.3.11",
     "npc-stim==0.1.30",
-    "npc-ephys==0.1.54",
+    "npc-ephys==0.1.55",
     "npc-samstim==0.1.19",
     "npc-mvr>=0.1.18",
     "npc-lims>=0.1.204",

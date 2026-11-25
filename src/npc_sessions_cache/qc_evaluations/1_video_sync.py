@@ -1,4 +1,4 @@
-from npc_sessions_cache.plots.video import plot_lick_triggered_frames, plot_pupil_response, plot_pupil_area_with_running
+from npc_sessions_cache.plots.video import plot_lick_triggered_frames, plot_pupil_response, plot_pupil_area_with_running, plot_lick_bout_triggered_facemap_side
 from npc_sessions_cache.plots.sync_patch import plot_camera_intervals_near_invalid_intervals
 
 instructions = {
@@ -13,6 +13,13 @@ instructions = {
     plot_pupil_area_with_running: """
     - look for correlations between the traces, especially at large changes in running speed
     - don't fail on this alone, but if you don't see correlations, check the lick plots again thoroughly
+    """,
+    plot_lick_bout_triggered_facemap_side: """
+    - expect a flat pre-lick baseline, with face motion starting ~0.1-0.3 s before the first lick and
+      rhythmic (~7-8 Hz) structure after it
+    - motion that is offset in time from the lick (or no lick-locked motion) suggests a video-sync problem
+    - title is red if side-camera frame loss is > 0.1% or the side camera stopped early: check the
+      other video plots for this session
     """,
     plot_camera_intervals_near_invalid_intervals: """
     - only for sessions with invalid intervals: all intervals at 1 period (between dotted lines), no red points

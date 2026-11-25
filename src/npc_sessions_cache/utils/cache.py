@@ -374,6 +374,10 @@ def write_all_components_to_cache(
     logger.info(f"Writing all components to cache for {session.session_id}")
     version = version or npc_sessions.get_package_version()
     for component_name in _CACHE_COMPONENTS:
+        if _get_cache_file_suffix(component_name) == ".zarr":
+            # zarr writes take too long: skipped for now
+            logger.info(f"Skipping {component_name} - zarr cache writes disabled")
+            continue
         # skip before we potentially do a lot of processing to get component
         if skip_existing and component_exists(
             session.session_id, component_name, version=version

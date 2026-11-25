@@ -1,22 +1,22 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
     "python_full_version >= '3.14' and sys_platform == 'emscripten'",
     "python_full_version >= '3.14' and sys_platform == 'darwin'",
     "python_full_version >= '3.14' and platform_machine == 'aarch64' and sys_platform == 'linux'",
-    "(python_full_version >= '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.14' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "python_full_version >= '3.14' and ((platform_machine != 'aarch64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32'))",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
-    "python_full_version < '3.12' and sys_platform == 'win32'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
-    "python_full_version < '3.12' and sys_platform == 'emscripten'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'darwin'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine == 'aarch64' and sys_platform == 'linux'",
-    "(python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "python_full_version >= '3.12' and python_full_version < '3.14' and ((platform_machine != 'aarch64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32'))",
+    "python_full_version < '3.12' and sys_platform == 'win32'",
+    "python_full_version < '3.12' and sys_platform == 'emscripten'",
     "python_full_version < '3.12' and sys_platform == 'darwin'",
     "python_full_version < '3.12' and platform_machine == 'aarch64' and sys_platform == 'linux'",
-    "(python_full_version < '3.12' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.12' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "python_full_version < '3.12' and ((platform_machine != 'aarch64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32'))",
 ]
 
 [[package]]
@@ -2246,7 +2246,7 @@ wheels = [
 
 [[package]]
 name = "npc-mvr"
-version = "0.1.18"
+version = "0.1.20"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "npc-io" },
@@ -2254,9 +2254,9 @@ dependencies = [
     { name = "opencv-python-headless" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/12/12/200489dd954180266bbdb25c5a85e73f8566b5b561d03d0deb973bc88463/npc_mvr-0.1.18.tar.gz", hash = "sha256:36d3379bd347bf3bfcade8598eca87f36b236af0421808870e0a76f7393528a2", size = 18989, upload-time = "2026-06-12T15:54:34.855Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/65/ef/25f677ac7fe2fb9a7fcc95eaf631936fdeb88740df3f2b5486e28ab89513/npc_mvr-0.1.20.tar.gz", hash = "sha256:56e1474db6b745b5077f4b23f8821df7a450313865808c35c2c7495261a764c5", size = 23855, upload-time = "2026-11-25T21:34:17.174Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/22/f9/c90f697ab96b10b193204b15598553179115ac69c6b68576d38366955c32/npc_mvr-0.1.18-py3-none-any.whl", hash = "sha256:c7504cf972219bac18a68c0a1676d37ab5990f26795071d42f20c20b740eaa46", size = 16707, upload-time = "2026-06-12T15:54:33.755Z" },
+    { url = "https://files.pythonhosted.org/packages/3f/b6/0d5b325dba9bcaa0194877cef22140905245d8a5e9683f7cbf0cbdd125fa/npc_mvr-0.1.20-py3-none-any.whl", hash = "sha256:b1060722a62e104dcef05ab43a5cfa437273fa6709db46c3d51688b6a3a4f675", size = 20868, upload-time = "2026-11-25T21:34:16.356Z" },
 ]
 
 [[package]]
@@ -2290,7 +2290,7 @@ wheels = [
 [[package]]
 name = "npc-sessions"
 version = "0.0.303"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/AllenInstitute/npc_sessions#673e4b64f6e685beb3904c9a79ce64e281109974" }
 dependencies = [
     { name = "aind-session" },
     { name = "dynamicroutingtask" },
@@ -2314,10 +2314,6 @@ dependencies = [
     { name = "rich" },
     { name = "scipy" },
     { name = "tables" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/f0/a0/25ca148a226b8c80b0c14664b824d2e9f60058c859e3f325c0002d984a08/npc_sessions-0.0.303.tar.gz", hash = "sha256:81e07f876890ebe3c92177a2676d2c85a30ba81a5e3aef80c24939fa72f907cd", size = 184400, upload-time = "2026-11-24T01:21:54.387Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/bc/42/9b0796aa12228500dead581b58989b44a98049972c342b5ba145c3a94d7a/npc_sessions-0.0.303-py3-none-any.whl", hash = "sha256:32eccb596767691cc3e9eff8977c272cb3b241f67b5a37c5d5a4886f7e4e6f90", size = 162289, upload-time = "2026-11-24T01:21:53.126Z" },
 ]
 
 [[package]]
@@ -2361,13 +2357,13 @@ requires-dist = [
     { name = "ipywidgets", specifier = ">=8.1.0" },
     { name = "matplotlib", specifier = "<=3.8.4" },
     { name = "nbconvert", specifier = ">=7.9.2" },
-    { name = "npc-ephys", specifier = "==0.1.55" },
+    { name = "npc-ephys", specifier = ">=0.1.55" },
     { name = "npc-lims", specifier = ">=0.1.204" },
-    { name = "npc-mvr", specifier = ">=0.1.18" },
-    { name = "npc-samstim", specifier = "==0.1.19" },
-    { name = "npc-sessions", specifier = "==0.0.303" },
-    { name = "npc-stim", specifier = "==0.1.30" },
-    { name = "npc-sync", specifier = "==0.3.11" },
+    { name = "npc-mvr", specifier = ">=0.1.20" },
+    { name = "npc-samstim", specifier = ">=0.1.19" },
+    { name = "npc-sessions", git = "https://github.com/AllenInstitute/npc_sessions" },
+    { name = "npc-stim", specifier = ">=0.1.30" },
+    { name = "npc-sync", specifier = ">=0.3.11" },
     { name = "polars", specifier = ">=1.9.0,<2.0" },
     { name = "pyarrow", specifier = "==18.1.0" },
     { name = "pynrrd", specifier = ">=1.0.0" },
@@ -2664,13 +2660,13 @@ resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'emscripten'",
     "python_full_version >= '3.14' and sys_platform == 'darwin'",
     "python_full_version >= '3.14' and platform_machine == 'aarch64' and sys_platform == 'linux'",
-    "(python_full_version >= '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.14' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "python_full_version >= '3.14' and ((platform_machine != 'aarch64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32'))",
 ]
 dependencies = [
-    { name = "numpy", marker = "python_full_version >= '3.14'" },
-    { name = "python-dateutil", marker = "python_full_version >= '3.14'" },
-    { name = "pytz", marker = "python_full_version >= '3.14'" },
-    { name = "tzdata", marker = "python_full_version >= '3.14'" },
+    { name = "numpy" },
+    { name = "python-dateutil" },
+    { name = "pytz" },
+    { name = "tzdata" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/33/01/d40b85317f86cf08d853a4f495195c73815fdf205eef3993821720274518/pandas-2.3.3.tar.gz", hash = "sha256:e05e1af93b977f7eafa636d043f9f94c7ee3ac81af99c13508215942e64c993b", size = 4495223, upload-time = "2025-09-29T23:34:51.853Z" }
 wheels = [
@@ -2722,20 +2718,20 @@ version = "3.0.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
-    "python_full_version < '3.12' and sys_platform == 'win32'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
-    "python_full_version < '3.12' and sys_platform == 'emscripten'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'darwin'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine == 'aarch64' and sys_platform == 'linux'",
-    "(python_full_version >= '3.12' and python_full_version < '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "python_full_version >= '3.12' and python_full_version < '3.14' and ((platform_machine != 'aarch64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32'))",
+    "python_full_version < '3.12' and sys_platform == 'win32'",
+    "python_full_version < '3.12' and sys_platform == 'emscripten'",
     "python_full_version < '3.12' and sys_platform == 'darwin'",
     "python_full_version < '3.12' and platform_machine == 'aarch64' and sys_platform == 'linux'",
-    "(python_full_version < '3.12' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.12' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "python_full_version < '3.12' and ((platform_machine != 'aarch64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32'))",
 ]
 dependencies = [
-    { name = "numpy", marker = "python_full_version < '3.14'" },
-    { name = "python-dateutil", marker = "python_full_version < '3.14'" },
-    { name = "tzdata", marker = "(python_full_version < '3.14' and sys_platform == 'emscripten') or (python_full_version < '3.14' and sys_platform == 'win32')" },
+    { name = "numpy" },
+    { name = "python-dateutil" },
+    { name = "tzdata", marker = "sys_platform == 'emscripten' or sys_platform == 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/de/da/b1dc0481ab8d55d0f46e343cfe67d4551a0e14fcee52bd38ca1bd73258d8/pandas-3.0.0.tar.gz", hash = "sha256:0facf7e87d38f721f0af46fe70d97373a37701b1c09f7ed7aeeb292ade5c050f", size = 4633005, upload-time = "2026-01-21T15:52:04.726Z" }
 wheels = [
@@ -2870,7 +2866,7 @@ name = "pexpect"
 version = "4.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "ptyprocess", marker = "sys_platform != 'win32'" },
+    { name = "ptyprocess" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/42/92/cc564bf6381ff43ce1f4d06852fc19a2f11d180f23dc32d9588bee2f149d/pexpect-4.9.0.tar.gz", hash = "sha256:ee7d41123f3c9911050ea2c2dac107568dc43b2d3b0c7557a33212c398ead30f", size = 166450, upload-time = "2023-11-25T09:07:26.339Z" }
 wheels = [

@@ -2290,7 +2290,7 @@ wheels = [
 [[package]]
 name = "npc-sessions"
 version = "0.0.303"
-source = { git = "https://github.com/AllenInstitute/npc_sessions#c1efe1952cbb22ebf1b9f180721f1f2305a9527f" }
+source = { git = "https://github.com/AllenInstitute/npc_sessions#c748d9d5a1310831327ad1dba371af3a85bbc175" }
 dependencies = [
     { name = "aind-session" },
     { name = "dynamicroutingtask" },

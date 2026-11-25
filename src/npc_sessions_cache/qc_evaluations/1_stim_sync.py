@@ -13,6 +13,7 @@ from npc_sessions_cache.plots.display_qc import (
     plot_constant_lag_display_times,
     plot_quartile_visual_latency,
 )
+from npc_sessions_cache.plots.long_frames import plot_task_long_frame_alignment
 
 instructions = {
     plot_vsync_interval_dist: """
@@ -36,6 +37,13 @@ instructions = {
     - a step of ~17 or ~33 ms in latency or in the per-stim shifts, with a stable auditory latency, is a late display: fail
     - json `review` is True if the visual range is > 8 ms, or > 10% of task stims are shifted by > 8 ms while the auditory latency is stable
     - blocks with few responsive units (< 10) have noisy per-stim shifts: go by the quarterly latencies
+    """,
+    plot_task_long_frame_alignment: """
+    - task block only: long (dropped) frames in the stim file's frameIntervals vs in the session's frame display times (indices and single intervals only: the stim clock isn't synced with sync, so cumsum times aren't compared)
+    - frame counts should be equal (summary text, top right)
+    - every dot grey on 0 in the top panel (same index) and on 0 in the middle panel (same length): orange = off by 1 frame, red = off by more / length differs by >= 1 refresh
+    - every dot shifted to the same non-zero offset is a systematic offset (e.g. an extra/missing frame at the start): fail
+    - red ticks in the strip: long frames with no partner (an interval just over 1.5 refreshes in one series can be borderline; check its lengths in the text)
     """,
     plot_constant_lag_display_times: """
     - only sessions with a task or RFMapping block on vsync + constant lag (photodiode not usable)

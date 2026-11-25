@@ -22,15 +22,49 @@ if TYPE_CHECKING:
 import npc_sessions_cache.plots.plot_utils as plot_utils
 
 
+def _excluded_cameras(session: npc_sessions.DynamicRoutingSession) -> dict[str, str]:
+    """Cameras npc_mvr leaves out of `video_paths` (npc_mvr>=0.1.20), with the reason."""
+    return dict(getattr(session.mvr, "excluded_cameras", {}))
+
+
+def _is_eye_tracking_available(session: npc_sessions.DynamicRoutingSession) -> bool:
+    return session.is_video and "eye" in session.mvr.video_paths
+
+
+def plot_camera_frame_counts(
+    session: npc_sessions.DynamicRoutingSession,
+) -> dict | None:
+    """Frame counts per camera from npc_mvr (all cameras, including excluded ones):
+    exposures on sync, frames in the video, lost frames, unaccounted exposures (neither in
+    the video nor in `LostFrames`: frame times may drift), exposures inserted in unknown
+    sync intervals, and why a camera is excluded (null if used)."""
+    if not session.is_sync:
+        return None
+    mvr = session.mvr
+    if not getattr(mvr, "all_video_paths", mvr.video_paths):
+        return None
+    camera_frame_times = getattr(mvr, "camera_frame_times", None)
+    if camera_frame_times is None:  # npc_mvr<0.1.20
+        return None
+    excluded = _excluded_cameras(session)
+    summary: dict[str, dict] = {}
+    for camera_name, c in camera_frame_times.items():
+        summary[camera_name] = {
+            k: (list(map(list, v)) if k == "unknown_intervals" else v)
+            for k, v in c.summary().items()
+        } | {"excluded_reason": excluded.get(camera_name)}
+    for camera_name, reason in excluded.items():
+        summary.setdefault(camera_name, {"excluded_reason": reason})
+    return summary
+
+
 def _plot_video_info(
     session: npc_sessions.DynamicRoutingSession,
     capture_stdout: bool = True,
 ) -> str | None:
     "Not a plot: prints info to stdout"
 
-    augmented_camera_info = npc_mvr.MVRDataset(
-        session_dir=session.sync_path.parent, sync_path=session.sync_data
-    ).augmented_camera_info
+    augmented_camera_info = session.mvr.augmented_camera_info
 
     captured_output = io.StringIO()
     with (
@@ -40,6 +74,8 @@ def _plot_video_info(
     ):
         for camera, info in augmented_camera_info.items():
             rich.print(f"[bold]{camera} camera stats[bold]")
+            if reason := info.get("excluded_reason"):
+                rich.print(f"[red]Excluded: {reason}[/red]")
 
             frame_rate = info["FPS"]
             frame_rate_string = plot_utils.add_valence_to_string(
@@ -56,15 +92,17 @@ def _plot_video_info(
                 f"Lost frame percentage: {np.round(lost_frame_percentage, 3)} \t",
                 lost_frame_percentage,
                 lost_frame_percentage < 0.01,
-                lost_frame_percentage > 0.05,
+                lost_frame_percentage > 0.1,
             )
-
+            if "expected_minus_actual" not in info:
+                rich.print(frame_rate_string + lost_frame_string)
+                continue
             frame_diff_from_expected = info["expected_minus_actual"]
             frame_diff_string = plot_utils.add_valence_to_string(
                 f"Frames expected minus actual: {frame_diff_from_expected}",
                 frame_diff_from_expected,
                 abs(frame_diff_from_expected) < 1,
-                abs(frame_diff_from_expected) > 10,
+                frame_diff_from_expected > 20,
             )
 
             rich.print(frame_rate_string + lost_frame_string + frame_diff_string)
@@ -79,7 +117,7 @@ def _plot_video_info(
 def plot_pupil_area_with_running(
     session: npc_sessions.DynamicRoutingSession,
 ) -> plt.Figure | None:
-    if not session.is_video:
+    if not _is_eye_tracking_available(session):
         return None
     np.array(session._eye_tracking.timestamps)[
         np.isnan(session._eye_tracking.pupil_area)
@@ -116,7 +154,7 @@ def plot_pupil_area_with_running(
 def plot_pupil_response(
     session: npc_sessions.DynamicRoutingSession,
 ) -> plt.Figure | None:
-    if not session.is_video:
+    if not _is_eye_tracking_available(session):
         return None
     median_with_shaded_std = False
     dur = 2.5  # s
@@ -281,13 +319,17 @@ def plot_lick_triggered_frames(
     )
     gs.update(wspace=0.0, hspace=0.0)
 
-    video_frame_times = npc_mvr.get_video_frame_times(
-        session.sync_data, *session.video_paths
-    )
+    # cameras npc_mvr excludes (untrustworthy frame times) aren't in `mvr.frame_times`
+    camera_frame_times = session.mvr.frame_times
     # face + body cameras only (eye camera excluded; the order of paths isn't fixed)
     non_eye_videos = [
-        (p, t) for p, t in video_frame_times.items() if "eye" not in p.stem.lower()
+        (session.mvr.video_paths[camera_name], t)
+        for camera_name, t in camera_frame_times.items()
+        if camera_name != "eye"
     ][:NUM_CAMERAS]
+    if not non_eye_videos:
+        plt.close(fig)
+        return None
     for vid_idx, (video_path, frame_times) in enumerate(non_eye_videos):
         for lick_idx, lick_time in enumerate(lick_times):
             v = npc_mvr.get_video_data(video_path)  # TODO open with upath from cloud

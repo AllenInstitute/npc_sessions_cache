@@ -1,7 +1,13 @@
-from npc_sessions_cache.plots.video import plot_lick_triggered_frames, plot_pupil_response, plot_pupil_area_with_running, plot_lick_bout_triggered_facemap_side
+from npc_sessions_cache.plots.video import plot_camera_frame_counts, plot_lick_triggered_frames, plot_pupil_response, plot_pupil_area_with_running, plot_lick_bout_triggered_facemap_side
 from npc_sessions_cache.plots.sync_patch import plot_camera_intervals_near_invalid_intervals
 
 instructions = {
+    plot_camera_frame_counts: """
+    - cameras with `excluded_reason` are left out of the NWB (frame times can't be trusted)
+    - `num_unaccounted_frames` > 0: exposures on sync that are neither in the video nor in `LostFrames`;
+      frame times after them are early by up to that many frames
+    - `num_exposures_inserted` > 0: exposures in unknown sync intervals (nan frame times there)
+    """,
     plot_lick_triggered_frames: """
     - tongue should be approaching or already touching the lick spout in the frame above the red tick (lick frame)
     - tongue should not be touching the lick spout in the frame preceding the lick frame

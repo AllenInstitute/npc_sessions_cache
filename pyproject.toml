@@ -16,7 +16,7 @@ dependencies = [
     "ipywidgets>=8.1.0",
     "npc-sessions @ git+https://github.com/AllenInstitute/npc_sessions",  # from source: QC shows unreleased fixes
     "npc-sync>=0.3.11",
-    "npc-stim>=0.1.30",
+    "npc-stim>=0.1.31",
     "npc-ephys>=0.1.55",
     "npc-samstim>=0.1.19",
     "npc-mvr>=0.1.21",

@@ -210,7 +210,8 @@ def _print_block_sources(blocks: Sequence[npc_stim.BlockDisplayTimes]) -> None:
 def plot_vsync_interval_dist(
     session: npc_sessions.DynamicRoutingSession,
 ) -> plt.Figure | None:
-    if not session.is_sync:
+    if not session.is_sync or not session.is_task:
+        # no task stim to match to a vsync block (e.g. opto/RF-mapping-only sessions)
         return None
     for block in _get_display_blocks(session):
         if (

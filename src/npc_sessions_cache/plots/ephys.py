@@ -1661,8 +1661,11 @@ def plot_insertion_history(
 
 def plot_sensory_responses(
     session: npc_sessions.DynamicRoutingSession,
-) -> tuple[plt.Figure, ...]:
+) -> tuple[plt.Figure, ...] | None:
     from npc_sessions_cache.figures.paper2 import fig3c
+
+    if not session.is_task or not session.is_sorted:
+        return None
 
     trials = session.trials[:]
     units = session.units[:].query(

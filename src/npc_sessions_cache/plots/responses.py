@@ -330,10 +330,18 @@ def plot_fast_sensory_responses(
     if not session.is_sorted:
         return None
     trials_by_modality = get_trial_onsets(session)
+    if all(len(trials) < 10 for trials in trials_by_modality.values()):
+        # no vis/aud stims (e.g. opto-only sessions): not applicable
+        return None
     selected = get_fast_responsive_units(session, trials_by_modality)
     if selected.empty:
-        raise ValueError(
-            f"No units with rate increase >= {MIN_RATE_INCREASE_HZ} Hz and score >= {MIN_SCORE} in {RESPONSE_WINDOW}"
+        # weak responses (e.g. muscimol days, few probes in sensory areas) - not an error
+        return (
+            {
+                "n_selected": 0,
+                "criteria": f"rate increase >= {MIN_RATE_INCREASE_HZ} Hz and score >= {MIN_SCORE} in {RESPONSE_WINDOW}",
+                "n_onsets": {m: len(t) for m, t in trials_by_modality.items()},
+            },
         )
     spikes = session.units[:].set_index("unit_id")["spike_times"]
     invalid = tuple(session.sync_data.invalid_intervals)

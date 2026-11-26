@@ -14,6 +14,7 @@ from npc_sessions_cache.plots.display_qc import (
     plot_quartile_visual_latency,
 )
 from npc_sessions_cache.plots.long_frames import plot_task_long_frame_alignment
+from npc_sessions_cache.plots.late_frame import plot_late_stim_frame_alignment
 
 instructions = {
     plot_vsync_interval_dist: """
@@ -37,6 +38,13 @@ instructions = {
     - a step of ~17 or ~33 ms in latency or in the per-stim shifts, with a stable auditory latency, is a late display: fail
     - json `review` is True if the visual range is > 8 ms, or > 10% of task stims are shifted by > 8 ms while the auditory latency is stable
     - blocks with few responsive units (< 10) have noisy per-stim shifts: go by the quarterly latencies
+    - green/grey dashed lines (right axis): evoked and baseline rate of the visual units per quarter, relative to Q1. A timing error shifts the latency without changing the rates; a change of state (arousal, running, engagement) changes the rates, and the half-max latency with them (weaker responses peak later). In a photodiode block that passes the long-frame alignment, a latency change of < 1 frame that goes with a rate change and a stable auditory latency is not a timing error
+    """,
+    plot_late_stim_frame_alignment: """
+    - task trials whose visual stim frame was displayed a refresh later than usual (photodiode): the response should follow the photodiode, not the vsync
+    - left (aligned to stim_start_time): late and normal PSTHs overlap, shift ~0 ms; right (aligned to vsync): late trials ~17 ms later
+    - fail: late trials respond ~17 ms earlier than normal trials relative to stim_start_time (their display times are a frame late)
+    - untestable with < 5 late trials or < 5 visually responsive units
     """,
     plot_task_long_frame_alignment: """
     - task block only: long (dropped) frames in the stim file's frameIntervals vs in the session's frame display times (indices and single intervals only: the stim clock isn't synced with sync, so cumsum times aren't compared)

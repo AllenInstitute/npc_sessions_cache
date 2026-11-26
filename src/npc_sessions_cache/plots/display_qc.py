@@ -297,6 +297,59 @@ def _latency_stats(result: Any, info: dict[str, Any], is_task: bool) -> dict[str
     }
 
 
+def get_quartile_rates(
+    session: npc_sessions.DynamicRoutingSession, stem: str, result: Any  # noqa: ANN401
+) -> dict[str, list[float]] | None:
+    """Firing rates of the visually responsive units of the latency check in each quarter of
+    the block's visual stims: mean baseline rate (-100-0 ms) and peak evoked rate (mean PSTH,
+    5-ms boxcar, 20-150 ms, minus baseline), over all of the block's visual stims (RFMapping:
+    all small gratings, so evoked rates are diluted).
+
+    A display or sync timing error shifts the response without changing its size; a change in
+    the animal's state (arousal, running, engagement) changes baseline and evoked rates, and
+    the half-max latency with them: weaker responses peak later and rise more slowly
+    (hub experiments/timing-quartile: 733891_2024-09-18/19, 741148_2024-10-18)."""
+    qc = _qc()
+    if result.vis is None or not result.vis.quartiles:
+        return None
+    block = get_display_block(session, stem)
+    if isinstance(block, Exception) or block.display_times is None:
+        return None
+    onsets = np.asarray(qc.get_stim_onsets(session, stem, block.display_times).vis, dtype=float)
+    onsets = np.sort(onsets[np.isfinite(onsets)])
+    spike_times = qc.get_unit_spike_times(session)
+    units = [np.asarray(spike_times[u]) for u in result.vis.unit_ids if u in spike_times]
+    if not units:
+        return None
+    edges = np.arange(-0.1, 0.15 + 0.001, 0.001)
+    centers = edges[:-1] + 0.0005
+    baseline, evoked = [], []
+    for q in result.vis.quartiles:
+        on = onsets[(onsets >= q.start_time) & (onsets <= q.stop_time)]
+        psth = np.zeros(len(centers))
+        for st in units:
+            lo = np.searchsorted(st, on + edges[0])
+            hi = np.searchsorted(st, on + edges[-1])
+            rel = np.concatenate([st[a:b] - t for a, b, t in zip(lo, hi, on)])
+            psth += np.histogram(rel, edges)[0]
+        psth = np.convolve(psth / len(units) / len(on) / 0.001, np.ones(5) / 5, mode="same")
+        b = float(psth[centers < 0].mean())
+        baseline.append(b)
+        evoked.append(float(psth[(centers >= 0.02) & (centers < 0.15)].max() - b))
+    return {"vis_baseline_hz": baseline, "vis_evoked_hz": evoked}
+
+
+def _rate_change_note(stats: dict[str, Any]) -> str:
+    """'evoked rate x-y Hz, baseline x-y Hz' over quarters, if known"""
+    ev, bl = stats.get("vis_evoked_hz"), stats.get("vis_baseline_hz")
+    if not ev or not bl:
+        return ""
+    return (
+        f"evoked rate {min(ev):.1f}-{max(ev):.1f} Hz (x{max(ev) / max(min(ev), 1e-9):.2f}), "
+        f"baseline {min(bl):.1f}-{max(bl):.1f} Hz over quarters"
+    )
+
+
 # quartile PSTH plot ---------------------------------------------------------------- #
 
 
@@ -327,7 +380,7 @@ def _plot_quartile_psths(ax: plt.Axes, stats: Any, label: str) -> None:  # noqa:
     ax.legend(fontsize=5.5, loc="upper right", title="half-max latency", title_fontsize=5.5)
 
 
-def _plot_latencies(ax: plt.Axes, result: Any) -> None:  # noqa: ANN401
+def _plot_latencies(ax: plt.Axes, result: Any, block_stats: dict[str, Any] | None = None) -> None:  # noqa: ANN401
     drawn = False
     for stats, color, label, offset in (
         (result.vis, "tab:blue", "vis", -0.05),
@@ -357,6 +410,18 @@ def _plot_latencies(ax: plt.Axes, result: Any) -> None:  # noqa: ANN401
         ax.legend(fontsize=6)
     ax.set_ylabel("half-max latency (ms)\n(bars: 95% bootstrap CI)")
     ax.set_xlabel("quarter of the block's stims")
+    ev = (block_stats or {}).get("vis_evoked_hz")
+    bl = (block_stats or {}).get("vis_baseline_hz")
+    if ev and bl and ev[0] > 0 and bl[0] > 0:
+        # a timing error moves the latency without changing the rates; a change of state
+        # changes both
+        ax2 = ax.twinx()
+        x = np.arange(len(ev))
+        ax2.plot(x, np.array(ev) / ev[0], "s--", ms=2.5, lw=0.7, color="tab:green", label="vis evoked rate")
+        ax2.plot(x, np.array(bl) / bl[0], "^--", ms=2.5, lw=0.7, color="0.5", label="vis baseline rate")
+        ax2.set_ylabel("rate / Q1 rate", fontsize=6)
+        ax2.tick_params(labelsize=6)
+        ax2.legend(fontsize=5.5, loc="lower right")
     ax.set_title(f"limit: vis range <= {REVIEW_MAX_LATENCY_RANGE_MS:g} ms", fontsize=7)
 
 
@@ -415,7 +480,7 @@ def _quartile_figure(
         ax_aud.axis("off")
     else:
         _plot_quartile_psths(ax_aud, result.aud, "auditory stims (control)")
-    _plot_latencies(ax_lat, result)
+    _plot_latencies(ax_lat, result, stats)
     _plot_stim_shifts(ax_shift, result, t0)
     ax_shift.set_xlabel(
         "minutes into block (template: Q1 stims; dotted: +-1, 2 frames; dashed: quarter boundaries)"
@@ -487,6 +552,12 @@ def plot_quartile_visual_latency(
             continue
         is_task = _is_task_stem(session, stem)
         stats = _latency_stats(result, info, is_task)
+        try:
+            stats.update(get_quartile_rates(session, stem, result) or {})
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"{session.id} {stem}: quartile firing rates not computed: {exc!r}")
+        if stats["review"] and (note := _rate_change_note(stats)):
+            stats["review_reasons"] = [*stats["review_reasons"], note]
         validity = get_stim_validity(session, stem)
         # the block's validity (npc_sessions): not only from this check, e.g. a constant-lag
         # block can pass it and be invalid for its latency vs a photodiode block

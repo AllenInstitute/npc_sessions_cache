@@ -6,7 +6,9 @@ import pathlib
 import tempfile
 
 import matplotlib.pyplot as plt
+import numpy as np
 import npc_sessions
+import PIL.Image
 import upath
 
 
@@ -30,8 +32,10 @@ def plot_surface_images(
         except:
             ctime = None
         plt.figure()
-        # without a filename, imread assumes PNG: surface images are often JPEG
-        plt.imshow(plt.imread(io.BytesIO(p.read_bytes()), format=p.suffix.lstrip(".")))
+        # sniff the format from content, not suffix: some surface images are BMPs
+        # named .png (e.g. 810752_2025-10-07, 814666_2025-11-06)
+        with PIL.Image.open(io.BytesIO(p.read_bytes())) as img:
+            plt.imshow(np.asarray(img))
         plt.title(f"{p.stem}\n{ctime or 'time unknown'}")
         plt.gca().axis("off")
         if ctime:

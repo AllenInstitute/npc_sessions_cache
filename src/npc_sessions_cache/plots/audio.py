@@ -38,7 +38,7 @@ def get_audio_waveforms(
 
 def plot_microphone_response(
     session: npc_sessions.DynamicRoutingSession,
-) -> plt.Figure:
+) -> plt.Figure | None:
     """
     - plot difference between audio volume and baseline
     - take 90th percentile of voltage signals at:
@@ -51,6 +51,9 @@ def plot_microphone_response(
     - plot on time course of entire task to make it easier to debug
     """
     aud_trials = session.trials[:].query("is_aud_stim")
+    if aud_trials.empty:
+        # e.g. vis-only training stage (850215_2026-03-23): not applicable
+        return None
     baseline_start_times = aud_trials["quiescent_start_time"].to_numpy()
     stim_start_times = aud_trials["stim_start_time"].to_numpy()
     waveforms = get_audio_waveforms(

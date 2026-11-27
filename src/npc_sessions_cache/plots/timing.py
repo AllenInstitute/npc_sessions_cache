@@ -225,7 +225,9 @@ def _plot_reward_times(session) -> plt.Figure:
 
 def plot_long_vsync_occurrences(
     session: npc_sessions.DynamicRoutingSession,
-) -> plt.Figure:
+) -> plt.Figure | None:
+    if not (session.is_sync and session.is_task):
+        return None
     all_vsyncs = np.hstack(session.sync_data.vsync_times_in_blocks)
 
     interval_threshold = 0.017  # s

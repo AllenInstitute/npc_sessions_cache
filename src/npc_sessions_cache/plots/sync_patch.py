@@ -203,6 +203,8 @@ def plot_edges_near_invalid_intervals(
       (vsyncs, photodiode, cameras) without a gap, a doubled edge or a 1-frame step
     - lines whose span is 'unknown' (red label) have no patched edges inside the interval
     """
+    if not session.is_sync:
+        return None
     invalid = _invalid_intervals(session)
     patch = session.sync_patch
     if not invalid or patch is None:
@@ -295,6 +297,8 @@ def plot_patched_line_alternation(
     the rest (in the recorded data; the same count as the unpatched line outside spans).
     Pairs bracketing an 'unknown' span are not counted: edges there are missing by design.
     """
+    if not session.is_sync:
+        return None
     invalid = _invalid_intervals(session)
     patch = session.sync_patch
     if not invalid or patch is None:

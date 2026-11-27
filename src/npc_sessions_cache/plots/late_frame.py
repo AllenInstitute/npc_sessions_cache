@@ -147,6 +147,17 @@ def late_stim_frame_alignment(
     s = stats["shift_vs_display_ms"]
     extra = stats["late_extra_delay_ms"]
     ok = abs(s) <= MAX_DISPLAY_SHIFT_MS and abs(s) < abs(s + extra)
+    lo, hi = stats["shift_vs_display_ci_ms"]
+    if not ok and lo <= 0 <= hi and lo <= -extra <= hi:
+        # CI covers both 0 (follows photodiode) and -extra (late display times): too few
+        # trials to decide (e.g. 733780_2024-09-05, n=5)
+        stats["verdict"] = "untestable"
+        stats["reason"] = (
+            f"inconclusive: late-frame trials (n={late.sum()}) respond {s:+d} ms vs normal "
+            f"trials relative to stim_start_time, but the 95% CI ({lo:+.0f} to {hi:+.0f}) "
+            f"contains both 0 and {-extra:+.1f} ms"
+        )
+        return stats, arrays
     stats["verdict"] = "passed" if ok else "failed"
     stats["reason"] = (
         f"late-frame trials (n={late.sum()}, stim frame {extra:.1f} ms later than usual "
@@ -171,7 +182,7 @@ def plot_late_stim_frame_alignment(
       respond ~1 refresh later
 
     Stats: `verdict` ('passed' if the shift relative to `stim_start_time` is within half a
-    refresh of 0; 'failed'; 'untestable': < 5 late trials or < 5 responsive units), shifts with
+    refresh of 0; 'failed'; 'untestable': < 5 late trials, < 5 responsive units, or a CI containing both outcomes), shifts with
     bootstrap CIs, numbers of trials and units.
     """
     if not (session.is_sync and session.is_sorted and session.is_task):

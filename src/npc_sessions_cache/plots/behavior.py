@@ -18,7 +18,9 @@ import npc_sessions_cache.plots.plot_utils as plot_utils
 
 def plot_performance_by_block(
     session: npc_sessions.DynamicRoutingSession,
-) -> plt.Figure:
+) -> plt.Figure | None:
+    if not session.is_task:
+        return None
     task_performance_by_block_df: pd.DataFrame = session.performance[:]
 
     dprime_threshold = 1.5 if session.is_training else 1.0

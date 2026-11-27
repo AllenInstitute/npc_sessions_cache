@@ -154,7 +154,7 @@ def plot_pupil_area_with_running(
 def plot_pupil_response(
     session: npc_sessions.DynamicRoutingSession,
 ) -> plt.Figure | None:
-    if not _is_eye_tracking_available(session):
+    if not session.is_task or not _is_eye_tracking_available(session):
         return None
     median_with_shaded_std = False
     dur = 2.5  # s
@@ -276,7 +276,7 @@ def plot_lick_triggered_frames(
     trial_idx: int | None = None,
     lick_time: float | None = None,
 ) -> plt.Figure | None:
-    if not session.is_video:
+    if not (session.is_video and session.is_task):
         return None
     NUM_LICKS = 8 if (trial_idx is None and lick_time is None) else 1
     NUM_CAMERAS = 2  # 1 x face, 1 x body

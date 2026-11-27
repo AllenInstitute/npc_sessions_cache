@@ -50,6 +50,8 @@ def plot_microphone_response(
     - only for task trials with aud stim 
     - plot on time course of entire task to make it easier to debug
     """
+    if not (session.is_task and session.is_sync):
+        return None
     aud_trials = session.trials[:].query("is_aud_stim")
     if aud_trials.empty:
         # e.g. vis-only training stage (850215_2026-03-23): not applicable
@@ -85,6 +87,8 @@ def plot_audio_waveforms(
 ) -> plt.Figure | None:
     """Plot a selection of audio waveforms aligned to stim start times. Default is
     one per block"""
+    if not (session.is_task and session.is_sync):
+        return None
     aud_trials = session.trials[:].query(f"is_aud_{'' if target_stim else 'non'}target")
     if aud_trials.empty:
         # e.g. single vis-rewarded block: no aud stim is labelled as a target

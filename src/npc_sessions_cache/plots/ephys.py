@@ -84,7 +84,9 @@ def makePSTH_numba(
 def plot_unit_metrics(
     session: npc_sessions.DynamicRoutingSession,
     probe_letter: str | npc_session.ProbeRecord | None = None,
-) -> tuple[plt.Figure, ...]:
+) -> tuple[plt.Figure, ...] | None:
+    if not session.is_sorted:
+        return None
     units: pd.DataFrame = session.units[:].query("default_qc")
     if units.empty:
         return f"{session.id}: no units pass default_qc"
@@ -142,7 +144,9 @@ def get_sorting_view_links(
     session: npc_sessions.DynamicRoutingSession,
     key: Literal["sorting_summary", "timeseries"],
     probe_letter: str | npc_session.ProbeRecord | None = None,
-) -> tuple[str, ...]:
+) -> tuple[str, ...] | None:
+    if not session.is_sorted:
+        return None
     vis = session.sorted_data.visualization_output_json()
     links = []
     for v in vis.values():
@@ -173,7 +177,9 @@ def plot_sorting_view_timeseries_links(
 def plot_all_spike_histograms(
     session: npc_sessions.DynamicRoutingSession,
     probe_letter: str | npc_session.ProbeRecord | None = None,
-) -> tuple[plt.Figure, ...]:
+) -> tuple[plt.Figure, ...] | None:
+    if not session.is_sorted:
+        return None
     session.units[:].query("default_qc")
     figs: list[plt.Figure] = []
     for obj in session.all_spike_histograms.children:
@@ -509,7 +515,9 @@ def plot_raw_ephys_segments(
     median_subtraction: bool = True,
     probe_letter: str | npc_session.ProbeRecord | None = None,
     **imshow_kwargs,
-) -> tuple[plt.Figure, ...]:
+) -> tuple[plt.Figure, ...] | None:
+    if not session.is_ephys:
+        return None
     if lfp:
         container = session._raw_lfp
     else:
@@ -660,6 +668,8 @@ def plot_optotagging(
     combine_locations: bool = True,
     combine_probes: bool = False,
 ) -> tuple[plt.Figure, ...] | None:
+    if isinstance(session, npc_sessions.DynamicRoutingSession) and not session.is_sorted:
+        return None
     try:
         opto_trials = session.intervals["optotagging_trials"][:]
     except KeyError:
@@ -813,6 +823,8 @@ def plot_probe_yield(
     probe_letter: str | npc_session.ProbeRecord | None = None,
 ) -> plt.Figure:
     del probe_letter  # unused  - just allows functools.partial application
+    if not session.is_sorted:
+        return None
     units = session.units[:]
     good_unit_filter = (
         (units["amplitude_cutoff"] < 0.1)
@@ -1512,6 +1524,12 @@ def plot_ccf_aligned_ephys(
     """
     if not session.is_annotated:
         return None
+    try:
+        npc_sessions.get_tissuecyte_electrodes_table(session.id)
+    except npc_sessions.NoElectrodeDataError:
+        # IBL-annotated: the slice images, anchors and correlation plots used here come from
+        # the TissueCyte alignment GUI
+        return None
 
     figures = []
     # Fetch once, reuse across probes
@@ -1541,9 +1559,20 @@ def plot_ccf_aligned_ephys(
         return lfp_correlation
 
     probes = [probe] if probe is not None else sorted(session.electrodes[:]["group_name"].unique())
+    missing: list[str] = []
     for probe in probes:
-        figures.append(_plot_ephys_noise_with_unit_density_areas(session, probe, lfp_correlation=get_probe_lfp_correlation(probe)))
-
+        try:
+            figures.append(_plot_ephys_noise_with_unit_density_areas(session, probe, lfp_correlation=get_probe_lfp_correlation(probe)))
+        except FileNotFoundError as exc:
+            # alignment GUI output missing for this probe only (e.g. 662892 probeA slice image)
+            logger.warning(str(exc))
+            missing.append(str(exc))
+    if not figures and missing:
+        raise FileNotFoundError("; ".join(missing))
+    if missing:
+        fig = plt.figure(figsize=(8, 0.4 + 0.3 * len(missing)))
+        fig.text(0.01, 0.5, "\n".join(missing), va="center", fontsize=9, color="tab:red")
+        figures.append(fig)
     return tuple(figures)
 
 

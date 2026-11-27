@@ -367,10 +367,25 @@ def write_session_qc(
 ) -> None:
     if session is None:
         session = npc_sessions.DynamicRoutingSession(session_id)
+    try:
+        _ = session.raw_data_paths
+        if not (session.is_sync or session.is_ephys):
+            _ = session.stim_paths
+    except (ValueError, FileNotFoundError) as exc:
+        # no raw data at all (e.g. dye-test sessions 772655_2025-03-05 never uploaded): no QC
+        # applies - treat every function as returning None (removes stale outputs)
+        logger.warning(f"{session_id}: no raw data - skipping QC: {exc}")
+        no_data = True
+    else:
+        no_data = False
     for (module_name, function_name), function in get_qc_functions().items():
         if specific_module_name and module_name != specific_module_name:
             continue
         if specific_function_name and function_name != specific_function_name:
+            continue
+        if no_data:
+            store = QCStore(module_name, normalize_function_name(function_name), root_path=store_path)
+            store.delete_data(store.normalize_key(session_id))
             continue
         write_output_from_single_function(
             session_id,
